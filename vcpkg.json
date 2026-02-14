@@ -1,0 +1,5 @@
+{
+  "name": "ariane-graphql-server",
+  "version-string": "0.1.0",
+  "dependencies": ["gtest"]
+}

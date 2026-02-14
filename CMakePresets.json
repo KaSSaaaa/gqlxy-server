@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "displayName": "Configure with vcpkg (Debug)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/vcpkg-debug",
+      "cacheVariables": {
+        "ENABLE_VCPKG_BOOTSTRAP": "ON"
+      }
+    },
+    {
+      "name": "arm64-debug",
+      "displayName": "Configure with vcpkg (Debug, arm64)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/arm64-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "ENABLE_VCPKG_BOOTSTRAP": "ON",
+        "VCPKG_TRIPLET": "arm64-osx",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/out/build/arm64-debug/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "arm64-debug"
+    }
+  ]
+}
