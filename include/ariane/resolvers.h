@@ -2,41 +2,45 @@
 
 #include <functional>
 #include <future>
+#include <list>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace ariane::graphql {
 
 struct ValueResolver;
 
-using Resolver = std::unordered_map<std::string, ValueResolver>;
+using Resolver = std::initializer_list<std::pair<std::string, ValueResolver>>;
 using FunctionResolver = std::function<ValueResolver()>;
 using AsyncFunctionResolver = std::function<std::future<ValueResolver>()>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 
-struct ValueResolver
-    : std::variant<int, double, bool, std::string, Resolver, FunctionResolver, AsyncFunctionResolver, std::monostate> {
+struct ValueResolver : std::variant<int,
+                                    uint64_t,
+                                    double,
+                                    float,
+                                    bool,
+                                    std::string,
+                                    Resolver,
+                                    std::vector<ValueResolver>,
+                                    FunctionResolver,
+                                    AsyncFunctionResolver,
+                                    std::monostate> {
     using variant::variant;
 
     ValueResolver(std::nullopt_t) : variant(std::monostate{}) {}
+    ValueResolver(std::nullptr_t) : variant(std::monostate{}) {}
+    ValueResolver(const char* str) : variant(std::string(str)) {}
+    ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector<ValueResolver>(list)) {}
+    ValueResolver(const std::list<ValueResolver>& list)
+        : variant(std::vector<ValueResolver>(list.begin(), list.end())) {}
 
-    ValueResolver(const std::optional<int>& opt)
-        : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
-
-    ValueResolver(const std::optional<double>& opt)
-        : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
-
-    ValueResolver(const std::optional<bool>& opt)
-        : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
-
-    ValueResolver(const std::optional<std::string>& opt)
-        : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
-
-    ValueResolver(const std::optional<Resolver>& opt)
-        : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
+    template <typename T>
+    ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
 };
 
 }

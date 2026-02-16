@@ -39,6 +39,27 @@ int main() {
                     field1,
                     {"world", []() {
                         return async(launch::async, []() -> ValueResolver { return "Async world!"; });
+                    }},
+                    {"list", initializer_list<ValueResolver> {
+                        "item1",
+                        2,
+                        Resolver {
+                            {"nestedField", "Nested value"}
+                        },
+                        [] {
+                            return std::optional<ValueResolver>("Optional value");
+                        }
+                    }},
+                    {"listFunction", []() {
+                        return vector<ValueResolver> {
+                            "item1",
+                            Resolver {
+                                {"nestedField", "Nested value"}
+                            },
+                            []() {
+                                return std::optional<ValueResolver>("Optional value");
+                            }
+                        };
                     }}
                 }}
             }}

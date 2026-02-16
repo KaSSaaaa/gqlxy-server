@@ -12,7 +12,7 @@ struct SchemaOptions {
 };
 
 class Schema {
-   public:
+public:
     Schema(const SchemaOptions& options);
 };
 
