@@ -1,31 +1,20 @@
-#include <iostream>
-#include <map>
-#include <string>
-#include <functional>
-#include <memory>
-#include <future>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
+
+#include <functional>
+#include <future>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <string>
 
 using namespace std;
 using namespace ariane::graphql;
 
-int main()
-{
-    std::pair<std::string, ValueResolver> field1 { "hello", []() { return "Hello, world!"; }};
-    auto resolvers = Resolver {
-        {"Query", Resolver {
-            {"hello", []() { return "Hello, world!"; }},
-            {"user", Resolver {
-                {"id", 123},
-                {"name", "John Doe"},
-                {"email", "john@example.com"},
-                field1,
-                {"world", []() { return async(launch::async, []() -> ValueResolver { return "Async world!"; }); }},
-            }}
-        }}
-    };
+int main() {
+    std::pair<std::string, ValueResolver> field1{"hello", []() { return "Hello, world!"; }};
 
+    // clang-format off
     Schema schema(SchemaOptions {
         .typeDefs = R"(
             type Query {
@@ -48,11 +37,14 @@ int main()
                     {"name", "John Doe"},
                     {"email", "john@example.com"},
                     field1,
-                    {"world", []() { return async(launch::async, []() -> ValueResolver { return "Async world!"; }); }},
+                    {"world", []() {
+                        return async(launch::async, []() -> ValueResolver { return "Async world!"; });
+                    }}
                 }}
             }}
         }
     });
-    
+    // clang-format on
+
     return 0;
 }

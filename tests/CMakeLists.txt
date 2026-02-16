@@ -6,7 +6,8 @@ find_package(GTest CONFIG REQUIRED)
 
 enable_testing()
 
-add_executable(ariane_tests test_main.cpp)
+file(GLOB TEST_SOURCES "*.cpp")
+add_executable(ariane_tests ${TEST_SOURCES})
 target_link_libraries(ariane_tests PRIVATE ariane::graphql GTest::gtest_main)
 target_include_directories(ariane_tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
