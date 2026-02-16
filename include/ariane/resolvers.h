@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ariane/task.h>
 #include <functional>
 #include <future>
 #include <list>
@@ -17,6 +18,8 @@ struct ValueResolver;
 using Resolver = std::initializer_list<std::pair<std::string, ValueResolver>>;
 using FunctionResolver = std::function<ValueResolver()>;
 using AsyncFunctionResolver = std::function<std::future<ValueResolver>()>;
+using CoroutineResolver = std::function<Task<ValueResolver>()>;
+using CallbackResolver = std::function<void(const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 
 struct ValueResolver : std::variant<int,
@@ -29,6 +32,8 @@ struct ValueResolver : std::variant<int,
                                     std::vector<ValueResolver>,
                                     FunctionResolver,
                                     AsyncFunctionResolver,
+                                    CoroutineResolver,
+                                    CallbackResolver,
                                     std::monostate> {
     using variant::variant;
 

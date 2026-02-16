@@ -27,6 +27,8 @@ int main() {
                 name: String
                 email: String
                 world: String
+                coroutineWorld: String
+                callbackWorld: String
             }
         )",
         .resolvers = {
@@ -39,6 +41,12 @@ int main() {
                     field1,
                     {"world", []() {
                         return async(launch::async, []() -> ValueResolver { return "Async world!"; });
+                    }},
+                    {"coroutineWorld", []() -> Task<ValueResolver> {
+                        co_return "Coroutine world!";
+                    }},
+                    {"callbackWorld", [](const function<void(const ValueResolver&)>& callback) {
+                        callback("Callback world!");
                     }},
                     {"list", initializer_list<ValueResolver> {
                         "item1",

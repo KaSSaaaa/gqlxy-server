@@ -76,6 +76,34 @@ TEST(Resolvers, SupportsAsyncFunctionResolvers) {
     EXPECT_TRUE(std::holds_alternative<AsyncFunctionResolver>(resolver));
 }
 
+TEST(Resolvers, SupportsCoroutineResolvers) {
+    auto coroutineResolver = []() -> Task<ValueResolver> { co_return ValueResolver(42); };
+
+    ValueResolver resolver(coroutineResolver);
+    EXPECT_TRUE(std::holds_alternative<CoroutineResolver>(resolver));
+
+    auto& func = std::get<CoroutineResolver>(resolver);
+    auto task = func();
+    ValueResolver result = task.get();
+    EXPECT_TRUE(std::holds_alternative<int>(result));
+    EXPECT_EQ(std::get<int>(result), 42);
+}
+
+TEST(Resolvers, SupportsCallbackResolvers) {
+    auto callbackResolver = [](const std::function<void(const ValueResolver&)>& callback) {
+        callback(ValueResolver(42));
+    };
+
+    ValueResolver resolver(callbackResolver);
+    EXPECT_TRUE(std::holds_alternative<CallbackResolver>(resolver));
+
+    auto& func = std::get<CallbackResolver>(resolver);
+    ValueResolver result;
+    func([&result](const ValueResolver& value) { result = value; });
+    EXPECT_TRUE(std::holds_alternative<int>(result));
+    EXPECT_EQ(std::get<int>(result), 42);
+}
+
 TEST(Resolvers, SupportsOptionalFunctionForNullables) {
     auto optFunc = []() -> std::optional<ValueResolver> { return std::nullopt; };
 
