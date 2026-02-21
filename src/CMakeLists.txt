@@ -13,6 +13,11 @@ target_include_directories(ariane_graphql
 		$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>
 )
+target_link_libraries(
+		ariane_graphql
+		PUBLIC
+		cppgraphqlgen::graphqlpeg
+)
 
 add_library(ariane::graphql ALIAS ariane_graphql)
 

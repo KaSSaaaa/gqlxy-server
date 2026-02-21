@@ -17,6 +17,10 @@ int main() {
     // clang-format off
     Schema schema(SchemaOptions {
         .typeDefs = R"(
+            interface Node {
+                id: ID!
+            }
+
             type Query {
                 hello: String
                 user: User
@@ -30,6 +34,8 @@ int main() {
                 coroutineWorld: String
                 callbackWorld: String
             }
+
+            union SearchResult = User | Node
         )",
         .resolvers = {
             {"Query", Resolver {
@@ -74,6 +80,8 @@ int main() {
         }
     });
     // clang-format on
+
+    auto doc = schema.GetDocument();
 
     return 0;
 }

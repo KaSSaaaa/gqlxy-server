@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -15,7 +16,7 @@ namespace ariane::graphql {
 
 struct ValueResolver;
 
-using Resolver = std::initializer_list<std::pair<std::string, ValueResolver>>;
+using Resolver = std::unordered_map<std::string, ValueResolver>;
 using FunctionResolver = std::function<ValueResolver()>;
 using AsyncFunctionResolver = std::function<std::future<ValueResolver>()>;
 using CoroutineResolver = std::function<Task<ValueResolver>()>;
@@ -40,6 +41,8 @@ struct ValueResolver : std::variant<int,
     ValueResolver(std::nullopt_t) : variant(std::monostate{}) {}
     ValueResolver(std::nullptr_t) : variant(std::monostate{}) {}
     ValueResolver(const char* str) : variant(std::string(str)) {}
+    ValueResolver(std::initializer_list<std::pair<const std::string, ValueResolver>>&& init)
+        : variant(Resolver(init.begin(), init.end())) {}
     ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector<ValueResolver>(list)) {}
     ValueResolver(const std::list<ValueResolver>& list)
         : variant(std::vector<ValueResolver>(list.begin(), list.end())) {}
