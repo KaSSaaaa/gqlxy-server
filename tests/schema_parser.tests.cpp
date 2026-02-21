@@ -44,20 +44,20 @@ TEST(SchemaParser, ParsesFieldTypes) {
     auto idField = std::find_if(userType.fields.begin(), userType.fields.end(),
                                 [](const FieldDefinition& f) { return f.name == "id"; });
     ASSERT_NE(idField, userType.fields.end());
-    EXPECT_EQ(idField->type.kind, TypeRef::Kind::NonNull);
-    EXPECT_EQ(idField->type.ofType->kind, TypeRef::Kind::NamedType);
+    EXPECT_EQ(idField->type.kind._value, TypeRefKind::NonNull);
+    EXPECT_EQ(idField->type.ofType->kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(idField->type.ofType->name, "ID");
 
     auto emailField = std::find_if(userType.fields.begin(), userType.fields.end(),
                                    [](const FieldDefinition& f) { return f.name == "email"; });
     ASSERT_NE(emailField, userType.fields.end());
-    EXPECT_EQ(emailField->type.kind, TypeRef::Kind::NamedType);
+    EXPECT_EQ(emailField->type.kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(emailField->type.name, "String");
 
     auto tagsField = std::find_if(userType.fields.begin(), userType.fields.end(),
                                   [](const FieldDefinition& f) { return f.name == "tags"; });
     ASSERT_NE(tagsField, userType.fields.end());
-    EXPECT_EQ(tagsField->type.kind, TypeRef::Kind::List);
+    EXPECT_EQ(tagsField->type.kind._value, TypeRefKind::List);
 }
 
 TEST(SchemaParser, ParsesScalarTypes) {
@@ -73,7 +73,7 @@ TEST(SchemaParser, ParsesScalarTypes) {
     ASSERT_TRUE(doc.types.find("DateTime") != doc.types.end());
 
     const auto& dateTimeType = doc.types.at("DateTime");
-    EXPECT_EQ(dateTimeType.kind, TypeKind::SCALAR);
+    EXPECT_EQ(dateTimeType.kind._value, TypeKind::SCALAR);
     EXPECT_EQ(dateTimeType.name, "DateTime");
 }
 
@@ -94,7 +94,7 @@ TEST(SchemaParser, ParsesEnumTypes) {
     ASSERT_TRUE(doc.types.find("Role") != doc.types.end());
 
     const auto& roleType = doc.types.at("Role");
-    EXPECT_EQ(roleType.kind, TypeKind::ENUM);
+    EXPECT_EQ(roleType.kind._value, TypeKind::ENUM);
     EXPECT_EQ(roleType.name, "Role");
     EXPECT_EQ(roleType.enumValues.size(), 3);
     EXPECT_EQ(roleType.enumValues[0].name, "ADMIN");
@@ -117,7 +117,7 @@ TEST(SchemaParser, ParsesInterfaceTypes) {
     ASSERT_TRUE(doc.types.find("Node") != doc.types.end());
 
     const auto& nodeType = doc.types.at("Node");
-    EXPECT_EQ(nodeType.kind, TypeKind::INTERFACE);
+    EXPECT_EQ(nodeType.kind._value, TypeKind::INTERFACE);
     EXPECT_EQ(nodeType.name, "Node");
     EXPECT_EQ(nodeType.fields.size(), 1);
 }
@@ -141,7 +141,7 @@ TEST(SchemaParser, ParsesUnionTypes) {
     ASSERT_TRUE(doc.types.find("Pet") != doc.types.end());
 
     const auto& petType = doc.types.at("Pet");
-    EXPECT_EQ(petType.kind, TypeKind::UNION);
+    EXPECT_EQ(petType.kind._value, TypeKind::UNION);
     EXPECT_EQ(petType.name, "Pet");
     EXPECT_EQ(petType.unionTypes.size(), 2);
 }
