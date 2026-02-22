@@ -1,79 +1,82 @@
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
+#include <ariane/task.h>
+#include <nlohmann/json.hpp>
 
-#include <functional>
+#include <fstream>
 #include <future>
 #include <iostream>
-#include <map>
-#include <memory>
+#include <sstream>
 #include <string>
 
 using namespace std;
 using namespace ariane::graphql;
+using json = nlohmann::json;
+
+static string readFile(const char* path) {
+    ifstream f(path);
+    if (!f) {
+        throw runtime_error(string("Cannot open schema file: ") + path);
+    }
+    ostringstream ss;
+    ss << f.rdbuf();
+    return ss.str();
+}
 
 int main() {
-    std::pair<std::string, ValueResolver> field1{"hello", []() { return "Hello, world!"; }};
+    cout << "=== Ariane — schema.today.graphql sample ===" << endl << endl;
 
     // clang-format off
-    Schema schema(SchemaOptions {
-        .typeDefs = R"(
-            interface Node {
-                id: ID!
-            }
-
-            type Query {
-                hello: String
-                user: User
-            }
-
-            type User {
-                id: Int
-                name: String
-                email: String
-                world: String
-                coroutineWorld: String
-                callbackWorld: String
-            }
-
-            union SearchResult = User | Node
-        )",
+    Schema schema({
+        .typeDefs = readFile(SCHEMA_TODAY_PATH),
         .resolvers = {
-            {"Query", Resolver {
-                {"hello", []() { return "Hello, world!"; }},
-                {"user", Resolver {
-                    {"id", 123},
-                    {"name", "John Doe"},
-                    {"email", "john@example.com"},
-                    field1,
-                    {"world", []() {
-                        return async(launch::async, []() -> ValueResolver { return "Async world!"; });
+            {"Query", Resolver{
+                {"appointments", Resolver{
+                    {"pageInfo", Resolver{
+                        {"hasNextPage",    false},
+                        {"hasPreviousPage",false}
                     }},
-                    {"coroutineWorld", []() -> Task<ValueResolver> {
-                        co_return "Coroutine world!";
-                    }},
-                    {"callbackWorld", [](const function<void(const ValueResolver&)>& callback) {
-                        callback("Callback world!");
-                    }},
-                    {"list", initializer_list<ValueResolver> {
-                        "item1",
-                        2,
-                        Resolver {
-                            {"nestedField", "Nested value"}
+                    {"edges", vector<ValueResolver>{
+                        Resolver{
+                            {"cursor", "cursor:1"},
+                            {"node", Resolver{
+                                {"id",      "appt:1"},
+                                {"subject", "Team standup"},
+                                {"isNow",   true}
+                            }}
                         },
-                        [] {
-                            return std::optional<ValueResolver>("Optional value");
+                        Resolver{
+                            {"cursor", "cursor:2"},
+                            {"node", Resolver{
+                                {"id",      "appt:2"},
+                                {"subject", "1:1 with manager"},
+                                {"isNow",   false}
+                            }}
                         }
+                    }}
+                }},
+                {"tasks", Resolver{
+                    {"pageInfo", Resolver{
+                        {"hasNextPage",    false},
+                        {"hasPreviousPage",false}
                     }},
-                    {"listFunction", []() {
-                        return vector<ValueResolver> {
-                            "item1",
-                            Resolver {
-                                {"nestedField", "Nested value"}
-                            },
-                            []() {
-                                return std::optional<ValueResolver>("Optional value");
-                            }
-                        };
+                    {"edges", vector<ValueResolver>{
+                        Resolver{
+                            {"cursor", "cursor:t1"},
+                            {"node", Resolver{
+                                {"id",         "task:1"},
+                                {"title",      "Fix the build"},
+                                {"isComplete", false}
+                            }}
+                        },
+                        Resolver{
+                            {"cursor", "cursor:t2"},
+                            {"node", Resolver{
+                                {"id",         "task:2"},
+                                {"title",      "Write unit tests"},
+                                {"isComplete", true}
+                            }}
+                        }
                     }}
                 }}
             }}
@@ -81,7 +84,39 @@ int main() {
     });
     // clang-format on
 
-    auto doc = schema.GetDocument();
+    const string query = R"(
+        query {
+            appointments {
+                pageInfo { hasNextPage hasPreviousPage }
+                edges {
+                    cursor
+                    node { id subject isNow }
+                }
+            }
+            tasks {
+                pageInfo { hasNextPage }
+                edges {
+                    node { id title isComplete }
+                }
+            }
+        }
+    )";
+
+    auto result = schema.Resolve(query).get();
+
+    if (!result.errors.empty()) {
+        cerr << "Errors: " << result.errors << endl;
+        return 1;
+    }
+
+    try {
+        cout << json::parse(result.data).dump(2) << endl;
+    } catch (const json::parse_error& e) {
+        cerr << "JSON parse error: " << e.what() << endl;
+        cerr << "Raw: " << result.data << endl;
+        return 1;
+    }
 
     return 0;
 }
+

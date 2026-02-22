@@ -5,3 +5,6 @@ target_link_libraries(
             ariane::graphql
             nlohmann_json::nlohmann_json
 )
+target_compile_definitions(introspection PRIVATE
+    SCHEMA_TODAY_PATH="${CMAKE_SOURCE_DIR}/samples/schema.today.graphql"
+    INTROSPECTION_QUERY_PATH="${CMAKE_SOURCE_DIR}/samples/introspection/introspection.graphql")

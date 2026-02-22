@@ -9,7 +9,7 @@ enable_testing()
 file(GLOB TEST_SOURCES "*.cpp")
 add_executable(ariane_tests ${TEST_SOURCES})
 target_link_libraries(ariane_tests PRIVATE ariane::graphql GTest::gtest_main)
-target_include_directories(ariane_tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(ariane_tests PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 include(GoogleTest)
 gtest_discover_tests(ariane_tests)

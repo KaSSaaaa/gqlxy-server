@@ -4,8 +4,6 @@
 #include <functional>
 #include <future>
 #include <list>
-#include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -43,9 +41,9 @@ struct ValueResolver : std::variant<int,
     ValueResolver(const char* str) : variant(std::string(str)) {}
     ValueResolver(std::initializer_list<std::pair<const std::string, ValueResolver>>&& init)
         : variant(Resolver(init.begin(), init.end())) {}
-    ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector<ValueResolver>(list)) {}
+    ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector(list)) {}
     ValueResolver(const std::list<ValueResolver>& list)
-        : variant(std::vector<ValueResolver>(list.begin(), list.end())) {}
+        : variant(std::vector(list.begin(), list.end())) {}
 
     template <typename T>
     ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}

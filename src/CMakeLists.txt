@@ -12,11 +12,14 @@ target_include_directories(ariane_graphql
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>
+	PRIVATE
+		${CMAKE_SOURCE_DIR}/src
 )
 target_link_libraries(
 		ariane_graphql
 		PUBLIC
 		cppgraphqlgen::graphqlpeg
+		nlohmann_json::nlohmann_json
 )
 
 add_library(ariane::graphql ALIAS ariane_graphql)

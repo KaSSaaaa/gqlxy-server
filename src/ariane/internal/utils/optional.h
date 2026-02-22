@@ -3,7 +3,7 @@
 #include <optional>
 #include <utility>
 
-namespace ariane::graphql {
+namespace ariane::graphql::internal {
 
 template <typename T, typename F>
 auto and_then(const std::optional<T>& opt, F&& f) -> decltype(f(*opt)) {

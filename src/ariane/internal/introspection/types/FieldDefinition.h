@@ -1,0 +1,21 @@
+#pragma once
+
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "InputValueDefinition.h"
+#include "TypeRef.h"
+
+namespace ariane::graphql::internal {
+
+struct FieldDefinition {
+    std::string name;
+    std::optional<std::string> description;
+    TypeRef type;
+    std::vector<InputValueDefinition> args;
+    bool isDeprecated = false;
+    std::optional<std::string> deprecationReason;
+};
+
+}

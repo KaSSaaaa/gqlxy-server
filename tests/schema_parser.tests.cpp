@@ -1,10 +1,13 @@
 #include <ariane/schema.h>
+#include <ariane/internal/introspection/types/Document.h>
 #include <gtest/gtest.h>
 
 using namespace ariane::graphql;
+using namespace ariane::graphql::internal;
 
 TEST(SchemaParser, ParsesObjectTypes) {
-    Schema schema(SchemaOptions{.typeDefs = R"(
+    Schema schema(SchemaOptions{
+        .typeDefs = R"(
             type Query {
                 hello: String
             }
@@ -14,11 +17,16 @@ TEST(SchemaParser, ParsesObjectTypes) {
                 email: String
             }
         )",
-                                .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
+        .resolvers = {
+            {"Query", Resolver {
+               {"hello", "world"}
+           }}
+        }
+    });
 
     const auto& doc = schema.GetDocument();
     ASSERT_EQ(doc.types.size(), 2);
-    ASSERT_TRUE(doc.types.find("User") != doc.types.end());
+    ASSERT_TRUE(doc.types.contains("User"));
 
     const auto& userType = doc.types.at("User");
     EXPECT_EQ(userType.name, "User");
@@ -41,20 +49,20 @@ TEST(SchemaParser, ParsesFieldTypes) {
     const auto& doc = schema.GetDocument();
     const auto& userType = doc.types.at("User");
 
-    auto idField = std::find_if(userType.fields.begin(), userType.fields.end(),
+    auto idField = find_if(userType.fields.begin(), userType.fields.end(),
                                 [](const FieldDefinition& f) { return f.name == "id"; });
     ASSERT_NE(idField, userType.fields.end());
     EXPECT_EQ(idField->type.kind._value, TypeRefKind::NonNull);
     EXPECT_EQ(idField->type.ofType->kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(idField->type.ofType->name, "ID");
 
-    auto emailField = std::find_if(userType.fields.begin(), userType.fields.end(),
+    auto emailField = find_if(userType.fields.begin(), userType.fields.end(),
                                    [](const FieldDefinition& f) { return f.name == "email"; });
     ASSERT_NE(emailField, userType.fields.end());
     EXPECT_EQ(emailField->type.kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(emailField->type.name, "String");
 
-    auto tagsField = std::find_if(userType.fields.begin(), userType.fields.end(),
+    auto tagsField = find_if(userType.fields.begin(), userType.fields.end(),
                                   [](const FieldDefinition& f) { return f.name == "tags"; });
     ASSERT_NE(tagsField, userType.fields.end());
     EXPECT_EQ(tagsField->type.kind._value, TypeRefKind::List);
@@ -70,7 +78,7 @@ TEST(SchemaParser, ParsesScalarTypes) {
                                 .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
 
     const auto& doc = schema.GetDocument();
-    ASSERT_TRUE(doc.types.find("DateTime") != doc.types.end());
+    ASSERT_TRUE(doc.types.contains("DateTime"));
 
     const auto& dateTimeType = doc.types.at("DateTime");
     EXPECT_EQ(dateTimeType.kind._value, TypeKind::SCALAR);
@@ -91,7 +99,7 @@ TEST(SchemaParser, ParsesEnumTypes) {
                                 .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
 
     const auto& doc = schema.GetDocument();
-    ASSERT_TRUE(doc.types.find("Role") != doc.types.end());
+    ASSERT_TRUE(doc.types.contains("Role"));
 
     const auto& roleType = doc.types.at("Role");
     EXPECT_EQ(roleType.kind._value, TypeKind::ENUM);
@@ -114,7 +122,7 @@ TEST(SchemaParser, ParsesInterfaceTypes) {
                                 .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
 
     const auto& doc = schema.GetDocument();
-    ASSERT_TRUE(doc.types.find("Node") != doc.types.end());
+    ASSERT_TRUE(doc.types.contains("Node"));
 
     const auto& nodeType = doc.types.at("Node");
     EXPECT_EQ(nodeType.kind._value, TypeKind::INTERFACE);
@@ -138,7 +146,7 @@ TEST(SchemaParser, ParsesUnionTypes) {
                                 .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
 
     const auto& doc = schema.GetDocument();
-    ASSERT_TRUE(doc.types.find("Pet") != doc.types.end());
+    ASSERT_TRUE(doc.types.contains("Pet"));
 
     const auto& petType = doc.types.at("Pet");
     EXPECT_EQ(petType.kind._value, TypeKind::UNION);

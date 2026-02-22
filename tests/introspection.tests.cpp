@@ -1,8 +1,12 @@
-#include <ariane/introspection.h>
+#include <ariane/internal/introspection/introspection.h>
+#include <ariane/internal/introspection/types/Document.h>
 #include <ariane/schema.h>
 #include <gtest/gtest.h>
 
+using namespace std;
 using namespace ariane::graphql;
+using namespace ariane::graphql::internal;
+using namespace ariane::graphql::internal;
 
 TEST(Introspection, CreatesSchemaResolver) {
     Schema schema(SchemaOptions{.typeDefs = R"(
@@ -14,7 +18,7 @@ TEST(Introspection, CreatesSchemaResolver) {
 
     auto schemaResolver = CreateSchemaResolver(schema.GetDocument());
     ASSERT_FALSE(schemaResolver.empty());
-    ASSERT_TRUE(schemaResolver.find("types") != schemaResolver.end());
+    ASSERT_TRUE(schemaResolver.contains("types"));
 }
 
 TEST(Introspection, SchemaHasTypes) {
@@ -31,7 +35,7 @@ TEST(Introspection, SchemaHasTypes) {
 
     auto schemaResolver = CreateSchemaResolver(schema.GetDocument());
     ASSERT_FALSE(schemaResolver.empty());
-    ASSERT_TRUE(schemaResolver.find("types") != schemaResolver.end());
+    ASSERT_TRUE(schemaResolver.contains("types"));
 }
 
 TEST(Introspection, CreatesTypeResolver) {
@@ -46,7 +50,7 @@ TEST(Introspection, CreatesTypeResolver) {
 
     auto typeResolver = CreateTypeResolver(type);
     ASSERT_FALSE(typeResolver.empty());
-    ASSERT_TRUE(typeResolver.find("name") != typeResolver.end());
+    ASSERT_TRUE(typeResolver.contains("name"));
 }
 
 TEST(Introspection, TypeResolverHasFields) {
@@ -66,7 +70,7 @@ TEST(Introspection, TypeResolverHasFields) {
 
     auto typeResolver = CreateTypeResolver(type);
     ASSERT_FALSE(typeResolver.empty());
-    ASSERT_TRUE(typeResolver.find("fields") != typeResolver.end());
+    ASSERT_TRUE(typeResolver.contains("fields"));
 }
 
 TEST(Introspection, CreatesFieldResolver) {
@@ -77,7 +81,7 @@ TEST(Introspection, CreatesFieldResolver) {
 
     auto fieldResolver = CreateFieldResolver(field);
     ASSERT_FALSE(fieldResolver.empty());
-    ASSERT_TRUE(fieldResolver.find("name") != fieldResolver.end());
+    ASSERT_TRUE(fieldResolver.contains("name"));
 }
 
 TEST(Introspection, FieldResolverHasTypeRef) {
@@ -87,14 +91,14 @@ TEST(Introspection, FieldResolverHasTypeRef) {
 
     auto fieldResolver = CreateFieldResolver(field);
     ASSERT_FALSE(fieldResolver.empty());
-    ASSERT_TRUE(fieldResolver.find("type") != fieldResolver.end());
+    ASSERT_TRUE(fieldResolver.contains("type"));
 }
 
 TEST(Introspection, CreatesTypeRefResolver) {
     TypeRef typeRef = TypeRef::Named("String");
     auto typeRefResolver = CreateTypeRefResolver(typeRef);
     ASSERT_FALSE(typeRefResolver.empty());
-    ASSERT_TRUE(typeRefResolver.find("kind") != typeRefResolver.end());
+    ASSERT_TRUE(typeRefResolver.contains("kind"));
 }
 
 TEST(Introspection, CreatesEnumValueResolver) {
@@ -104,7 +108,7 @@ TEST(Introspection, CreatesEnumValueResolver) {
 
     auto enumResolver = CreateEnumValueResolver(enumValue);
     ASSERT_FALSE(enumResolver.empty());
-    ASSERT_TRUE(enumResolver.find("name") != enumResolver.end());
+    ASSERT_TRUE(enumResolver.contains("name"));
 }
 
 TEST(Introspection, EnumTypeHasValues) {
@@ -122,5 +126,5 @@ TEST(Introspection, EnumTypeHasValues) {
 
     auto typeResolver = CreateTypeResolver(type);
     ASSERT_FALSE(typeResolver.empty());
-    ASSERT_TRUE(typeResolver.find("enumValues") != typeResolver.end());
+    ASSERT_TRUE(typeResolver.contains("enumValues"));
 }
