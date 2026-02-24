@@ -15,6 +15,7 @@ struct Document;
 struct SchemaOptions {
     std::string typeDefs;
     Resolver resolvers;
+    bool allowIntrospection = true;
 };
 
 struct ResolveResult {
@@ -36,7 +37,6 @@ private:
     std::shared_ptr<internal::Document> _document;
     Resolver _resolvers;
 
-    std::shared_ptr<internal::Document> ParseTypeDefs(const std::string& typeDefs);
     void InjectIntrospectionResolvers();
 };
 

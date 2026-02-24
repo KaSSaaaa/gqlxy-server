@@ -7,37 +7,18 @@
 
 namespace ariane::graphql::internal {
 
-BETTER_ENUM(TypeRefKind, int, NamedType, NonNull, List);
+BETTER_ENUM(TypeRefKind, int, NamedType, NON_NULL, LIST);
 
 struct TypeRef {
     TypeRefKind kind;
     std::string name;
-    std::unique_ptr<TypeRef> ofType;
-
-    TypeRef() : kind(TypeRefKind::NamedType), name(""), ofType(nullptr) {}
-
-    TypeRef(const TypeRef& other) : kind(other.kind), name(other.name) {
-        if (other.ofType) {
-            ofType = std::make_unique<TypeRef>(*other.ofType);
-        }
-    }
-
-    TypeRef(TypeRef&&) = default;
-
-    TypeRef& operator=(const TypeRef& other) {
-        if (this != &other) {
-            kind = other.kind;
-            name = other.name;
-            ofType = other.ofType ? std::make_unique<TypeRef>(*other.ofType) : nullptr;
-        }
-        return *this;
-    }
-
-    TypeRef& operator=(TypeRef&&) = default;
+    std::shared_ptr<TypeRef> ofType;
 
     static TypeRef Named(const std::string& typeName);
     static TypeRef NonNull(TypeRef inner);
     static TypeRef List(TypeRef inner);
+    static TypeRef ListNonNull(TypeRef inner);
+    static TypeRef NonNullListNonNull(TypeRef inner);
 };
 
 }

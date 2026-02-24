@@ -1,11 +1,10 @@
 #include <ariane/internal/introspection/introspection.h>
 #include <ariane/internal/introspection/types/Document.h>
+#include <ariane/internal/parser/parser.h>
 #include <ariane/internal/peg/first_node.h>
-#include <ariane/internal/peg/transform_children.h>
-#include <ariane/internal/utils/optional.h>
+#include <ariane/internal/utils/visit.h>
 #include <ariane/schema.h>
 #include <ariane/task.h>
-#include <graphqlservice/GraphQLParse.h>
 #include <graphqlservice/internal/Grammar.h>
 #include <nlohmann/json.hpp>
 
@@ -24,10 +23,6 @@ Task<nlohmann::json> ResolveValue(const ValueResolver& resolver,
 
 namespace {
 
-template<class... Ts>
-struct overloaded : Ts... { using Ts::operator()...; };
-
-// Returns all field nodes in a selection set, recursively expanding fragment spreads.
 vector<const peg::ast_node*> FlattenFields(const peg::ast_node* selectionSet,
                                             const FragmentMap& fragments) {
     if (!selectionSet)
@@ -55,186 +50,13 @@ vector<const peg::ast_node*> FlattenFields(const peg::ast_node* selectionSet,
     return fields;
 }
 
-TypeRef ParseTypeRef(const peg::ast_node& node) {
-    if (node.is_type<peg::nonnull_type>()) {
-        auto innerNode = first_node<peg::list_type>(node);
-        if (!innerNode) {
-            innerNode = first_node<peg::named_type>(node);
-        }
-        if (innerNode) {
-            return TypeRef::NonNull(ParseTypeRef(**innerNode));
-        }
-        return TypeRef::NonNull(TypeRef::Named("Unknown"));
-    }
-
-    if (node.is_type<peg::list_type>()) {
-        auto innerNode = first_node<peg::nonnull_type>(node);
-        if (!innerNode) {
-            innerNode = first_node<peg::list_type>(node);
-        }
-        if (!innerNode) {
-            innerNode = first_node<peg::named_type>(node);
-        }
-        if (innerNode) {
-            return TypeRef::List(ParseTypeRef(**innerNode));
-        }
-        return TypeRef::List(TypeRef::Named("Unknown"));
-    }
-
-    if (node.is_type<peg::named_type>()) {
-        return TypeRef::Named(node.string());
-    }
-
-    return TypeRef::Named("Unknown");
-}
-
-InputValueDefinition ParseInputValue(const peg::ast_node& node) {
-    InputValueDefinition inputValue;
-
-    auto nameNode = first_node<peg::argument_name>(node);
-    if (nameNode) {
-        inputValue.name = (*nameNode)->string();
-    }
-
-    auto typeNameNode = first_node<peg::type_name>(node);
-    if (typeNameNode) {
-        inputValue.type = TypeRef::Named((*typeNameNode)->string());
-    } else {
-        inputValue.type = TypeRef::Named("Unknown");
-    }
-
-    return inputValue;
-}
-
-EnumValueDefinition ParseEnumValue(const peg::ast_node& node) {
-    return EnumValueDefinition {
-        .name = and_then(first_node<peg::enum_value>(node), [](auto* node) {
-            return make_optional(node->string());
-        }).value_or("")
-    };
-}
-
-TypeDefinition ParseType(const peg::ast_node& node, const TypeKind& kind) {
-    TypeDefinition typeDef;
-    typeDef.kind = kind;
-
-    if (kind._value == TypeKind::SCALAR) {
-        typeDef.name = and_then(first_node<peg::scalar_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-    } else if (kind._value == TypeKind::ENUM) {
-        typeDef.name = and_then(first_node<peg::enum_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-
-        for_each_child<peg::enum_value_definition>(node, [&typeDef](const auto& child) {
-            typeDef.enumValues.push_back(ParseEnumValue(child));
-        });
-    } else if (kind._value == TypeKind::UNION) {
-        typeDef.name = and_then(first_node<peg::union_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-
-        for_each_child<peg::union_type>(node, [&typeDef](const auto& child) {
-            typeDef.unionTypes.push_back(child.string());
-        });
-    }
-
-    return typeDef;
-}
-
-FieldDefinition ParseField(const peg::ast_node& node) {
-    FieldDefinition field;
-
-    field.name = and_then(first_node<peg::field_name>(node), [](auto* node) -> optional<string> {
-        return node->string();
-    }).value_or("");
-
-    auto typeNode = first_node<peg::nonnull_type>(node);
-    if (!typeNode) {
-        typeNode = first_node<peg::list_type>(node);
-    }
-    if (!typeNode) {
-        typeNode = first_node<peg::named_type>(node);
-    }
-
-    if (typeNode) {
-        field.type = ParseTypeRef(**typeNode);
-    } else {
-        field.type = TypeRef::Named("Unknown");
-    }
-
-    auto argsNode = first_node<peg::arguments_definition>(node);
-    if (argsNode) {
-        field.args = transform_children<peg::input_field_definition, InputValueDefinition>(
-            *argsNode.value(),
-            [](const auto& child) {
-                return ParseInputValue(child);
-            }
-        );
-    }
-
-    return field;
-}
-
-vector<FieldDefinition> ParseFields(const optional<peg::ast_node*>& node) {
-    return and_then(node, [](auto* node) -> optional<vector<FieldDefinition>> {
-        return transform_children<peg::field_definition, FieldDefinition>(*node, [](const auto& node) {
-            return ParseField(node);
-        });
-    }).value_or(vector<FieldDefinition>{});
-}
-
-TypeDefinition ParseObjectType(const peg::ast_node& node) {
-    return TypeDefinition {
-        .kind = TypeKind::OBJECT,
-        .name = and_then(first_node<peg::object_name>(node), [](auto* node) -> optional<string> {
-            return node->string();
-        }).value_or(""),
-        .fields = ParseFields(first_node<peg::fields_definition>(node)),
-        .interfaces = transform_children<peg::interface_type, string>(node, [](const auto& child) {
-            return child.string();
-        })
-    };
-}
-
-TypeDefinition ParseInterfaceType(const peg::ast_node& node) {
-    return TypeDefinition {
-        .kind = TypeKind::INTERFACE,
-        .name = and_then(first_node<peg::interface_name>(node), [](auto* node) -> optional<string> {
-            return node->string();
-        }).value_or(""),
-        .fields = ParseFields(first_node<peg::fields_definition>(node))
-    };
-}
-
-optional<TypeDefinition> ParseType(const peg::ast_node& node) {
-    if (node.is_type<peg::object_type_definition>()) {
-        return ParseObjectType(node);
-    }
-    if (node.is_type<peg::scalar_type_definition>()) {
-        return ParseType(node, TypeKind::SCALAR);
-    }
-    if (node.is_type<peg::enum_type_definition>()) {
-        return ParseType(node, TypeKind::ENUM);
-    }
-    if (node.is_type<peg::interface_type_definition>()) {
-        return ParseInterfaceType(node);
-    }
-    if (node.is_type<peg::union_type_definition>()) {
-        return ParseType(node, TypeKind::UNION);
-    }
-    if (node.is_type<peg::input_object_type_definition>()) {
-        return ParseType(node, TypeKind::INPUT_OBJECT);
-    }
-    return nullopt;
-}
-
 }
 
 Schema::Schema(const SchemaOptions& options) : _resolvers(options.resolvers) {
     _document = ParseTypeDefs(options.typeDefs);
-    InjectIntrospectionResolvers();
+
+    if (options.allowIntrospection)
+        InjectIntrospectionResolvers();
 }
 
 void Schema::InjectIntrospectionResolvers() {
@@ -273,7 +95,6 @@ Task<ResolveResult> Schema::Resolve(const string& query, const unordered_map<str
 
         nlohmann::json data = nlohmann::json::object();
 
-        // Collect all fragment definitions from the document
         FragmentMap fragments;
         for (const auto& child : ast.root->children) {
             if (!child || !child->is_type<peg::fragment_definition>())
@@ -336,8 +157,8 @@ Task<ResolveResult> Schema::Resolve(const string& query, const unordered_map<str
                     for (const auto& f : _document->types.at(operationType).fields) {
                         if (f.name == fieldName) {
                             const TypeRef* typeRef = &f.type;
-                            while (typeRef && (typeRef->kind._value == TypeRefKind::NonNull ||
-                                              typeRef->kind._value == TypeRefKind::List)) {
+                            while (typeRef && (typeRef->kind._value == TypeRefKind::NON_NULL ||
+                                              typeRef->kind._value == TypeRefKind::LIST)) {
                                 typeRef = typeRef->ofType ? typeRef->ofType.get() : nullptr;
                             }
                             if (typeRef && !typeRef->name.empty()) {
@@ -409,8 +230,8 @@ Task<nlohmann::json> ResolveValue(const ValueResolver& resolver,
                               for (const auto& f : doc.types.at(typeName).fields) {
                                   if (f.name == fieldName) {
                                       const TypeRef* typeRef = &f.type;
-                                      while (typeRef && (typeRef->kind._value == TypeRefKind::NonNull ||
-                                                         typeRef->kind._value == TypeRefKind::List)) {
+                                      while (typeRef && (typeRef->kind._value == TypeRefKind::NON_NULL ||
+                                                         typeRef->kind._value == TypeRefKind::LIST)) {
                                           typeRef = typeRef->ofType ? typeRef->ofType.get() : nullptr;
                                       }
                                       if (typeRef && !typeRef->name.empty()) {
@@ -460,47 +281,4 @@ Task<nlohmann::json> ResolveValue(const ValueResolver& resolver,
               },
          },
          resolver);
-}
-
-shared_ptr<Document> Schema::ParseTypeDefs(const string& typeDefs) {
-    auto doc = make_shared<Document>();
-
-    try {
-        auto ast = peg::parseSchemaString(typeDefs);
-
-        if (!ast.root) {
-            return doc;
-        }
-
-        for (const auto& node : ast.root->children) {
-            if (!node)
-                continue;
-
-            if (node->is_type<peg::schema_definition>()) {
-                for (const auto& opDef : node->children) {
-                    if (!opDef || !opDef->is_type<peg::root_operation_definition>())
-                        continue;
-                    auto opType = first_node<peg::operation_type>(*opDef);
-                    auto namedType = first_node<peg::named_type>(*opDef);
-                    if (!opType || !namedType)
-                        continue;
-                    const string op = (*opType)->string();
-                    const string name = (*namedType)->string();
-                    if (op == "query")        doc->queryTypeName = name;
-                    else if (op == "mutation")     doc->mutationTypeName = name;
-                    else if (op == "subscription") doc->subscriptionTypeName = name;
-                }
-                continue;
-            }
-
-            auto typeDef = ParseType(*node);
-            if (typeDef.has_value()) {
-                doc->types[typeDef.value().name] = typeDef.value();
-            }
-        }
-
-    } catch (const exception&) {
-    }
-
-    return doc;
 }

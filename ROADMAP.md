@@ -9,7 +9,13 @@ This document tracks what is already working and what remains to be built for a 
 - SDL schema parsing — object, interface, union, enum, scalar, input types
 - Rich `ValueResolver` variant accepting sync functions, `std::future`, coroutines, and callbacks
 - Basic query execution: operation → selection set → field → nested resolver
-- Partial introspection: `__schema` and `__typename`
+- Full introspection: `__schema`, `__typename`, all meta-types and built-in scalars auto-registered
+- `schema {}` definition parsing (`queryType`, `mutationType`, `subscriptionType`)
+- SDL description parsing (block-string and single-line)
+- Input object `inputFields` populated
+- Argument default values parsed
+- Directive declarations in SDL (`directive @foo on LOCATIONS`)
+- JSON string escaping (via `nlohmann::json`)
 
 ---
 
@@ -24,8 +30,6 @@ These must be fixed before the engine can be considered usable.
 | 1 | **Shorthand / anonymous queries** | `{ hello }` has no `operation_type` AST node; the entire operation is silently skipped. Needs to be treated as an implicit `query`. |
 | 2 | **Field arguments** | `FunctionResolver` is `std::function<ValueResolver()>` — resolvers receive nothing. Arguments from the query must be parsed and forwarded. |
 | 3 | **Variable substitution** | `Schema::Resolve()` already accepts a `variables` map but never uses it. `$var` references in argument positions must be resolved at execution time. Depends on #2. |
-| 4 | **JSON string escaping** | Strings are streamed raw; `"`, `\`, `\n`, etc. are not escaped, producing invalid JSON. |
-| 5 | **`schema {}` definition parsing** | `schema { query: Query mutation: Mutation }` declarations are never parsed, so `Document::queryTypeName` etc. are always empty and `__schema.queryType` always returns null. |
 
 ---
 
@@ -48,21 +52,16 @@ These must be fixed before the engine can be considered usable.
 | # | Feature | Notes |
 |---|---------|-------|
 | 13 | **Resolver context** | Resolvers have no way to receive a request-scoped context (auth, DB connection, etc.). A `Context` type should be threaded through the execution. |
-| 14 | **Input object field parsing** | `INPUT_OBJECT` types are registered in the document but their `inputFields` vector is never populated — `ParseType` doesn't call `ParseFields` for them. |
-| 15 | **Argument default values** | `ParseInputValue` never reads the `default_value` SDL node. `InputValueDefinition::defaultValue` is always empty. |
-| 16 | **SDL description parsing** | Block-string and single-line descriptions are never captured into `TypeDefinition::description`, `FieldDefinition::description`, etc. |
-| 17 | **Built-in types auto-registration** | `String`, `Int`, `Float`, `Boolean`, `ID` scalars and the `__Schema`, `__Type`, `__Field`, `__InputValue`, `__EnumValue`, `__Directive` meta-types should be auto-injected so introspection clients (e.g. GraphiQL) work out of the box. |
-| 18 | **Serial mutation execution** | The spec requires top-level mutation fields to execute strictly in document order. |
-| 19 | **Directive declarations in SDL** | `directive @foo(args) on LOCATIONS` is never parsed into `Document::directives`. |
-| 20 | **Operation name selection** | `Resolve()` should accept an `operationName` parameter and select the matching named operation when the document contains multiple operations. |
+| 14 | **Serial mutation execution** | The spec requires top-level mutation fields to execute strictly in document order. |
+| 15 | **Operation name selection** | `Resolve()` should accept an `operationName` parameter and select the matching named operation when the document contains multiple operations. |
 
 ---
 
 ## Suggested implementation order
 
 ```
-Phase 1 — Core correctness   : #1, #4, #5, #2, #3
+Phase 1 — Core correctness   : #1, #2, #3
 Phase 2 — Spec compliance    : #11, #6, #7, #8, #9, #10
-Phase 3 — Type system        : #12, #14, #15, #17, #19
-Phase 4 — Ergonomics         : #13, #16, #18, #20
+Phase 3 — Type system        : #12
+Phase 4 — Ergonomics         : #13, #14, #15
 ```

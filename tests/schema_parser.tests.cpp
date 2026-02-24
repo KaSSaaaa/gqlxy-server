@@ -52,7 +52,7 @@ TEST(SchemaParser, ParsesFieldTypes) {
     auto idField = find_if(userType.fields.begin(), userType.fields.end(),
                                 [](const FieldDefinition& f) { return f.name == "id"; });
     ASSERT_NE(idField, userType.fields.end());
-    EXPECT_EQ(idField->type.kind._value, TypeRefKind::NonNull);
+    EXPECT_EQ(idField->type.kind._value, TypeRefKind::NON_NULL);
     EXPECT_EQ(idField->type.ofType->kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(idField->type.ofType->name, "ID");
 
@@ -65,7 +65,7 @@ TEST(SchemaParser, ParsesFieldTypes) {
     auto tagsField = find_if(userType.fields.begin(), userType.fields.end(),
                                   [](const FieldDefinition& f) { return f.name == "tags"; });
     ASSERT_NE(tagsField, userType.fields.end());
-    EXPECT_EQ(tagsField->type.kind._value, TypeRefKind::List);
+    EXPECT_EQ(tagsField->type.kind._value, TypeRefKind::LIST);
 }
 
 TEST(SchemaParser, ParsesScalarTypes) {

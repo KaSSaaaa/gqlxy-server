@@ -20,6 +20,14 @@ static string readFile(const char* path) {
     return ss.str();
 }
 
+static void writeFile(const char* path, const char* data) {
+    ofstream f(path);
+    if (!f) {
+        throw runtime_error(string("Cannot open schema file: ") + path);
+    }
+    f << data;
+}
+
 int main() {
     cout << "=== Ariane — schema.today.graphql introspection ===" << endl << endl;
 
@@ -38,7 +46,12 @@ int main() {
     }
 
     try {
-        cout << json::parse(result.data).dump(2) << endl;
+        auto jsonData = json::parse(result.data).dump(2);
+        auto jsonResult = json::parse(readFile(RESULT_PATH)).dump(2);
+        writeFile(OUTPUT_PATH, jsonData.data());
+        cout << jsonData << endl;
+        cout << "========" << endl;
+        cout << "Are results equal : " << std::boolalpha << (jsonData == jsonResult) << endl;
     } catch (const json::parse_error& e) {
         cerr << "JSON parse error: " << e.what() << endl;
         cerr << "Raw: " << result.data << endl;

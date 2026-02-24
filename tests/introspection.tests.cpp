@@ -6,23 +6,33 @@
 using namespace std;
 using namespace ariane::graphql;
 using namespace ariane::graphql::internal;
-using namespace ariane::graphql::internal;
 
-TEST(Introspection, CreatesSchemaResolver) {
-    Schema schema(SchemaOptions{.typeDefs = R"(
+class IntrospectionTests : public testing::Test {
+protected:
+    Document _emptySchema;
+};
+
+TEST_F(IntrospectionTests, CreatesSchemaResolver) {
+    Schema schema(SchemaOptions{
+        .typeDefs = R"(
             type Query {
                 hello: String
             }
         )",
-                                .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
+        .resolvers = {
+            {"Query", Resolver{
+                {"hello", "world"}
+            }}
+        }});
 
     auto schemaResolver = CreateSchemaResolver(schema.GetDocument());
     ASSERT_FALSE(schemaResolver.empty());
     ASSERT_TRUE(schemaResolver.contains("types"));
 }
 
-TEST(Introspection, SchemaHasTypes) {
-    Schema schema(SchemaOptions{.typeDefs = R"(
+TEST_F(IntrospectionTests, SchemaHasTypes) {
+    Schema schema(SchemaOptions{
+        .typeDefs = R"(
             type Query {
                 hello: String
             }
@@ -31,77 +41,86 @@ TEST(Introspection, SchemaHasTypes) {
                 name: String!
             }
         )",
-                                .resolvers = {{"Query", Resolver{{"hello", "world"}}}}});
+        .resolvers = {
+            {"Query", Resolver{
+                {"hello", "world"}
+            }}
+        }});
 
     auto schemaResolver = CreateSchemaResolver(schema.GetDocument());
     ASSERT_FALSE(schemaResolver.empty());
     ASSERT_TRUE(schemaResolver.contains("types"));
 }
 
-TEST(Introspection, CreatesTypeResolver) {
-    TypeDefinition type;
-    type.kind = TypeKind::OBJECT;
-    type.name = "User";
+TEST_F(IntrospectionTests, CreatesTypeResolver) {
+    TypeDefinition type {
+        .kind = TypeKind::OBJECT,
+        .name = "User",
+        .fields = {
+            FieldDefinition {
+                .name = "id",
+                .type = TypeRef::Named("ID"),
+            }
+        }
+    };
 
-    FieldDefinition field;
-    field.name = "id";
-    field.type = TypeRef::Named("ID");
-    type.fields.push_back(field);
-
-    auto typeResolver = CreateTypeResolver(type);
+    auto typeResolver = CreateTypeResolver(type, _emptySchema);
     ASSERT_FALSE(typeResolver.empty());
     ASSERT_TRUE(typeResolver.contains("name"));
 }
 
-TEST(Introspection, TypeResolverHasFields) {
-    TypeDefinition type;
-    type.kind = TypeKind::OBJECT;
-    type.name = "User";
+TEST_F(IntrospectionTests, TypeResolverHasFields) {
+    TypeDefinition type {
+        .kind = TypeKind::OBJECT,
+        .name = "User",
+        .fields = {
+            FieldDefinition {
+                .name = "id",
+                .type = TypeRef::Named("ID"),
+            },
+            FieldDefinition {
+                .name = "name",
+                .type = TypeRef::Named("String"),
+            }
+        }
+    };
 
-    FieldDefinition field1;
-    field1.name = "id";
-    field1.type = TypeRef::Named("ID");
-    type.fields.push_back(field1);
-
-    FieldDefinition field2;
-    field2.name = "name";
-    field2.type = TypeRef::Named("String");
-    type.fields.push_back(field2);
-
-    auto typeResolver = CreateTypeResolver(type);
+    auto typeResolver = CreateTypeResolver(type, _emptySchema);
     ASSERT_FALSE(typeResolver.empty());
     ASSERT_TRUE(typeResolver.contains("fields"));
 }
 
-TEST(Introspection, CreatesFieldResolver) {
-    FieldDefinition field;
-    field.name = "id";
-    field.type = TypeRef::Named("ID");
-    field.description = "User ID";
+TEST_F(IntrospectionTests, CreatesFieldResolver) {
+    FieldDefinition field {
+        .name = "id",
+        .description = "User ID",
+        .type = TypeRef::Named("ID"),
+    };
 
-    auto fieldResolver = CreateFieldResolver(field);
+    auto fieldResolver = CreateFieldResolver(field, _emptySchema);
     ASSERT_FALSE(fieldResolver.empty());
     ASSERT_TRUE(fieldResolver.contains("name"));
 }
 
-TEST(Introspection, FieldResolverHasTypeRef) {
-    FieldDefinition field;
-    field.name = "id";
-    field.type = TypeRef::NonNull(TypeRef::Named("ID"));
+TEST_F(IntrospectionTests, FieldResolverHasTypeRef) {
+    FieldDefinition field {
+        .name = "id",
+        .type = TypeRef::NonNull(TypeRef::Named("ID"))
+    };
 
-    auto fieldResolver = CreateFieldResolver(field);
+    auto fieldResolver = CreateFieldResolver(field, _emptySchema);
     ASSERT_FALSE(fieldResolver.empty());
     ASSERT_TRUE(fieldResolver.contains("type"));
 }
 
-TEST(Introspection, CreatesTypeRefResolver) {
+TEST_F(IntrospectionTests, CreatesTypeRefResolver) {
     TypeRef typeRef = TypeRef::Named("String");
-    auto typeRefResolver = CreateTypeRefResolver(typeRef);
+    auto typeRefResolver = CreateTypeRefResolver(typeRef, _emptySchema);
     ASSERT_FALSE(typeRefResolver.empty());
     ASSERT_TRUE(typeRefResolver.contains("kind"));
 }
 
-TEST(Introspection, CreatesEnumValueResolver) {
+TEST_F(IntrospectionTests, CreatesEnumValueResolver) {
     EnumValueDefinition enumValue;
     enumValue.name = "ADMIN";
     enumValue.description = "Administrator role";
@@ -111,7 +130,7 @@ TEST(Introspection, CreatesEnumValueResolver) {
     ASSERT_TRUE(enumResolver.contains("name"));
 }
 
-TEST(Introspection, EnumTypeHasValues) {
+TEST_F(IntrospectionTests, EnumTypeHasValues) {
     TypeDefinition type;
     type.kind = TypeKind::ENUM;
     type.name = "Role";
@@ -124,7 +143,7 @@ TEST(Introspection, EnumTypeHasValues) {
     value2.name = "USER";
     type.enumValues.push_back(value2);
 
-    auto typeResolver = CreateTypeResolver(type);
+    auto typeResolver = CreateTypeResolver(type, _emptySchema);
     ASSERT_FALSE(typeResolver.empty());
     ASSERT_TRUE(typeResolver.contains("enumValues"));
 }

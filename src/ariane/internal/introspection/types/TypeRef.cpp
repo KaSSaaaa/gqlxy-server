@@ -5,27 +5,34 @@ using namespace std;
 namespace ariane::graphql::internal {
 
 TypeRef TypeRef::Named(const string& typeName) {
-    TypeRef ref;
-    ref.kind = TypeRefKind::NamedType;
-    ref.name = typeName;
-    ref.ofType = nullptr;
-    return ref;
+    return TypeRef {
+        .kind = TypeRefKind::NamedType,
+        .name = typeName,
+    };
 }
 
 TypeRef TypeRef::NonNull(TypeRef inner) {
-    TypeRef ref;
-    ref.kind = TypeRefKind::NonNull;
-    ref.name = "";
-    ref.ofType = make_unique<TypeRef>(std::move(inner));
-    return ref;
+    return TypeRef {
+        .kind = TypeRefKind::NON_NULL,
+        .name = "",
+        .ofType = make_shared<TypeRef>(std::move(inner)),
+    };
 }
 
 TypeRef TypeRef::List(TypeRef inner) {
-    TypeRef ref;
-    ref.kind = TypeRefKind::List;
-    ref.name = "";
-    ref.ofType = make_unique<TypeRef>(std::move(inner));
-    return ref;
+    return TypeRef {
+        .kind = TypeRefKind::LIST,
+        .name = "",
+        .ofType = make_shared<TypeRef>(std::move(inner)),
+    };
+}
+
+TypeRef TypeRef::ListNonNull(TypeRef inner) {
+    return List(NonNull(std::move(inner)));
+}
+
+TypeRef TypeRef::NonNullListNonNull(TypeRef inner) {
+    return NonNull(ListNonNull(std::move(inner)));
 }
 
 }
