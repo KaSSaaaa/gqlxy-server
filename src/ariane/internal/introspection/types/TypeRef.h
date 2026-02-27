@@ -14,6 +14,8 @@ struct TypeRef {
     std::string name;
     std::shared_ptr<TypeRef> ofType;
 
+    std::string typeName() const;
+
     static TypeRef Named(const std::string& typeName);
     static TypeRef NonNull(TypeRef inner);
     static TypeRef List(TypeRef inner);

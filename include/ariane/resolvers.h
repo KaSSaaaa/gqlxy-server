@@ -38,7 +38,7 @@ struct ValueResolver : std::variant<int,
 
     ValueResolver(std::nullopt_t) : variant(std::monostate{}) {}
     ValueResolver(std::nullptr_t) : variant(std::monostate{}) {}
-    ValueResolver(const char* str) : variant(std::string(str)) {}
+    ValueResolver(const char* str) : variant(str) {}
     ValueResolver(std::initializer_list<std::pair<const std::string, ValueResolver>>&& init)
         : variant(Resolver(init.begin(), init.end())) {}
     ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector(list)) {}

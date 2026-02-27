@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "InputValueDefinition.h"
+#include "DeprecationInfo.h"
 #include "TypeRef.h"
 
 namespace ariane::graphql::internal {
@@ -14,8 +15,7 @@ struct FieldDefinition {
     std::optional<std::string> description;
     TypeRef type;
     std::vector<InputValueDefinition> args;
-    bool isDeprecated = false;
-    std::optional<std::string> deprecationReason;
+    std::optional<DeprecationInfo> deprecation;
 };
 
 }

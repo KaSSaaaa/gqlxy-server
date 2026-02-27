@@ -15,11 +15,6 @@ class ast_node;
 namespace ariane::graphql::internal {
 struct Document;
 
-struct DeprecationInfo {
-    bool isDeprecated = false;
-    std::optional<std::string> deprecationReason;
-};
-
 std::shared_ptr<Document> ParseTypeDefs(const std::string& typeDefs);
 TypeRef ParseTypeRef(const ::graphql::peg::ast_node& node);
 InputValueDefinition ParseInputValue(const ::graphql::peg::ast_node& node);

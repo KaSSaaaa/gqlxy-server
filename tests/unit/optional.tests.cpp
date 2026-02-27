@@ -110,3 +110,48 @@ TEST(Optional, AndThenWithDifferentTypes) {
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(*result, "42");
 }
+
+TEST(Optional, OrElseWithValue) {
+    optional opt = 42;
+    auto result = or_else(opt, []() { return make_optional(99); });
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 42);
+}
+
+TEST(Optional, OrElseWithEmpty) {
+    optional<int> opt;
+    auto result = or_else(opt, []() { return make_optional(99); });
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 99);
+}
+
+TEST(Optional, OrElseWithEmptyReturnsNullopt) {
+    optional<int> opt;
+    auto result = or_else(opt, []() -> optional<int> { return nullopt; });
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(Optional, OrElseChaining) {
+    optional<int> opt;
+    auto result = or_else(or_else(opt, []() -> optional<int> { return nullopt; }),
+                          []() { return make_optional(7); });
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 7);
+}
+
+TEST(Optional, OrElseCallbackNotCalledWhenValuePresent) {
+    optional opt = 1;
+    int calls = 0;
+    or_else(opt, [&]() -> optional<int> {
+        ++calls;
+        return make_optional(99);
+    });
+    EXPECT_EQ(calls, 0);
+}
+
+TEST(Optional, OrElseWithString) {
+    optional<string> opt;
+    auto result = or_else(opt, []() { return make_optional<string>("fallback"); });
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, "fallback");
+}

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <optional>
-#include <utility>
 
 namespace ariane::graphql::internal {
 
@@ -11,6 +10,14 @@ auto and_then(const std::optional<T>& opt, F&& f) -> decltype(f(*opt)) {
         return f(*opt);
     }
     return {};
+}
+
+template <typename T, typename F>
+auto or_else(const std::optional<T>& opt, F&& f) -> std::optional<T> {
+    if (opt) {
+        return opt;
+    }
+    return f();
 }
 
 }

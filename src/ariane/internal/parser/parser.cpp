@@ -8,42 +8,47 @@
 
 using namespace std;
 using namespace graphql;
+using namespace tao;
 
 namespace ariane::graphql::internal {
 
-static string trimBlockString(string_view s) {
-    vector<string> lines;
-    size_t start = 0;
-    for (size_t i = 0; i < s.size(); ++i) {
-        if (s[i] == '\n') {
-            lines.push_back(string(s.substr(start, i - start)));
-            start = i + 1;
-        }
-    }
-    lines.push_back(string(s.substr(start)));
-
-    auto isBlank = [](const string& line) {
-        return line.find_first_not_of(" \t\r") == string::npos;
-    };
-    while (!lines.empty() && isBlank(lines.front())) lines.erase(lines.begin());
-    while (!lines.empty() && isBlank(lines.back())) lines.pop_back();
-
-    string result;
-    for (size_t i = 0; i < lines.size(); ++i) {
-        if (i > 0) result += '\n';
-        result += lines[i];
-    }
-    return result;
-}
-
 static optional<string> ParseDescription(const peg::ast_node& node) {
-    auto desc = first_node<peg::description>(node);
-    if (!desc) return nullopt;
-    const auto view = (*desc)->unescaped_view();
-    if (view.empty()) return nullopt;
-    return trimBlockString(view);
+    return and_then(first_node<peg::description>(node), [](const auto& desc) {
+        return or_else(and_then(first_node<peg::string_quote_character>(*desc), [](const auto& quoted) {
+            return make_optional(quoted->string());
+        }), [&desc]() {
+            return and_then(first_node<peg::block_quote_content_lines>(*desc), [](const auto& blockQuoted) {
+                return make_optional<string>(blockQuoted->unescaped_view());
+            });
+        });
+    });
 }
 
+static optional<string> ParseDeprecationReason(const peg::ast_node& node) {
+    return or_else(and_then(first_node<peg::string_quote_character>(node), [](const auto& q) {
+        return make_optional(q->string());
+    }), [&node]() {
+        return and_then(first_node<peg::block_quote_content_lines>(node), [](const auto& q) {
+            return make_optional<string>(q->unescaped_view());
+        });
+    });
+}
+
+static TypeRef ParseTypeRefFromNode(const peg::ast_node& node) {
+    return or_else(and_then(first_node<peg::nonnull_type>(node), [](const auto& nnt) {
+        return make_optional(ParseTypeRef(*nnt));
+    }), [&node]() {
+        return or_else(and_then(first_node<peg::list_type>(node), [](const auto& lt) {
+            return make_optional(ParseTypeRef(*lt));
+        }), [&node]() {
+            return and_then(first_node<peg::named_type>(node), [](const auto& nt) {
+                return make_optional(ParseTypeRef(*nt));
+            });
+        });
+    }).value();
+}
+
+//TODO clean this
 TypeRef ParseTypeRef(const peg::ast_node& node) {
     if (node.is_type<peg::nonnull_type>()) {
         auto innerNode = first_node<peg::list_type>(node);
@@ -77,71 +82,60 @@ TypeRef ParseTypeRef(const peg::ast_node& node) {
     return TypeRef::Named("Unknown");
 }
 
-static TypeRef ParseTypeRefFromNode(const peg::ast_node& node) {
-    if (auto t = first_node<peg::nonnull_type>(node))
-        return ParseTypeRef(**t);
-    if (auto t = first_node<peg::list_type>(node))
-        return ParseTypeRef(**t);
-    if (auto t = first_node<peg::named_type>(node))
-        return ParseTypeRef(**t);
-    return TypeRef::Named("Unknown");
-}
-
 static optional<string> ParseDefaultValue(const peg::ast_node& node) {
     auto dv = first_node<peg::default_value>(node);
     if (!dv) return nullopt;
-    const peg::ast_node& dvNode = **dv;
-    if (auto v = find_node<peg::true_keyword>(dvNode))   return string("true");
-    if (auto v = find_node<peg::false_keyword>(dvNode))  return string("false");
-    if (auto v = find_node<peg::list_value>(dvNode))     return string((*v)->string());
-    if (auto v = find_node<peg::string_value>(dvNode))   return string((*v)->string());
-    if (auto v = find_node<peg::integer_value>(dvNode))  return string((*v)->string());
-    if (auto v = find_node<peg::float_value>(dvNode))    return string((*v)->string());
-    if (auto v = find_node<peg::enum_value>(dvNode))     return string((*v)->string());
+
+    const peg::ast_node& dvNode = *dv.value();
+    if (find_node<peg::true_keyword>(dvNode))
+        return "true";
+    if (find_node<peg::false_keyword>(dvNode))
+        return "false";
+    if (auto v = find_node<peg::list_value>(dvNode))
+        return (*v)->string();
+    if (auto v = find_node<peg::string_value>(dvNode))
+        return (*v)->string();
+    if (auto v = find_node<peg::integer_value>(dvNode))
+        return (*v)->string();
+    if (auto v = find_node<peg::float_value>(dvNode))
+        return (*v)->string();
+    if (auto v = find_node<peg::enum_value>(dvNode))
+        return (*v)->string();
     return nullopt;
 }
 
 static DeprecationInfo ParseDeprecation(const peg::ast_node& node) {
-    auto directivesNode = first_node<peg::directives>(node);
-    if (!directivesNode) return {};
-
-    DeprecationInfo info;
-    for_each_child<peg::directive>(**directivesNode, [&info](const peg::ast_node& dir) {
-        auto nameNode = first_node<peg::directive_name>(dir);
-        if (!nameNode || (*nameNode)->string() != "deprecated")
-            return;
-
-        info.isDeprecated = true;
-        auto argsNode = first_node<peg::arguments>(dir);
-        if (!argsNode) return;
-
-        for_each_child<peg::argument>(**argsNode, [&info](const peg::ast_node& arg) {
-            auto argName = first_node<peg::argument_name>(arg);
-            if (!argName || (*argName)->string() != "reason") return;
-
-            // Try string_value directly (intermediate nodes may be transparent)
-            auto sv = first_node<peg::string_value>(arg);
-            if (sv) {
-                const auto view = (*sv)->unescaped_view();
-                if (!view.empty())
-                    info.deprecationReason = trimBlockString(view);
-                return;
-            }
-            auto iv = first_node<peg::input_value>(arg);
-            if (!iv) return;
-            const auto view = (*iv)->unescaped_view();
-            if (!view.empty())
-                info.deprecationReason = trimBlockString(view);
+    return and_then(first_node<peg::directives>(node), [](const auto* directives) {
+        return and_then(first_node<peg::directive>(*directives, [](const auto& directive) {
+            return and_then(first_node<peg::directive_name>(directive), [](const auto* name) {
+                return name->string() == "deprecated";
+            });
+        }), [](const auto* directive) {
+            return DeprecationInfo{
+                .isDeprecated = true,
+                .deprecationReason = and_then(first_node<peg::arguments>(*directive), [](const auto* args) {
+                    return and_then(first_node<peg::argument>(*args, [](const auto& arg) {
+                        auto name = first_node<peg::argument_name>(arg);
+                        return name.has_value() && (*name)->string() == "reason";
+                    }), [](const auto* reason) {
+                        return or_else(and_then(first_node<peg::string_value>(*reason), [](const auto* sv) {
+                            return ParseDeprecationReason(*sv);
+                        }), [reason]() {
+                            return and_then(first_node<peg::input_value>(*reason), [](const auto* iv) {
+                                return ParseDeprecationReason(*iv);
+                            });
+                        });
+                    });
+                })
+            };
         });
     });
-    return info;
 }
 
 InputValueDefinition ParseInputValue(const peg::ast_node& node) {
-    auto deprecation = ParseDeprecation(node);
     return InputValueDefinition {
-        .name = and_then(first_node<peg::argument_name>(node), [](auto* node) -> optional<string> {
-            return node->string();
+        .name = and_then(first_node<peg::argument_name>(node), [](const auto& arg) {
+            return make_optional(arg->string());
         }).value_or(""),
         .description = ParseDescription(node),
         .type = ParseTypeRefFromNode(node),
@@ -150,66 +144,54 @@ InputValueDefinition ParseInputValue(const peg::ast_node& node) {
 }
 
 EnumValueDefinition ParseEnumValue(const peg::ast_node& node) {
-    auto deprecation = ParseDeprecation(node);
     return EnumValueDefinition{
         .name = and_then(first_node<peg::enum_value>(node), [](auto* node) {
-            return make_optional(node->string());
-        }).value_or(""),
+            return node->string();
+        }),
         .description = ParseDescription(node),
-        .isDeprecated = deprecation.isDeprecated,
-        .deprecationReason = deprecation.deprecationReason
+        .deprecation = ParseDeprecation(node)
     };
 }
 
 FieldDefinition ParseField(const peg::ast_node& node) {
-    auto typeNode = first_node<peg::nonnull_type>(node);
-    if (!typeNode) {
-        typeNode = first_node<peg::list_type>(node);
-    }
-    if (!typeNode) {
-        typeNode = first_node<peg::named_type>(node);
-    }
-
-    optional<TypeRef> type;
-    if (typeNode) {
-        type = ParseTypeRef(*typeNode.value());
-    }
-
-    auto argsNode = first_node<peg::arguments_definition>(node);
-    auto deprecation = ParseDeprecation(node);
-
     return FieldDefinition {
-        .name = and_then(first_node<peg::field_name>(node), [](auto* node) -> optional<string> {
+        .name = and_then(first_node<peg::field_name>(node), [](auto* node) {
             return node->string();
-        }).value_or(""),
+        }),
         .description = ParseDescription(node),
-        .type = type.value_or(TypeRef::Named("Unknown")),
-        .args = argsNode.has_value()
-            ? transform_children<peg::input_field_definition, InputValueDefinition>(*argsNode.value(),
+        .type = or_else(and_then(or_else(first_node<peg::nonnull_type>(node), [&node]() {
+            return or_else(first_node<peg::list_type>(node), [&node]() {
+                return first_node<peg::named_type>(node);
+            });
+        }), [](const auto* typeNode) {
+            return make_optional(ParseTypeRef(*typeNode));
+        }), []() {
+            return TypeRef::Named("Unknown");
+        }).value(),
+        .args = and_then(first_node<peg::arguments_definition>(node), [](const auto& argsNode) {
+            return transform_children<peg::input_field_definition, InputValueDefinition>(*argsNode,
                 [](const auto& child) {
                     return ParseInputValue(child);
-                })
-            : vector<InputValueDefinition>(),
-        .isDeprecated = deprecation.isDeprecated,
-        .deprecationReason = deprecation.deprecationReason
+                });
+        }),
+        .deprecation = ParseDeprecation(node)
     };
 }
 
 vector<FieldDefinition> ParseFields(const optional<peg::ast_node*>& node) {
-    return and_then(node, [](auto* node) -> optional<vector<FieldDefinition>> {
-        return transform_children<peg::field_definition, FieldDefinition>(*node,
-            [](const auto& node) {
-                return ParseField(node);
-            });
-    }).value_or(vector<FieldDefinition>{});
+    return and_then(node, [](auto* node) {
+        return transform_children<peg::field_definition, FieldDefinition>(*node, [](const auto& node) {
+            return ParseField(node);
+        });
+    });
 }
 
 TypeDefinition ParseObjectType(const peg::ast_node& node) {
     return TypeDefinition{
         .kind = TypeKind::OBJECT,
-        .name = and_then(first_node<peg::object_name>(node), [](auto* node) -> optional<string> {
+        .name = and_then(first_node<peg::object_name>(node), [](auto* node) {
             return node->string();
-        }).value_or(""),
+        }),
         .description = ParseDescription(node),
         .fields = ParseFields(first_node<peg::fields_definition>(node)),
         .interfaces = transform_children<peg::interface_type, string>(node, [](const auto& child) {
@@ -221,102 +203,116 @@ TypeDefinition ParseObjectType(const peg::ast_node& node) {
 TypeDefinition ParseInterfaceType(const peg::ast_node& node) {
     return TypeDefinition{
         .kind = TypeKind::INTERFACE,
-        .name = and_then(first_node<peg::interface_name>(node), [](auto* node) -> optional<string> {
+        .name = and_then(first_node<peg::interface_name>(node), [](auto* node) {
             return node->string();
-        }).value_or(""),
+        }),
         .description = ParseDescription(node),
         .fields = ParseFields(first_node<peg::fields_definition>(node))
     };
 }
 
-TypeDefinition ParseType(const peg::ast_node& node, const TypeKind& kind) {
-    TypeDefinition typeDef;
-    typeDef.kind = kind;
-
-    if (kind._value == TypeKind::SCALAR) {
-        typeDef.name = and_then(first_node<peg::scalar_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-        typeDef.description = ParseDescription(node);
-    } else if (kind._value == TypeKind::ENUM) {
-        typeDef.name = and_then(first_node<peg::enum_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-        typeDef.description = ParseDescription(node);
-        for_each_child<peg::enum_value_definition>(node, [&typeDef](const auto& child) {
-            typeDef.enumValues.push_back(ParseEnumValue(child));
-        });
-    } else if (kind._value == TypeKind::UNION) {
-        typeDef.name = and_then(first_node<peg::union_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-        typeDef.description = ParseDescription(node);
-        for_each_child<peg::union_type>(node, [&typeDef](const auto& child) {
-            typeDef.unionTypes.push_back(child.string());
-        });
-    } else if (kind._value == TypeKind::INPUT_OBJECT) {
-        typeDef.name = and_then(first_node<peg::object_name>(node), [](auto* n) -> optional<string> {
-            return n->string();
-        }).value_or("");
-        typeDef.description = ParseDescription(node);
-
-        auto fieldsNode = first_node<peg::input_fields_definition>(node);
-        if (fieldsNode) {
-            typeDef.inputFields = transform_children<peg::input_field_definition, InputValueDefinition>(
-                **fieldsNode, [](const auto& child) {
-                    return ParseInputValue(child);
-                });
-        }
+string ParseName(const peg::ast_node& node, const TypeKind& kind) {
+    switch (kind) {
+        case TypeKind::ENUM:
+            return and_then(first_node<peg::enum_name>(node), [](const auto* n) {
+                return n->string();
+            });
+        case TypeKind::SCALAR:
+            return and_then(first_node<peg::scalar_name>(node), [](const auto* n) {
+                return n->string();
+            });
+        case TypeKind::UNION:
+            return and_then(first_node<peg::union_name>(node), [](const auto* n) {
+                return n->string();
+            });
+        case TypeKind::INPUT_OBJECT:
+            return and_then(first_node<peg::object_name>(node), [](const auto* n) {
+                return n->string();
+            });
+        default:
+            return "";
     }
+}
 
-    return typeDef;
+TypeDefinition ParseType(const peg::ast_node& node, const TypeKind& kind) {
+    return TypeDefinition {
+        .kind = kind,
+        .name = ParseName(node, kind),
+        .description = ParseDescription(node),
+        .unionTypes = transform_children<peg::union_type, string>(node, [](const auto& child) {
+            return child.string();
+        }),
+        .enumValues = transform_children<peg::enum_value_definition, EnumValueDefinition>(node, [](const auto& child) {
+            return ParseEnumValue(child);
+        }),
+        .inputFields = and_then(first_node<peg::input_fields_definition>(node), [](const auto& in) {
+            return transform_children<peg::input_field_definition, InputValueDefinition>(*in, [](const auto& child) {
+                return ParseInputValue(child);
+            });
+        })
+    };
 }
 
 static DirectiveDefinition ParseDirective(const peg::ast_node& node) {
-    DirectiveDefinition directive;
-    directive.description = ParseDescription(node);
-    directive.name = and_then(first_node<peg::directive_name>(node), [](auto* n) -> optional<string> {
-        return n->string();
-    }).value_or("");
-    directive.isRepeatable = first_node<peg::repeatable_keyword>(node).has_value();
-
-    auto argsNode = first_node<peg::arguments_definition>(node);
-    if (argsNode) {
-        directive.args = transform_children<peg::input_field_definition, InputValueDefinition>(
-            **argsNode, [](const auto& child) {
+    return DirectiveDefinition {
+        .name = and_then(first_node<peg::directive_name>(node), [](const auto* n) {
+            return n->string();
+        }),
+        .description = ParseDescription(node),
+        .locations = transform_children<peg::directive_location, DirectiveLocation>(node, [](const auto& locNode) {
+            return *DirectiveLocation::_from_string_nothrow(locNode.string().c_str());
+        }),
+        .args = and_then(first_node<peg::arguments_definition>(node), [](const auto* args) {
+            return transform_children<peg::input_field_definition, InputValueDefinition>(*args, [](const auto& child) {
                 return ParseInputValue(child);
             });
-    }
-
-    for_each_child<peg::directive_location>(node, [&directive](const peg::ast_node& locNode) {
-        auto locStr = locNode.string();
-        auto loc = DirectiveLocation::_from_string_nothrow(locStr.c_str());
-        if (loc) directive.locations.push_back(*loc);
-    });
-
-    return directive;
+        }),
+        .isRepeatable = first_node<peg::repeatable_keyword>(node).has_value(),
+    };
 }
 
-optional<TypeDefinition> ParseType(const peg::ast_node& node) {
-    if (node.is_type<peg::object_type_definition>()) {
+static unordered_map<string_view, std::function<TypeDefinition(const peg::ast_node&)>> typeParsers {
+    {graphqlpeg::demangle<peg::object_type_definition>(), [](const auto& node) {
         return ParseObjectType(node);
-    }
-    if (node.is_type<peg::scalar_type_definition>()) {
+    }},
+    {graphqlpeg::demangle<peg::scalar_type_definition>(), [](const auto& node) {
         return ParseType(node, TypeKind::SCALAR);
-    }
-    if (node.is_type<peg::enum_type_definition>()) {
+    }},
+    {graphqlpeg::demangle<peg::enum_type_definition>(), [](const auto& node) {
         return ParseType(node, TypeKind::ENUM);
-    }
-    if (node.is_type<peg::interface_type_definition>()) {
+    }},
+    {graphqlpeg::demangle<peg::interface_type_definition>(), [](const auto& node) {
         return ParseInterfaceType(node);
-    }
-    if (node.is_type<peg::union_type_definition>()) {
+    }},
+    {graphqlpeg::demangle<peg::union_type_definition>(), [](const auto& node) {
         return ParseType(node, TypeKind::UNION);
-    }
-    if (node.is_type<peg::input_object_type_definition>()) {
+    }},
+    {graphqlpeg::demangle<peg::input_object_type_definition>(), [](const auto& node) {
         return ParseType(node, TypeKind::INPUT_OBJECT);
+    }},
+};
+
+optional<TypeDefinition> ParseType(const peg::ast_node& node) {
+    if (auto it = typeParsers.find(node.type); it != typeParsers.end()) {
+        return it->second(node);
     }
     return nullopt;
+}
+
+void ParseSchemaDefinition(shared_ptr<Document> doc, const unique_ptr<peg::ast_node>& node) {
+    peg::for_each_child<peg::root_operation_definition>(*node, [doc](const auto& operationDefinition) {
+        auto operationType = and_then(first_node<peg::operation_type>(operationDefinition),
+            [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
+        auto operationTypeName = and_then(first_node<peg::named_type>(operationDefinition),
+            [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
+
+        if (operationType == "query")
+            doc->queryTypeName = operationTypeName;
+        else if (operationType == "mutation")
+            doc->mutationTypeName = operationTypeName;
+        else if (operationType == "subscription")
+            doc->subscriptionTypeName = operationTypeName;
+    });
 }
 
 shared_ptr<Document> ParseTypeDefs(const string& typeDefs) {
@@ -330,50 +326,20 @@ shared_ptr<Document> ParseTypeDefs(const string& typeDefs) {
         }
 
         for (const auto& node : ast.root->children) {
-            if (!node)
-                continue;
-
             if (node->is_type<peg::schema_definition>()) {
-                for (const auto& opDef : node->children) {
-                    if (!opDef || !opDef->is_type<peg::root_operation_definition>())
-                        continue;
-                    auto opType = first_node<peg::operation_type>(*opDef);
-                    auto namedType = first_node<peg::named_type>(*opDef);
-                    if (!opType || !namedType)
-                        continue;
-                    const string op = (*opType)->string();
-                    const string name = (*namedType)->string();
-                    if (op == "query")
-                        doc->queryTypeName = name;
-                    else if (op == "mutation")
-                        doc->mutationTypeName = name;
-                    else if (op == "subscription")
-                        doc->subscriptionTypeName = name;
-                }
-                continue;
-            }
-
-            if (node->is_type<peg::directive_definition>()) {
+                ParseSchemaDefinition(doc, node);
+            } else if (node->is_type<peg::directive_definition>()) {
                 doc->directives.push_back(ParseDirective(*node));
-                continue;
-            }
-
-            auto typeDef = ParseType(*node);
-            if (typeDef.has_value()) {
-                const auto& name = typeDef.value().name;
-                doc->typeOrder.push_back(name);
-                doc->types[name] = typeDef.value();
+            } else {
+                and_then(ParseType(*node), [doc](const auto& typeDef) {
+                    return doc->types[typeDef.name] = typeDef;
+                });
             }
         }
 
-        // Build possibleTypes for INTERFACE types (reverse mapping, in SDL order)
-        for (const auto& name : doc->typeOrder) {
-            const auto& type = doc->types.at(name);
-            if (type.kind._value != TypeKind::OBJECT) continue;
-            for (const auto& iface : type.interfaces) {
-                if (doc->types.contains(iface)) {
-                    doc->types[iface].possibleTypes.push_back(name);
-                }
+        for (const auto& [name, type] : doc->types) {
+            for (const auto& interface : type.interfaces) {
+                doc->types[interface].possibleTypes.push_back(name);
             }
         }
 

@@ -3,13 +3,14 @@
 #include <optional>
 #include <string>
 
+#include "DeprecationInfo.h"
+
 namespace ariane::graphql::internal {
 
 struct EnumValueDefinition {
     std::string name;
     std::optional<std::string> description;
-    bool isDeprecated = false;
-    std::optional<std::string> deprecationReason;
+    std::optional<DeprecationInfo> deprecation;
 };
 
 }

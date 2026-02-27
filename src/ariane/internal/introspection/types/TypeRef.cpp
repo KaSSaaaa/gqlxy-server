@@ -4,6 +4,10 @@ using namespace std;
 
 namespace ariane::graphql::internal {
 
+std::string TypeRef::typeName() const {
+    return ofType != nullptr ? ofType->typeName() : name;
+}
+
 TypeRef TypeRef::Named(const string& typeName) {
     return TypeRef {
         .kind = TypeRefKind::NamedType,

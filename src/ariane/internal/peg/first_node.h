@@ -7,9 +7,12 @@
 namespace ariane::graphql::internal {
 
 template <typename T>
-std::optional<::graphql::peg::ast_node*> first_node(const ::graphql::peg::ast_node& node) {
+std::optional<::graphql::peg::ast_node*> first_node(
+    const ::graphql::peg::ast_node& node,
+    const std::function<bool(const ::graphql::peg::ast_node&)>& predicate = [](const auto&) { return true; }
+) {
     for (const auto& child : node.children) {
-        if (child && child->is_type<T>()) {
+        if (child && child->is_type<T>() && predicate(*child)) {
             return child.get();
         }
     }
