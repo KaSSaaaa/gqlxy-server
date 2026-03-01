@@ -18,9 +18,20 @@ struct SchemaOptions {
     bool allowIntrospection = true;
 };
 
+struct ErrorLocation {
+    int line;
+    int column;
+};
+
+struct FieldError {
+    std::string message;
+    std::vector<std::string> path;
+    std::vector<ErrorLocation> locations;
+};
+
 struct ResolveResult {
     std::optional<std::string> data;
-    std::optional<std::string> errors;
+    std::optional<std::vector<FieldError>> errors;
 };
 
 struct SchemaResolveArgs {

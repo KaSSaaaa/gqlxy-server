@@ -32,7 +32,7 @@ protected:
         auto result = schema.Resolve({
             .query = readFile(INTROSPECTION_QUERY_PATH)
         }).get();
-        ASSERT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value();
+        ASSERT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value()[0].message;
 
         _data     = json::parse(result.data.value());
         _schema   = _data["__schema"];

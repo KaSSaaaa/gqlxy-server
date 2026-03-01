@@ -22,14 +22,6 @@ struct ResolveQueryArgs {
   Resolver resolvers;
 };
 
-Task<nlohmann::json> Resolve(const ValueResolver& resolver,
-                             const ResolverArgs& args,
-                             const SelectionSet* selectionSet,
-                             const std::string& typeName,
-                             const SchemaDefinition& schemaDefinition,
-                             const std::unordered_map<std::string, FragmentDefinition>& fragments,
-                             const nlohmann::json& variables);
-
 Task<ResolveResult> ResolveOperations(ResolveQueryArgs args);
 
 }

@@ -43,7 +43,8 @@ int main() {
     }).get();
 
     if (result.errors.has_value()) {
-        cerr << "Errors: " << result.errors.value() << endl;
+        for (const auto& e : result.errors.value())
+            cerr << "Error: " << e.message << endl;
         return 1;
     }
 
@@ -62,12 +63,14 @@ int main() {
     }).get();
 
     if (result.errors.has_value()) {
-        cerr << "Errors: " << result.errors.value() << endl;
+        for (const auto& e : result.errors.value())
+            cerr << "Error: " << e.message << endl;
         return 1;
     }
 
     if (__type.errors.has_value()) {
-        cerr << "Errors: " << result.errors.value() << endl;
+        for (const auto& e : __type.errors.value())
+            cerr << "Error: " << e.message << endl;
         return 1;
     }
 

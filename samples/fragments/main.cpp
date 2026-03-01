@@ -12,7 +12,8 @@ using json = nlohmann::json;
 static void printResult(const string& label, const ResolveResult& result) {
     cout << "--- " << label << " ---" << endl;
     if (result.errors.has_value()) {
-        cerr << "Errors: " << result.errors.value() << endl;
+        for (const auto& e : result.errors.value())
+            cerr << "Error: " << e.message << endl;
         return;
     }
     cout << json::parse(result.data.value()).dump(2) << endl << endl;

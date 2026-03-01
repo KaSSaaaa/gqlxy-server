@@ -19,6 +19,10 @@ This document tracks what is already working and what remains to be built for a 
 - Argument default values parsed
 - Directive declarations in SDL (`directive @foo on LOCATIONS`)
 - JSON string escaping (via `nlohmann::json`)
+- Named fragments (`fragment Foo on Bar { … }`) and fragment spreads (`…Foo`)
+- Inline fragments (`… on Bar { … }`)
+- Field aliases — `alias: fieldName` correctly used as the JSON response key
+- Per-field error handling — resolver exceptions set the field to `null` and append a structured entry (with `message` and `path`) to `errors[]`; other fields continue resolving
 
 ---
 
@@ -28,11 +32,7 @@ This document tracks what is already working and what remains to be built for a 
 
 | # | Feature | Notes |
 |---|---------|-------|
-| 7 | **Named fragments** | `fragment Foo on Bar { … }` declarations and `…Foo` spreads are silently ignored during execution. |
-| 8 | **Inline fragments** | `… on Bar { … }` inside selection sets are silently ignored. Depends on #7. |
-| 9 | **Field aliases** | `alias: fieldName` is not handled; the field name is always used as the JSON response key. |
 | 10 | **`@skip` / `@include` directives** | Runtime conditional field inclusion — must be evaluated before a field is resolved. |
-| 11 | **Per-field error handling** | Any resolver exception currently crashes the whole request. Field errors must be caught, the field set to `null`, and an entry appended to `errors[]`. |
 | 12 | **Abstract type resolution (`__resolveType`)** | No mechanism exists to determine the concrete type of a union or interface field at runtime, making `__typename` and conditional fragment spreading unreliable. Depends on #8. |
 
 ---
@@ -64,7 +64,7 @@ A validation layer that runs before execution and rejects invalid documents with
 
 ```
 Phase 1 — Core correctness   : #1, #2, #3  ✓
-Phase 2 — Spec compliance    : #11, #6 ✓, #7, #8, #9, #10
+Phase 2 — Spec compliance    : #11 ✓, #6 ✓, #7 ✓, #8 ✓, #9 ✓, #10
 Phase 3 — Type system        : #12
 Phase 4 — Ergonomics         : #13, #14, #15
 Phase 5 — Query validation   : #16, #17, #18, #19

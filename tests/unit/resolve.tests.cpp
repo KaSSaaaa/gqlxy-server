@@ -25,7 +25,7 @@ protected:
         auto result = schema.Resolve({
             .query = query
         }).get();
-        EXPECT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value();
+        EXPECT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value()[0].message;
         return json::parse(result.data.value());
     }
 };
@@ -331,7 +331,7 @@ TEST_F(ResolveTest, SubstitutesVariableInArgument) {
         )",
         .variables = {{"msg", "hello variables"}}
     }).get();
-    ASSERT_FALSE(result.errors.has_value()) << result.errors.value();
+    ASSERT_FALSE(result.errors.has_value()) << result.errors.value()[0].message;
     auto data = json::parse(result.data.value());
     EXPECT_EQ(data["echo"], "hello variables");
 }
@@ -352,7 +352,94 @@ TEST_F(ResolveTest, SubstitutesIntVariable) {
         .query = R"(query($n: Int!) { double(n: $n) })",
         .variables = {{"n", 6}}
     }).get();
-    ASSERT_FALSE(result.errors.has_value()) << result.errors.value();
+    ASSERT_FALSE(result.errors.has_value()) << result.errors.value()[0].message;
     auto data = json::parse(result.data.value());
     EXPECT_EQ(data["double"], 12);
+}
+
+// ---------------------------------------------------------------------------
+// Field aliases (#9)
+// ---------------------------------------------------------------------------
+
+TEST_F(ResolveTest, RespectsFieldAlias) {
+    auto data = resolve("type Query { greeting: String }",
+                        {{"greeting", "hello"}},
+                        "query { myGreeting: greeting }");
+    EXPECT_EQ(data["myGreeting"], "hello");
+    EXPECT_FALSE(data.contains("greeting"));
+}
+
+TEST_F(ResolveTest, MultipleAliasesForSameField) {
+    auto data = resolve("type Query { msg: String }",
+                        {{"msg", "hi"}},
+                        "query { a: msg b: msg }");
+    EXPECT_EQ(data["a"], "hi");
+    EXPECT_EQ(data["b"], "hi");
+    EXPECT_FALSE(data.contains("msg"));
+}
+
+// ---------------------------------------------------------------------------
+// Per-field error handling (#11)
+// ---------------------------------------------------------------------------
+
+TEST_F(ResolveTest, FieldErrorSetsNullAndRecordsError) {
+    Schema schema({
+        .typeDefs  = "type Query { boom: String }",
+        .resolvers = {{"Query", Resolver{
+            {"boom", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+                throw runtime_error("resolver exploded");
+            })}
+        }}}
+    });
+    auto result = schema.Resolve({.query = "query { boom }"}).get();
+    ASSERT_TRUE(result.data.has_value());
+    ASSERT_TRUE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["boom"], nullptr);
+    const auto& errors = result.errors.value();
+    EXPECT_EQ(errors[0].message, "resolver exploded");
+    EXPECT_EQ(errors[0].path[0], "boom");
+}
+
+TEST_F(ResolveTest, OtherFieldsResolveAfterFieldError) {
+    Schema schema({
+        .typeDefs  = "type Query { boom: String ok: String }",
+        .resolvers = {{"Query", Resolver{
+            {"boom", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+                throw runtime_error("boom");
+            })},
+            {"ok", "fine"}
+        }}}
+    });
+    auto result = schema.Resolve({.query = "query { boom ok }"}).get();
+    ASSERT_TRUE(result.data.has_value());
+    ASSERT_TRUE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["boom"], nullptr);
+    EXPECT_EQ(data["ok"], "fine");
+}
+
+TEST_F(ResolveTest, NestedFieldErrorIncludesFullPath) {
+    Schema schema({
+        .typeDefs  = "type Query { user: User } type User { name: String }",
+        .resolvers = {{"Query", Resolver{
+            {"user", Resolver{
+                {"name", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+                    throw runtime_error("name failed");
+                })}
+            }}
+        }}}
+    });
+    auto result = schema.Resolve({.query = "query { user { name } }"}).get();
+    ASSERT_TRUE(result.errors.has_value());
+    const auto& errors = result.errors.value();
+    EXPECT_EQ(errors[0].path[0], "user");
+    EXPECT_EQ(errors[0].path[1], "name");
+}
+
+TEST_F(ResolveTest, NoErrorsKeyWhenAllFieldsSucceed) {
+    auto result = Schema({
+        .typeDefs  = "type Query { ok: String }",
+        .resolvers = {{"Query", Resolver{{"ok", "yes"}}}}
+    }).Resolve({.query = "query { ok }"}).get();
+    EXPECT_FALSE(result.errors.has_value());
 }
