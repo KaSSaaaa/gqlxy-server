@@ -1,5 +1,6 @@
 #include <ariane/schema.h>
 
+#include <ariane/internal/MergeResolvers.h>
 #include <ariane/internal/engine/resolve.h>
 #include <ariane/internal/introspection/introspection.h>
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
@@ -14,9 +15,12 @@ Schema::Schema(const SchemaOptions& options) {
     _resolvers = options.resolvers;
     _schemaDefinition = ParseSchemaDefinition(options.typeDefs);
 
-    AddToResolver("Query", Resolver {
-        {"__typename", "Query"},
-    });
+    for (const auto& [name, type] : _schemaDefinition->types)
+        if (type.kind._value == TypeKind::OBJECT)
+            AddToResolver(name, Resolver {
+                {"__typename", name},
+                {"__resolveType", name}
+            });
 
     if (options.allowIntrospection)
         InjectIntrospectionResolvers();

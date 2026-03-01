@@ -25,6 +25,7 @@ using AsyncFunctionResolver = std::function<std::future<ValueResolver>(const Res
 using CoroutineResolver = std::function<Task<ValueResolver>(const ResolverArgs&)>;
 using CallbackResolver = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
+using TypeResolver = std::function<std::optional<std::string>(const Resolver&)>;
 
 struct ValueResolver : std::variant<int,
                                     uint64_t,
@@ -38,6 +39,7 @@ struct ValueResolver : std::variant<int,
                                     AsyncFunctionResolver,
                                     CoroutineResolver,
                                     CallbackResolver,
+                                    TypeResolver,
                                     std::monostate> {
     using variant::variant;
 
@@ -53,7 +55,5 @@ struct ValueResolver : std::variant<int,
     template <typename T>
     ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
 };
-
-void MergeResolvers(Resolver& left, const Resolver& right);
 
 }

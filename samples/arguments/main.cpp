@@ -28,10 +28,16 @@ int main() {
 
     unordered_map<string, Resolver> nodes = {
         {"1", Resolver {
-            {"id", "1"}
+            {"id", "1"},
+            {"title", "Ariane to the moon 🚀"},
+            {"isComplete", false}
         }},
         {"2", Resolver {
-            {"id", "2"}
+            {"id", "2"},
+            {"when", "2024-05-08T23:18:29.551Z"},
+            {"subject", "First commit"},
+            {"isNow", false},
+            {"forceError", nullopt}
         }}
     };
 
@@ -45,6 +51,17 @@ int main() {
                     }
                     return nullopt;
                 })}
+            }},
+            {"Node", Resolver {
+                {"__resolveType", TypeResolver([](const Resolver& resolver) -> optional<string> {
+                    if (resolver.contains("title"))
+                        return "Task";
+
+                    if (resolver.contains("when"))
+                        return "Appointment";
+
+                    return nullopt;
+                })}
             }}
         }
     });
@@ -53,6 +70,7 @@ int main() {
         .query = R"(
             query GetNodeById($id: ID!) {
                 node(id: $id) {
+                    __typename
                     id
                 }
             }

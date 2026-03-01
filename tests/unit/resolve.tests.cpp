@@ -20,8 +20,12 @@ protected:
     static json resolve(const string& typeDefs,
                         Resolver queryResolvers,
                         const string& query) {
-        Schema schema({.typeDefs  = typeDefs,
-                       .resolvers = {{"Query", std::move(queryResolvers)}}});
+        Schema schema({
+            .typeDefs  = typeDefs,
+            .resolvers = {
+                {"Query", queryResolvers}
+            }
+        });
         auto result = schema.Resolve({
             .query = query
         }).get();
@@ -138,20 +142,44 @@ TEST_F(ResolveTest, UnknownFieldOmittedFromResult) {
 }
 
 TEST_F(ResolveTest, ResolvesTypename) {
-    auto data = resolve("type Query { hello: String }",
-                        {{"hello", "world"}},
-                        "query { __typename hello }");
+    auto data = resolve(R"(
+        type Query {
+            hello: String
+         }
+    )",
+    {{"hello", "world"}},
+    R"(
+        query {
+            __typename
+            hello
+        }
+    )");
     EXPECT_EQ(data["__typename"], "Query");
     EXPECT_EQ(data["hello"], "world");
 }
 
 TEST_F(ResolveTest, ResolvesNestedTypename) {
     auto data = resolve(R"(
-        type Query { user: User }
-        type User { id: Int }
+        type Query {
+            user: User
+        }
+        type User {
+            id: Int
+        }
     )",
-                        {{"user", Resolver{{"id", 7}}}},
-                        "query { user { __typename id } }");
+    {
+        {"user", Resolver{
+            {"id", 7}
+        }}
+    },
+    R"(
+        query {
+            user {
+                __typename
+                id
+            }
+        }
+    )");
     EXPECT_EQ(data["user"]["__typename"], "User");
     EXPECT_EQ(data["user"]["id"], 7);
 }
@@ -442,4 +470,158 @@ TEST_F(ResolveTest, NoErrorsKeyWhenAllFieldsSucceed) {
         .resolvers = {{"Query", Resolver{{"ok", "yes"}}}}
     }).Resolve({.query = "query { ok }"}).get();
     EXPECT_FALSE(result.errors.has_value());
+}
+
+// ---------------------------------------------------------------------------
+// Abstract type resolution (#12)
+// ---------------------------------------------------------------------------
+
+namespace {
+const string searchSchema = R"(
+    type Query {
+        search: SearchResult
+    }
+
+    union SearchResult = Book | Movie
+
+    type Book {
+        title: String
+    }
+
+    type Movie {
+        director: String
+    }
+)";
+
+TypeResolver searchTypeResolver() {
+    return [](const Resolver& r) -> optional<string> {
+        return r.contains("title") ? "Book" : "Movie";
+    };
+}
+}
+
+TEST_F(ResolveTest, TypeResolverDeterminesConcreteType) {
+    Schema schema({
+        .typeDefs  = searchSchema,
+        .resolvers = {
+            {"Query", Resolver{
+                {"search", Resolver{
+                    {"title", "The Hobbit"}
+                }}
+            }},
+            {"SearchResult", Resolver{
+                {"__resolveType", searchTypeResolver()}
+            }}
+        }
+    });
+    auto result = schema.Resolve({
+        .query = R"({
+            search {
+                ... on Book {
+                    title
+                }
+                ... on Movie {
+                    director
+                }
+            }
+        })"
+    }).get();
+    EXPECT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["search"]["title"], "The Hobbit");
+    EXPECT_FALSE(data["search"].contains("director"));
+}
+
+TEST_F(ResolveTest, TypeResolverFiltersMismatchedInlineFragment) {
+    Schema schema({
+        .typeDefs  = searchSchema,
+        .resolvers = {
+            {"Query", Resolver{
+                {"search", Resolver{
+                    {"director", "Spielberg"}}
+                }}
+            },
+            {"SearchResult", Resolver{
+                {"__resolveType", searchTypeResolver()}
+            }}
+        }
+    });
+    auto result = schema.Resolve({
+        .query = R"({
+            search {
+                ... on Book {
+                    title
+                }
+                ... on Movie {
+                    director
+                }
+            }
+        })"
+    }).get();
+    EXPECT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["search"]["director"], "Spielberg");
+    EXPECT_FALSE(data["search"].contains("title"));
+}
+
+TEST_F(ResolveTest, TypeNameReturnsConcreteTypeFromTypeResolver) {
+    Schema schema({
+        .typeDefs  = searchSchema,
+        .resolvers = {
+            {"Query", Resolver{
+                {"search", Resolver{
+                    {"title", "Dune"}}
+                }}
+            },
+            {"SearchResult", Resolver{
+                {"__resolveType", searchTypeResolver()}
+            }}
+        }
+    });
+    auto data = json::parse(schema.Resolve({
+        .query = R"({
+            search {
+                __typename
+            }
+        })"
+    }).get().data.value());
+    EXPECT_EQ(data["search"]["__typename"], "Book");
+}
+
+TEST_F(ResolveTest, NamedFragmentFilteredByTypeCondition) {
+    Schema schema({
+        .typeDefs  = searchSchema,
+        .resolvers = {
+            {"Query", Resolver{
+                {"search", Resolver{
+                    {"title", "1984"}
+                }}
+            }},
+            {"SearchResult", Resolver{
+                {"__resolveType", searchTypeResolver()}
+            }}
+        }
+    });
+    auto result = schema.Resolve({
+        .query = R"(
+            fragment BookInfo on Book {
+                title
+            }
+
+            fragment MovieInfo on Movie {
+                director
+            }
+
+            {
+                search {
+                    ...BookInfo
+                    ...MovieInfo
+                }
+            }
+        )"
+    }).get();
+    EXPECT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["search"]["title"], "1984");
+    EXPECT_FALSE(data["search"].contains("director"));
 }

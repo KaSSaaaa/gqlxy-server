@@ -86,6 +86,7 @@ int main() {
 
     const string query = R"(
         query {
+            __typename
             appointments {
                 pageInfo { hasNextPage hasPreviousPage }
                 edges {

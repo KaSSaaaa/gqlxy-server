@@ -2,6 +2,7 @@
 
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/peg/parser/query/ParseDocument.h>
+#include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/visit.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
@@ -17,22 +18,27 @@ using FragmentLookup = unordered_map<string, FragmentDefinition>;
 using FieldErrors = vector<FieldError>;
 using Path = vector<string>;
 
-static vector<Field> FlattenSelections(const SelectionSet& ss, const FragmentLookup& frags) {
+static vector<Field> FlattenSelections(const SelectionSet& ss, const FragmentLookup& frags,
+                                       const optional<string>& concreteType = nullopt) {
     vector<Field> fields;
     for (const auto& sel : ss.selections) {
         visit(overloaded{
            [&](const Field& f) { fields.push_back(f); },
            [&](const FragmentSpread& s) {
-               auto it = frags.find(s.name);
-               if (it == frags.end())
+               if (!frags.contains(s.name))
                    return;
-               auto nested = FlattenSelections(it->second.selectionSet, frags);
+               auto& fragment = frags.at(s.name);
+               if (concreteType && fragment.typeCondition != *concreteType)
+                   return;
+               auto nested = FlattenSelections(fragment.selectionSet, frags, concreteType);
                fields.insert(fields.end(), nested.begin(), nested.end());
            },
            [&](const InlineFragment& i) {
                if (!i.selectionSet)
                    return;
-               auto nested = FlattenSelections(*i.selectionSet, frags);
+               if (concreteType && i.typeCondition.has_value() && *i.typeCondition != *concreteType)
+                   return;
+               auto nested = FlattenSelections(*i.selectionSet, frags, concreteType);
                fields.insert(fields.end(), nested.begin(), nested.end());
            },
         }, sel);
@@ -57,6 +63,24 @@ static nlohmann::json ResolveArguments(const vector<Argument>& args, const nlohm
     return obj;
 }
 
+static optional<string> ResolveType(const Resolver& rootResolver, const Resolver& current, const string& typeName) {
+    if (typeName.empty() || !rootResolver.contains(typeName))
+        return nullopt;
+
+    auto* typeEntry = get_if<Resolver>(&rootResolver.at(typeName));
+    if (!typeEntry || !typeEntry->contains("__resolveType"))
+        return nullopt;
+
+    auto& resolveType = typeEntry->at("__resolveType");
+    if (holds_alternative<string>(resolveType))
+        return get<string>(resolveType);
+
+    if (!holds_alternative<TypeResolver>(resolveType))
+        return nullopt;
+
+    return get<TypeResolver>(resolveType)(current);
+}
+
 static string FieldTypeName(const string& typeName, const string& fieldName,
                              const SchemaDefinition& schemaDefinition) {
     if (typeName.empty() || !schemaDefinition.types.contains(typeName))
@@ -72,7 +96,8 @@ static string FieldTypeName(const string& typeName, const string& fieldName,
     return "";
 }
 
-Task<nlohmann::json> Resolve(const ValueResolver& resolver,
+Task<nlohmann::json> Resolve(const Resolver& rootResolver,
+                             const ValueResolver& resolver,
                              const ResolverArgs& args,
                              const SelectionSet* selectionSet,
                              const string& typeName,
@@ -82,72 +107,100 @@ Task<nlohmann::json> Resolve(const ValueResolver& resolver,
                              FieldErrors& fieldErrors,
                              Path path) {
     co_return co_await visit(
-         overloaded{
-              [](int v) -> Task<nlohmann::json> { co_return v; },
-              [](uint64_t v) -> Task<nlohmann::json> { co_return v; },
-              [](double v) -> Task<nlohmann::json> { co_return v; },
-              [](float v) -> Task<nlohmann::json> { co_return v; },
-              [](bool v) -> Task<nlohmann::json> { co_return v; },
-              [](const string& v) -> Task<nlohmann::json> { co_return v; },
-              [](monostate) -> Task<nlohmann::json> { co_return nullptr; },
-              [&](const Resolver& nestedResolver) -> Task<nlohmann::json> {
-                  auto obj = nlohmann::json::object();
-                  if (selectionSet) {
-                      for (const auto& field : FlattenSelections(*selectionSet, fragments)) {
-                          const auto& outputKey = field.alias.value_or(field.name);
-                          if (field.name == "__typename") { obj[outputKey] = typeName; continue; }
-                          if (!nestedResolver.contains(field.name)) continue;
-                          auto childPath = path;
-                          childPath.push_back(outputKey);
-                          try {
-                              obj[outputKey] = co_await Resolve(
-                                   nestedResolver.at(field.name),
-                                   ResolverArgs{ResolveArguments(field.arguments, variables)},
-                                   field.selectionSet.get(),
-                                   FieldTypeName(typeName, field.name, schemaDefinition),
-                                   schemaDefinition, fragments, variables, fieldErrors, childPath);
-                          } catch (const exception& e) {
-                              obj[outputKey] = nullptr;
-                              fieldErrors.push_back(FieldError {
-                                  .message = e.what(),
-                                  .path = childPath
-                              });
-                          }
-                      }
-                  } else {
-                      for (const auto& [key, value] : nestedResolver)
-                          obj[key] = co_await Resolve(value, {}, nullptr, "", schemaDefinition, fragments, variables, fieldErrors, {});
-                  }
-                  co_return obj;
-              },
-              [&](const vector<ValueResolver>& vec) -> Task<nlohmann::json> {
-                  nlohmann::json arr = nlohmann::json::array();
-                  for (size_t i = 0; i < vec.size(); i++) {
-                      auto elemPath = path;
-                      elemPath.push_back(to_string(i));
-                      try {
-                          arr.push_back(co_await Resolve(vec[i], {}, selectionSet, typeName, schemaDefinition, fragments, variables, fieldErrors, elemPath));
-                      } catch (const exception& e) {
-                          arr.push_back(nullptr);
-                          fieldErrors.push_back({.message = e.what(), .path = elemPath});
-                      }
-                  }
-                  co_return arr;
-              },
-              [&](const FunctionResolver& func) -> Task<nlohmann::json> {
-                  co_return co_await Resolve(func(args), {}, selectionSet, typeName, schemaDefinition, fragments, variables, fieldErrors, path);
-              },
-              [&](const AsyncFunctionResolver& func) -> Task<nlohmann::json> {
-                  co_return co_await Resolve(func(args).get(), {}, selectionSet, typeName, schemaDefinition, fragments, variables, fieldErrors, path);
-              },
-              [&](const CoroutineResolver& func) -> Task<nlohmann::json> {
-                  co_return co_await Resolve(co_await func(args), {}, selectionSet, typeName, schemaDefinition, fragments, variables, fieldErrors, path);
-              },
-              [&](const CallbackResolver& func) -> Task<nlohmann::json> {
-                  promise<ValueResolver> p;
-                  func(args, [&p](const auto& res) { p.set_value(res); });
-                  co_return co_await Resolve(p.get_future().get(), {}, selectionSet, typeName, schemaDefinition, fragments, variables, fieldErrors, path);
-              },
+        overloaded{
+            [](int v) -> Task<nlohmann::json> { co_return v; },
+            [](uint64_t v) -> Task<nlohmann::json> { co_return v; },
+            [](double v) -> Task<nlohmann::json> { co_return v; },
+            [](float v) -> Task<nlohmann::json> { co_return v; },
+            [](bool v) -> Task<nlohmann::json> { co_return v; },
+            [](const string& v) -> Task<nlohmann::json> { co_return v; },
+            [](monostate) -> Task<nlohmann::json> { co_return nullptr; },
+            [&](const Resolver& currentResolver) -> Task<nlohmann::json> {
+                auto resolvedType = ResolveType(rootResolver, currentResolver, typeName);
+                auto obj = nlohmann::json::object();
+                if (selectionSet == nullptr)
+                    co_return obj;
+
+                for (const auto& field : FlattenSelections(*selectionSet, fragments, resolvedType)) {
+                    const auto& outputKey = field.alias.value_or(field.name);
+                    if (field.name == "__typename") {
+                        if (!resolvedType.has_value())
+                            throw runtime_error("__resolveType returned nullopt for abstract type: " + typeName);
+                        obj[outputKey] = resolvedType;
+                        continue;
+                    }
+                    auto childPath = path;
+                    childPath.push_back(outputKey);
+                    try {
+                        if (!currentResolver.contains(field.name))
+                            throw runtime_error("Unknown property " + field.name);
+
+                        obj[outputKey] = co_await Resolve(
+                            rootResolver,
+                            currentResolver.at(field.name),
+                            ResolverArgs{
+                                .args = ResolveArguments(field.arguments, variables)
+                            },
+                            field.selectionSet.get(),
+                            FieldTypeName(typeName, field.name, schemaDefinition),
+                            schemaDefinition,
+                            fragments,
+                            variables,
+                            fieldErrors,
+                            childPath);
+                    } catch (const exception& e) {
+                        obj[outputKey] = nullptr;
+                        fieldErrors.push_back(FieldError {
+                            .message = e.what(),
+                            .path = childPath
+                        });
+                    }
+                }
+                co_return obj;
+            },
+            [&](const vector<ValueResolver>& vec) -> Task<nlohmann::json> {
+                nlohmann::json arr = nlohmann::json::array();
+                for (size_t i = 0; i < vec.size(); i++) {
+                    auto elemPath = path;
+                    elemPath.push_back(to_string(i));
+                    try {
+                        arr.push_back(co_await Resolve(
+                            rootResolver,
+                            vec[i],
+                            {},
+                            selectionSet,
+                            typeName,
+                            schemaDefinition,
+                            fragments,
+                            variables,
+                            fieldErrors,
+                            elemPath));
+                    } catch (const exception& e) {
+                        arr.push_back(nullptr);
+                        fieldErrors.push_back({.message = e.what(), .path = elemPath});
+                    }
+                }
+                co_return arr;
+            },
+            [&](const FunctionResolver& func) -> Task<nlohmann::json> {
+                co_return co_await Resolve(rootResolver, func(args), {}, selectionSet, typeName, schemaDefinition,
+                                           fragments, variables, fieldErrors, path);
+            },
+            [&](const AsyncFunctionResolver& func) -> Task<nlohmann::json> {
+                co_return co_await Resolve(rootResolver, func(args).get(), {}, selectionSet, typeName,
+                                           schemaDefinition, fragments, variables, fieldErrors, path);
+            },
+            [&](const CoroutineResolver& func) -> Task<nlohmann::json> {
+                co_return co_await Resolve(rootResolver, co_await func(args), {}, selectionSet, typeName,
+                                           schemaDefinition, fragments, variables, fieldErrors, path);
+            },
+            [&](const CallbackResolver& func) -> Task<nlohmann::json> {
+                promise<ValueResolver> p;
+                func(args, [&p](const auto& res) { p.set_value(res); });
+                co_return co_await Resolve(rootResolver, p.get_future().get(), {}, selectionSet, typeName,
+                                           schemaDefinition, fragments, variables, fieldErrors, path);
+            },
+            [&](const TypeResolver&) -> Task<nlohmann::json> { co_return nullptr; }
          },
          resolver);
 }
@@ -189,6 +242,7 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                 auto fieldTypeName = FieldTypeName(resolverType, field.name, args.schemaDefinition);
                 try {
                     data[outputKey] = co_await Resolve(
+                         args.resolvers,
                          fieldResolvers.at(field.name),
                          ResolverArgs{
                              .args = ResolveArguments(field.arguments, args.variables)
