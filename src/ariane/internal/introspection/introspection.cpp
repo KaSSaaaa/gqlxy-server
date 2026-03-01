@@ -1,5 +1,5 @@
 #include "introspection.h"
-#include <ariane/internal/introspection/types/Document.h>
+#include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/ranges.h>
 #include <ranges>
@@ -473,8 +473,8 @@ static auto builtinScalarsMap = to_map(builtInScalars | views::transform([](cons
     return make_pair(typeDef.name, typeDef);
 }));
 
-static string resolveKind(const string& typeName, const Document& doc) {
-    if (doc.types.contains(typeName)) return doc.types.at(typeName).kind._to_string();
+static string resolveKind(const string& typeName, const SchemaDefinition& schemaDefinition) {
+    if (schemaDefinition.types.contains(typeName)) return schemaDefinition.types.at(typeName).kind._to_string();
     if (builtinScalarsMap.contains(typeName))
         return "SCALAR";
 
@@ -483,13 +483,13 @@ static string resolveKind(const string& typeName, const Document& doc) {
     return "OBJECT";
 }
 
-Resolver CreateTypeRefResolver(const TypeRef& typeRef, const Document& doc) {
+Resolver CreateTypeRefResolver(const TypeRef& typeRef, const SchemaDefinition& schemaDefinition) {
     if (typeRef.kind._value == TypeRefKind::NON_NULL) {
         return Resolver {
             {"kind", "NON_NULL"},
             {"name", nullopt},
-            {"ofType", [ofType = typeRef.ofType, &doc]() {
-                return ofType != nullptr ? make_optional(CreateTypeRefResolver(*ofType, doc)) : nullopt;
+            {"ofType", [ofType = typeRef.ofType, &schemaDefinition](const auto&) {
+                return ofType != nullptr ? make_optional(CreateTypeRefResolver(*ofType, schemaDefinition)) : nullopt;
             }}
         };
     }
@@ -497,14 +497,14 @@ Resolver CreateTypeRefResolver(const TypeRef& typeRef, const Document& doc) {
         return Resolver {
             {"kind", "LIST"},
             {"name", nullopt},
-            {"ofType", [ofType = typeRef.ofType, &doc]() {
-                return ofType != nullptr ? make_optional(CreateTypeRefResolver(*ofType, doc)) : nullopt;
+            {"ofType", [ofType = typeRef.ofType, &schemaDefinition](const auto&) {
+                return ofType != nullptr ? make_optional(CreateTypeRefResolver(*ofType, schemaDefinition)) : nullopt;
             }}
         };
     }
 
     return Resolver {
-        {"kind", resolveKind(typeRef.name, doc)},
+        {"kind", resolveKind(typeRef.name, schemaDefinition)},
         {"name", typeRef.name},
         {"ofType", monostate{}}
     };
@@ -522,11 +522,11 @@ static optional<string> DeprecationReason(const optional<DeprecationInfo>& depre
     });
 }
 
-Resolver CreateInputValueResolver(const InputValueDefinition& input, const Document& doc) {
+Resolver CreateInputValueResolver(const InputValueDefinition& input, const SchemaDefinition& schemaDefinition) {
     return Resolver {
         {"name", input.name},
         {"description", input.description},
-        {"type", [input, &doc]() { return CreateTypeRefResolver(input.type, doc); }},
+        {"type", [input, &schemaDefinition](const auto&) { return CreateTypeRefResolver(input.type, schemaDefinition); }},
         {"defaultValue", input.defaultValue}
     };
 }
@@ -540,60 +540,60 @@ Resolver CreateEnumValueResolver(const EnumValueDefinition& enumValue) {
     };
 }
 
-Resolver CreateFieldResolver(const FieldDefinition& field, const Document& doc) {
+Resolver CreateFieldResolver(const FieldDefinition& field, const SchemaDefinition& schemaDefinition) {
     return Resolver {
         {"name", field.name},
         {"description", field.description},
-        {"type", CreateTypeRefResolver(field.type, doc)},
+        {"type", CreateTypeRefResolver(field.type, schemaDefinition)},
         {"isDeprecated", IsDeprecated(field.deprecation)},
         {"deprecationReason", DeprecationReason(field.deprecation)},
-        {"args", [args = field.args, &doc]() {
-            return to_vector(args | views::transform([&doc](const auto& a) -> ValueResolver {
-                return CreateInputValueResolver(a, doc);
+        {"args", [args = field.args, &schemaDefinition](const auto&) {
+            return to_vector(args | views::transform([&schemaDefinition](const auto& a) -> ValueResolver {
+                return CreateInputValueResolver(a, schemaDefinition);
             }));
         }}
     };
 }
 
-Resolver CreateDirectiveResolver(const DirectiveDefinition& directive, const Document& doc) {
+Resolver CreateDirectiveResolver(const DirectiveDefinition& directive, const SchemaDefinition& schemaDefinition) {
     return Resolver {
         {"name", directive.name},
         {"description", directive.description},
         {"isRepeatable", directive.isRepeatable},
-        {"locations", [locations = directive.locations]() {
+        {"locations", [locations = directive.locations](const auto&) {
             return to_vector(locations | views::transform([](const auto& location) -> ValueResolver {
                 return location._to_string();
             }));
         }},
-        {"args", [args = directive.args, &doc]() {
-            return to_vector(args | views::transform([&doc](const auto& a) -> ValueResolver {
-                return CreateInputValueResolver(a, doc);
+        {"args", [args = directive.args, &schemaDefinition](const auto&) {
+            return to_vector(args | views::transform([&schemaDefinition](const auto& a) -> ValueResolver {
+                return CreateInputValueResolver(a, schemaDefinition);
             }));
         }}
     };
 }
 
-Resolver CreateTypeResolver(const TypeDefinition& type, const Document& doc) {
+Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& schemaDefinition) {
     return Resolver {
         {"kind", string(type.kind._to_string())},
         {"name", type.name},
         {"description", type.description},
-        {"fields", [type, &doc]() -> ValueResolver {
+        {"fields", [type, &schemaDefinition](const auto&) -> ValueResolver {
             switch (type.kind._value) {
                 case TypeKind::OBJECT:
                 case TypeKind::INTERFACE: {
-                    return to_vector(type.fields | views::transform([&doc](const auto& field) -> ValueResolver {
-                        return CreateFieldResolver(field, doc);
+                    return to_vector(type.fields | views::transform([&schemaDefinition](const auto& field) -> ValueResolver {
+                        return CreateFieldResolver(field, schemaDefinition);
                     }));
                 }
                 default:
                     return monostate{};
             }
         }},
-        {"interfaces", [type, &doc]() -> ValueResolver {
+        {"interfaces", [type, &schemaDefinition](const auto&) -> ValueResolver {
             if (type.kind._value == TypeKind::OBJECT) {
-                return to_vector(type.interfaces | views::transform([&doc](const auto& interface) -> ValueResolver {
-                    return CreateTypeRefResolver(TypeRef::Named(interface), doc);
+                return to_vector(type.interfaces | views::transform([&schemaDefinition](const auto& interface) -> ValueResolver {
+                    return CreateTypeRefResolver(TypeRef::Named(interface), schemaDefinition);
                 }));
             }
             if (type.kind._value == TypeKind::INTERFACE) {
@@ -601,23 +601,23 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const Document& doc) {
             }
             return monostate{};
         }},
-        {"possibleTypes", [type, &doc]() -> ValueResolver {
+        {"possibleTypes", [type, &schemaDefinition](const auto&) -> ValueResolver {
             switch (type.kind._value) {
                 case TypeKind::INTERFACE: {
-                    return to_vector(type.possibleTypes | views::transform([&doc](const auto& pt) -> ValueResolver {
-                        return CreateTypeRefResolver(TypeRef::Named(pt), doc);
+                    return to_vector(type.possibleTypes | views::transform([&schemaDefinition](const auto& pt) -> ValueResolver {
+                        return CreateTypeRefResolver(TypeRef::Named(pt), schemaDefinition);
                     }));
                 }
                 case TypeKind::UNION: {
-                    return to_vector(type.unionTypes | views::transform([&doc](const auto& ut) -> ValueResolver {
-                        return CreateTypeRefResolver(TypeRef::Named(ut), doc);
+                    return to_vector(type.unionTypes | views::transform([&schemaDefinition](const auto& ut) -> ValueResolver {
+                        return CreateTypeRefResolver(TypeRef::Named(ut), schemaDefinition);
                     }));
                 }
                 default:
                     return monostate{};
             }
         }},
-        {"enumValues", [type]() -> ValueResolver {
+        {"enumValues", [type](const auto&) -> ValueResolver {
             if (type.kind._value != TypeKind::ENUM)
                 return monostate{};
 
@@ -625,12 +625,12 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const Document& doc) {
                 return CreateEnumValueResolver(enumValue);
             }));
         }},
-        {"inputFields", [type, &doc]() -> ValueResolver {
+        {"inputFields", [type, &schemaDefinition](const auto&) -> ValueResolver {
             if (type.kind._value != TypeKind::INPUT_OBJECT)
                 return monostate{};
 
-            return to_vector(type.inputFields | views::transform([&doc](const auto& field) -> ValueResolver {
-                return CreateInputValueResolver(field, doc);
+            return to_vector(type.inputFields | views::transform([&schemaDefinition](const auto& field) -> ValueResolver {
+                return CreateInputValueResolver(field, schemaDefinition);
             }));
         }}
     };
@@ -641,36 +641,36 @@ static void collectTypeName(
     const string& typeName,
     unordered_set<string>& visited,
     vector<string>& result,
-    const Document& doc
+    const SchemaDefinition& schemaDefinition
 ) {
     if (visited.contains(typeName)) return;
     visited.insert(typeName);
     result.push_back(typeName);
 
-    if (!doc.types.contains(typeName)) return; // built-in or unknown: no further DFS
-    const auto& type = doc.types.at(typeName);
+    if (!schemaDefinition.types.contains(typeName)) return; // built-in or unknown: no further DFS
+    const auto& type = schemaDefinition.types.at(typeName);
 
     for (const auto& iface : type.interfaces)
-        collectTypeName(iface, visited, result, doc);
+        collectTypeName(iface, visited, result, schemaDefinition);
     for (const auto& ut : type.unionTypes)
-        collectTypeName(ut, visited, result, doc);
+        collectTypeName(ut, visited, result, schemaDefinition);
     for (const auto& f : type.inputFields)
-        collectTypeName(f.type.typeName(), visited, result, doc);
+        collectTypeName(f.type.typeName(), visited, result, schemaDefinition);
     for (const auto& field : type.fields) {
-        collectTypeName(field.type.typeName(), visited, result, doc);
+        collectTypeName(field.type.typeName(), visited, result, schemaDefinition);
         for (const auto& arg : field.args)
-            collectTypeName(arg.type.typeName(), visited, result, doc);
+            collectTypeName(arg.type.typeName(), visited, result, schemaDefinition);
     }
 }
 
-static vector<string> buildTypeOrder(const Document& doc) {
-    auto sortedNames = to_set(doc.types | views::keys);
+static vector<string> buildTypeOrder(const SchemaDefinition& schemaDefinition) {
+    auto sortedNames = to_set(schemaDefinition.types | views::keys);
     unordered_set<string> visited(sortedNames.begin(), sortedNames.end());
     vector<string> result;
 
     for (const auto& name : sortedNames) {
         visited.erase(name); // unmark so DFS will process it
-        collectTypeName(name, visited, result, doc);
+        collectTypeName(name, visited, result, schemaDefinition);
     }
 
     for (const auto& name : introspectionTypeNames) {
@@ -683,48 +683,48 @@ static vector<string> buildTypeOrder(const Document& doc) {
     return result;
 }
 
-static optional<TypeDefinition> GetTypeDefinition(const Document& doc, const string& name) {
-    if (doc.types.contains(name)) return doc.types.at(name);
+static optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schemaDefinition, const string& name) {
+    if (schemaDefinition.types.contains(name)) return schemaDefinition.types.at(name);
     if (builtinScalarsMap.contains(name)) return builtinScalarsMap.at(name);
     if (introspectionTypeMap.contains(name)) return introspectionTypeMap.at(name);
     return nullopt;
 }
 
-Resolver CreateSchemaResolver(const Document& doc) {
-    auto orderedTypes = to_vector(buildTypeOrder(doc)
-        | views::filter([&doc](const auto& type) { return GetTypeDefinition(doc, type).has_value(); })
-        | views::transform([&doc](const auto& type) { return GetTypeDefinition(doc, type); }));
+Resolver CreateSchemaResolver(const SchemaDefinition& schemaDefinition) {
+    auto orderedTypes = to_vector(buildTypeOrder(schemaDefinition)
+        | views::filter([&schemaDefinition](const auto& type) { return GetTypeDefinition(schemaDefinition, type).has_value(); })
+        | views::transform([&schemaDefinition](const auto& type) { return GetTypeDefinition(schemaDefinition, type); }));
 
-    vector<DirectiveDefinition> allDirectives = doc.directives;
+    vector<DirectiveDefinition> allDirectives = schemaDefinition.directives;
     ranges::copy(builtInDirectives, back_inserter(allDirectives));
 
     return Resolver {
-        {"queryType", and_then(doc.queryTypeName, [](const auto& name) {
+        {"queryType", and_then(schemaDefinition.queryTypeName, [](const auto& name) {
             return Resolver{
                 {"name", name},
                 {"kind", "OBJECT"}
             };
         })},
-        {"mutationType", and_then(doc.mutationTypeName, [](const auto& name) {
+        {"mutationType", and_then(schemaDefinition.mutationTypeName, [](const auto& name) {
             return Resolver{
                 {"name", name},
                 {"kind", "OBJECT"}
             };
         })},
-        {"subscriptionType", and_then(doc.subscriptionTypeName, [](const auto& name) {
+        {"subscriptionType", and_then(schemaDefinition.subscriptionTypeName, [](const auto& name) {
             return Resolver{
                 {"name", name},
                 {"kind", "OBJECT"}
             };
         })},
-        {"directives", [allDirectives, &doc]() {
-            return to_vector(allDirectives | views::transform([&doc](const auto& d) -> ValueResolver {
-                return CreateDirectiveResolver(d, doc);
+        {"directives", [allDirectives, &schemaDefinition](const auto&) {
+            return to_vector(allDirectives | views::transform([&schemaDefinition](const auto& d) -> ValueResolver {
+                return CreateDirectiveResolver(d, schemaDefinition);
             }));
         }},
-        {"types", [orderedTypes, &doc]() {
-            return to_vector(orderedTypes | views::transform([&doc](const auto& type) -> ValueResolver {
-                return CreateTypeResolver(type.value(), doc);
+        {"types", [orderedTypes, &schemaDefinition](const auto&) {
+            return to_vector(orderedTypes | views::transform([&schemaDefinition](const auto& type) -> ValueResolver {
+                return CreateTypeResolver(type.value(), schemaDefinition);
             }));
         }}
     };

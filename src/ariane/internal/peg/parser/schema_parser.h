@@ -13,9 +13,9 @@ class ast_node;
 }
 
 namespace ariane::graphql::internal {
-struct Document;
+struct SchemaDefinition;
 
-std::shared_ptr<Document> ParseTypeDefs(const std::string& typeDefs);
+std::shared_ptr<SchemaDefinition> ParseSchemaDefinition(const std::string& typeDefs);
 TypeRef ParseTypeRef(const ::graphql::peg::ast_node& node);
 InputValueDefinition ParseInputValue(const ::graphql::peg::ast_node& node);
 EnumValueDefinition ParseEnumValue(const ::graphql::peg::ast_node& node);

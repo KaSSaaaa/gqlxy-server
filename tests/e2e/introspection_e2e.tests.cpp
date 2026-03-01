@@ -29,10 +29,12 @@ protected:
             }
         });
 
-        auto result = schema.Resolve(readFile(INTROSPECTION_QUERY_PATH)).get();
-        ASSERT_TRUE(result.errors.empty()) << "Unexpected errors: " << result.errors;
+        auto result = schema.Resolve({
+            .query = readFile(INTROSPECTION_QUERY_PATH)
+        }).get();
+        ASSERT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value();
 
-        _data     = json::parse(result.data);
+        _data     = json::parse(result.data.value());
         _schema   = _data["__schema"];
         _expected = json::parse(readFile(INTROSPECTION_RESULT_PATH))["__schema"];
     }

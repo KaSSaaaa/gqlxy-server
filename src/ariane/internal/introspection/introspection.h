@@ -4,7 +4,7 @@
 #include <ariane/schema.h>
 
 namespace ariane::graphql::internal {
-struct Document;
+struct SchemaDefinition;
 struct DirectiveDefinition;
 struct EnumValueDefinition;
 struct FieldDefinition;
@@ -12,12 +12,12 @@ struct InputValueDefinition;
 struct TypeDefinition;
 struct TypeRef;
 
-Resolver CreateSchemaResolver(const internal::Document& schema);
-Resolver CreateTypeResolver(const internal::TypeDefinition& type, const internal::Document& schema);
-Resolver CreateFieldResolver(const internal::FieldDefinition& field, const internal::Document& schema);
-Resolver CreateInputValueResolver(const internal::InputValueDefinition& input, const internal::Document& schema);
-Resolver CreateEnumValueResolver(const internal::EnumValueDefinition& enumValue);
-Resolver CreateTypeRefResolver(const internal::TypeRef& typeRef, const internal::Document& schema);
-Resolver CreateDirectiveResolver(const internal::DirectiveDefinition& directive, const internal::Document& schema);
+Resolver CreateSchemaResolver(const SchemaDefinition& schema);
+Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& schema);
+Resolver CreateFieldResolver(const FieldDefinition& field, const SchemaDefinition& schema);
+Resolver CreateInputValueResolver(const InputValueDefinition& input, const SchemaDefinition& schema);
+Resolver CreateEnumValueResolver(const EnumValueDefinition& enumValue);
+Resolver CreateTypeRefResolver(const TypeRef& typeRef, const SchemaDefinition& schema);
+Resolver CreateDirectiveResolver(const DirectiveDefinition& directive, const SchemaDefinition& schema);
 
 }

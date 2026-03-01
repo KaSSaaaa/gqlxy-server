@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ariane/task.h>
+#include <nlohmann/json.hpp>
 #include <functional>
 #include <future>
 #include <list>
@@ -14,11 +15,15 @@ namespace ariane::graphql {
 
 struct ValueResolver;
 
+struct ResolverArgs {
+    nlohmann::json args = nlohmann::json::object();
+};
+
 using Resolver = std::unordered_map<std::string, ValueResolver>;
-using FunctionResolver = std::function<ValueResolver()>;
-using AsyncFunctionResolver = std::function<std::future<ValueResolver>()>;
-using CoroutineResolver = std::function<Task<ValueResolver>()>;
-using CallbackResolver = std::function<void(const std::function<void(const ValueResolver&)>&)>;
+using FunctionResolver = std::function<ValueResolver(const ResolverArgs&)>;
+using AsyncFunctionResolver = std::function<std::future<ValueResolver>(const ResolverArgs&)>;
+using CoroutineResolver = std::function<Task<ValueResolver>(const ResolverArgs&)>;
+using CallbackResolver = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 
 struct ValueResolver : std::variant<int,
@@ -48,5 +53,7 @@ struct ValueResolver : std::variant<int,
     template <typename T>
     ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
 };
+
+void MergeResolvers(Resolver& left, const Resolver& right);
 
 }

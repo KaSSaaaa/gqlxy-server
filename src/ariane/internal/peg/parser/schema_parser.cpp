@@ -1,6 +1,6 @@
-#include "parser.h"
+#include "schema_parser.h"
 
-#include <ariane/internal/introspection/types/Document.h>
+#include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/peg/first_node.h>
 #include <ariane/internal/peg/transform_children.h>
 #include <ariane/internal/utils/optional.h>
@@ -299,54 +299,54 @@ optional<TypeDefinition> ParseType(const peg::ast_node& node) {
     return nullopt;
 }
 
-void ParseSchemaDefinition(shared_ptr<Document> doc, const unique_ptr<peg::ast_node>& node) {
-    peg::for_each_child<peg::root_operation_definition>(*node, [doc](const auto& operationDefinition) {
+void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefinition, const unique_ptr<peg::ast_node>& node) {
+    peg::for_each_child<peg::root_operation_definition>(*node, [schemaDefinition](const auto& operationDefinition) {
         auto operationType = and_then(first_node<peg::operation_type>(operationDefinition),
             [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
         auto operationTypeName = and_then(first_node<peg::named_type>(operationDefinition),
             [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
 
         if (operationType == "query")
-            doc->queryTypeName = operationTypeName;
+            schemaDefinition->queryTypeName = operationTypeName;
         else if (operationType == "mutation")
-            doc->mutationTypeName = operationTypeName;
+            schemaDefinition->mutationTypeName = operationTypeName;
         else if (operationType == "subscription")
-            doc->subscriptionTypeName = operationTypeName;
+            schemaDefinition->subscriptionTypeName = operationTypeName;
     });
 }
 
-shared_ptr<Document> ParseTypeDefs(const string& typeDefs) {
-    auto doc = make_shared<Document>();
+shared_ptr<SchemaDefinition> ParseSchemaDefinition(const string& typeDefs) {
+    auto schemaDefinition = make_shared<SchemaDefinition>();
 
     try {
         auto ast = peg::parseSchemaString(typeDefs);
 
         if (!ast.root) {
-            return doc;
+            return schemaDefinition;
         }
 
         for (const auto& node : ast.root->children) {
             if (node->is_type<peg::schema_definition>()) {
-                ParseSchemaDefinition(doc, node);
+                ParseSchemaDefinition(schemaDefinition, node);
             } else if (node->is_type<peg::directive_definition>()) {
-                doc->directives.push_back(ParseDirective(*node));
+                schemaDefinition->directives.push_back(ParseDirective(*node));
             } else {
-                and_then(ParseType(*node), [doc](const auto& typeDef) {
-                    return doc->types[typeDef.name] = typeDef;
+                and_then(ParseType(*node), [schemaDefinition](const auto& typeDef) {
+                    return schemaDefinition->types[typeDef.name] = typeDef;
                 });
             }
         }
 
-        for (const auto& [name, type] : doc->types) {
+        for (const auto& [name, type] : schemaDefinition->types) {
             for (const auto& interface : type.interfaces) {
-                doc->types[interface].possibleTypes.push_back(name);
+                schemaDefinition->types[interface].possibleTypes.push_back(name);
             }
         }
 
     } catch (const exception&) {
     }
 
-    return doc;
+    return schemaDefinition;
 }
 
 }

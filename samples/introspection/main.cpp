@@ -33,28 +33,55 @@ int main() {
 
     Schema schema({
         .typeDefs  = readFile(SCHEMA_TODAY_PATH),
-        .resolvers = {{"Query", Resolver{{"__typename", "Query"}}}}
+        .resolvers = {
+            {"Query", Resolver{}}
+        }
     });
 
-    const string query = readFile(INTROSPECTION_QUERY_PATH);
+    auto result = schema.Resolve({
+        .query = readFile(INTROSPECTION_QUERY_PATH),
+    }).get();
 
-    auto result = schema.Resolve(query).get();
+    if (result.errors.has_value()) {
+        cerr << "Errors: " << result.errors.value() << endl;
+        return 1;
+    }
 
-    if (!result.errors.empty()) {
-        cerr << "Errors: " << result.errors << endl;
+    auto __type = schema.Resolve({
+        .query = R"(
+            query GetType($typename: String!) {
+                __type(name: $typename) {
+                    kind
+                    name
+                }
+            }
+        )",
+        .variables = {
+            {"typename", "Node"}
+        }
+    }).get();
+
+    if (result.errors.has_value()) {
+        cerr << "Errors: " << result.errors.value() << endl;
+        return 1;
+    }
+
+    if (__type.errors.has_value()) {
+        cerr << "Errors: " << result.errors.value() << endl;
         return 1;
     }
 
     try {
-        auto jsonData = json::parse(result.data).dump(2);
+        auto jsonData = json::parse(result.data.value()).dump(2);
         auto jsonResult = json::parse(readFile(RESULT_PATH)).dump(2);
         writeFile(OUTPUT_PATH, jsonData.data());
         cout << jsonData << endl;
         cout << "========" << endl;
         cout << "Are results equal : " << std::boolalpha << (jsonData == jsonResult) << endl;
+        cout << json::parse(__type.data.value()).dump(2) << endl;
     } catch (const json::parse_error& e) {
         cerr << "JSON parse error: " << e.what() << endl;
-        cerr << "Raw: " << result.data << endl;
+        cerr << "Raw: " << result.data.value() << endl;
         return 1;
     }
 

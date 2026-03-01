@@ -10,7 +10,7 @@
 
 namespace ariane::graphql::internal {
 
-struct Document {
+struct SchemaDefinition {
     std::map<std::string, TypeDefinition> types;
     std::vector<DirectiveDefinition> directives;
     std::optional<std::string> queryTypeName;

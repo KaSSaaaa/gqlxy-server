@@ -1,5 +1,6 @@
 #include <ariane/internal/introspection/introspection.h>
-#include <ariane/internal/introspection/types/Document.h>
+#include <ariane/internal/introspection/types/SchemaDefinition.h>
+#include <ariane/internal/peg/parser/schema_parser.h>
 #include <ariane/schema.h>
 #include <gtest/gtest.h>
 
@@ -9,45 +10,31 @@ using namespace ariane::graphql::internal;
 
 class IntrospectionTests : public testing::Test {
 protected:
-    Document _emptySchema;
+    SchemaDefinition _emptySchema;
 };
 
 TEST_F(IntrospectionTests, CreatesSchemaResolver) {
-    Schema schema(SchemaOptions{
-        .typeDefs = R"(
-            type Query {
-                hello: String
-            }
-        )",
-        .resolvers = {
-            {"Query", Resolver{
-                {"hello", "world"}
-            }}
-        }});
-
-    auto schemaResolver = CreateSchemaResolver(schema.GetDocument());
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        type Query {
+            hello: String
+        }
+    )");
+    auto schemaResolver = CreateSchemaResolver(*schemaDefinition);
     ASSERT_FALSE(schemaResolver.empty());
     ASSERT_TRUE(schemaResolver.contains("types"));
 }
 
 TEST_F(IntrospectionTests, SchemaHasTypes) {
-    Schema schema(SchemaOptions{
-        .typeDefs = R"(
-            type Query {
-                hello: String
-            }
-            type User {
-                id: ID!
-                name: String!
-            }
-        )",
-        .resolvers = {
-            {"Query", Resolver{
-                {"hello", "world"}
-            }}
-        }});
-
-    auto schemaResolver = CreateSchemaResolver(schema.GetDocument());
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        type Query {
+            hello: String
+        }
+        type User {
+            id: ID!
+            name: String!
+        }
+    )");
+    auto schemaResolver = CreateSchemaResolver(*schemaDefinition);
     ASSERT_FALSE(schemaResolver.empty());
     ASSERT_TRUE(schemaResolver.contains("types"));
 }

@@ -62,14 +62,14 @@ TEST(Resolvers, SupportsOptionalTypes) {
 }
 
 TEST(Resolvers, SupportsFunctionResolvers) {
-    auto funcResolver = []() -> ValueResolver { return 42; };
+    auto funcResolver = [](const auto&) -> ValueResolver { return 42; };
 
     ValueResolver resolver(funcResolver);
     EXPECT_TRUE(holds_alternative<FunctionResolver>(resolver));
 }
 
 TEST(Resolvers, SupportsAsyncFunctionResolvers) {
-    auto asyncResolver = []() -> future<ValueResolver> {
+    auto asyncResolver = [](const ResolverArgs&) -> future<ValueResolver> {
         return async(launch::async, []() -> ValueResolver { return 42; });
     };
 
@@ -78,20 +78,20 @@ TEST(Resolvers, SupportsAsyncFunctionResolvers) {
 }
 
 TEST(Resolvers, SupportsCoroutineResolvers) {
-    auto coroutineResolver = []() -> Task<ValueResolver> { co_return 42; };
+    auto coroutineResolver = [](const ResolverArgs&) -> Task<ValueResolver> { co_return 42; };
 
     ValueResolver resolver(coroutineResolver);
     EXPECT_TRUE(holds_alternative<CoroutineResolver>(resolver));
 
     auto& func = get<CoroutineResolver>(resolver);
-    auto task = func();
+    auto task = func(ResolverArgs{});
     ValueResolver result = task.get();
     EXPECT_TRUE(holds_alternative<int>(result));
     EXPECT_EQ(get<int>(result), 42);
 }
 
 TEST(Resolvers, SupportsCallbackResolvers) {
-    auto callbackResolver = [](const function<void(const ValueResolver&)>& callback) {
+    auto callbackResolver = [](const ResolverArgs&, const function<void(const ValueResolver&)>& callback) {
         callback(42);
     };
 
@@ -100,7 +100,7 @@ TEST(Resolvers, SupportsCallbackResolvers) {
 
     auto& func = get<CallbackResolver>(resolver);
     ValueResolver result;
-    func([&result](const ValueResolver& value) {
+    func(ResolverArgs{}, [&result](const ValueResolver& value) {
         result = value;
     });
     EXPECT_TRUE(holds_alternative<int>(result));
@@ -112,7 +112,7 @@ TEST(Resolvers, SupportsOptionalFunctionForNullables) {
         return nullopt;
     };
 
-    auto wrappedResolver = [optFunc]() -> ValueResolver {
+    auto wrappedResolver = [optFunc](const ResolverArgs&) -> ValueResolver {
         auto result = optFunc();
         return result.value_or(monostate{});
     };
@@ -121,7 +121,7 @@ TEST(Resolvers, SupportsOptionalFunctionForNullables) {
     EXPECT_TRUE(holds_alternative<FunctionResolver>(resolver));
 
     auto& func = get<FunctionResolver>(resolver);
-    ValueResolver result = func();
+    ValueResolver result = func(ResolverArgs{});
     EXPECT_TRUE(holds_alternative<monostate>(result));
 }
 

@@ -22,9 +22,11 @@ protected:
                         const string& query) {
         Schema schema({.typeDefs  = typeDefs,
                        .resolvers = {{"Query", std::move(queryResolvers)}}});
-        auto result = schema.Resolve(query).get();
-        EXPECT_TRUE(result.errors.empty()) << "Unexpected errors: " << result.errors;
-        return json::parse(result.data);
+        auto result = schema.Resolve({
+            .query = query
+        }).get();
+        EXPECT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value();
+        return json::parse(result.data.value());
     }
 };
 
@@ -198,33 +200,36 @@ TEST_F(ResolveTest, ResolvesEmptyList) {
 
 TEST_F(ResolveTest, ResolvesFunctionResolver) {
     auto data = resolve("type Query { hello: String }",
-                        {{"hello", []() -> ValueResolver { return "from fn"; }}},
+                        {{"hello", FunctionResolver([](const ResolverArgs&) { return "from fn"; })}},
                         "query { hello }");
     EXPECT_EQ(data["hello"], "from fn");
 }
 
 TEST_F(ResolveTest, ResolvesAsyncFunctionResolver) {
     auto data = resolve("type Query { hello: String }",
-                        {{"hello", []() {
-                              return async(launch::async,
-                                          []() -> ValueResolver { return "async"; });
-                          }}},
+                        {{"hello", AsyncFunctionResolver([](const ResolverArgs&) {
+                            return async(launch::async, []() -> ValueResolver {
+                                return "async";
+                            });
+                        })}},
                         "query { hello }");
     EXPECT_EQ(data["hello"], "async");
 }
 
 TEST_F(ResolveTest, ResolvesCoroutineResolver) {
     auto data = resolve("type Query { hello: String }",
-                        {{"hello", []() -> Task<ValueResolver> { co_return "coroutine"; }}},
+                        {{"hello", CoroutineResolver([](const ResolverArgs&) -> Task<ValueResolver> {
+                            co_return "coroutine";
+                        })}},
                         "query { hello }");
     EXPECT_EQ(data["hello"], "coroutine");
 }
 
 TEST_F(ResolveTest, ResolvesCallbackResolver) {
     auto data = resolve("type Query { hello: String }",
-                        {{"hello", [](const function<void(const ValueResolver&)>& cb) {
-                              cb("callback");
-                          }}},
+                        {{"hello", CallbackResolver([](const ResolverArgs&, const function<void(const ValueResolver&)>& cb) {
+                            cb("callback");
+                        })}},
                         "query { hello }");
     EXPECT_EQ(data["hello"], "callback");
 }
@@ -234,10 +239,10 @@ TEST_F(ResolveTest, ResolvesFunctionReturningNestedObject) {
         type Query { user: User }
         type User { id: Int }
     )",
-                        {{"user", []() -> ValueResolver {
-                              return Resolver{{"id", 99}};
-                          }}},
-                        "query { user { id } }");
+    {{"user", FunctionResolver([](const ResolverArgs&) {
+        return Resolver{{"id", 99}};
+    })}}, "query { user { id } }");
+
     EXPECT_EQ(data["user"]["id"], 99);
 }
 
@@ -251,4 +256,103 @@ TEST_F(ResolveTest, ResolvesMultipleRootFields) {
                         "query { a b }");
     EXPECT_EQ(data["a"], "hello");
     EXPECT_EQ(data["b"], 42);
+}
+
+// ---------------------------------------------------------------------------
+// Shorthand / anonymous queries (#1)
+// ---------------------------------------------------------------------------
+
+TEST_F(ResolveTest, ResolvesShorthandQuery) {
+    auto data = resolve("type Query { hello: String }",
+                        {{"hello", "world"}},
+                        "{ hello }");
+    EXPECT_EQ(data["hello"], "world");
+}
+
+// ---------------------------------------------------------------------------
+// Field arguments (#2)
+// ---------------------------------------------------------------------------
+
+TEST_F(ResolveTest, PassesIntArgToResolver) {
+    auto data = resolve("type Query { square(x: Int!): Int }",
+                        {{"square", FunctionResolver([](const ResolverArgs& a) {
+                            return a.args["x"].get<int>() * a.args["x"].get<int>();
+                        })}},
+                        "query { square(x: 5) }");
+    EXPECT_EQ(data["square"], 25);
+}
+
+TEST_F(ResolveTest, PassesStringArgToResolver) {
+    auto data = resolve("type Query { greet(name: String!): String }",
+                        {{"greet", FunctionResolver([](const ResolverArgs& a) {
+                            return "Hello, " + a.args["name"].get<string>();
+                        })}},
+                        R"(query { greet(name: "Alice") })");
+    EXPECT_EQ(data["greet"], "Hello, Alice");
+}
+
+TEST_F(ResolveTest, PassesBoolArgToResolver) {
+    auto data = resolve("type Query { flag(on: Boolean!): Boolean }",
+                        {{"flag", FunctionResolver([](const ResolverArgs& a) {
+                            return a.args["on"].get<bool>();
+                        })}},
+                        "query { flag(on: true) }");
+    EXPECT_EQ(data["flag"], true);
+}
+
+TEST_F(ResolveTest, PassesMultipleArgsToResolver) {
+    auto data = resolve("type Query { add(a: Int!, b: Int!): Int }",
+                        {{"add", FunctionResolver([](const ResolverArgs& r) {
+                            return r.args["a"].get<int>() + r.args["b"].get<int>();
+                        })}},
+                        "query { add(a: 3, b: 4) }");
+    EXPECT_EQ(data["add"], 7);
+}
+
+// ---------------------------------------------------------------------------
+// Variable substitution (#3)
+// ---------------------------------------------------------------------------
+
+TEST_F(ResolveTest, SubstitutesVariableInArgument) {
+    Schema schema({
+        .typeDefs  = "type Query { echo(msg: String!): String }",
+        .resolvers = {
+            {"Query", Resolver{
+                {"echo", FunctionResolver([](const ResolverArgs& a) {
+                    return a.args["msg"].get<string>();
+                })}
+            }}
+        }
+    });
+
+    auto result = schema.Resolve({
+        .query = R"(
+            query($msg: String!) { echo(msg: $msg) }
+        )",
+        .variables = {{"msg", "hello variables"}}
+    }).get();
+    ASSERT_FALSE(result.errors.has_value()) << result.errors.value();
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["echo"], "hello variables");
+}
+
+TEST_F(ResolveTest, SubstitutesIntVariable) {
+    Schema schema({
+        .typeDefs  = "type Query { double(n: Int!): Int }",
+        .resolvers = {
+            {"Query", Resolver{
+                {"double", FunctionResolver([](const ResolverArgs& a) {
+                    return a.args["n"].get<int>() * 2;
+                })}
+            }}
+        }
+    });
+
+    auto result = schema.Resolve({
+        .query = R"(query($n: Int!) { double(n: $n) })",
+        .variables = {{"n", 6}}
+    }).get();
+    ASSERT_FALSE(result.errors.has_value()) << result.errors.value();
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["double"], 12);
 }

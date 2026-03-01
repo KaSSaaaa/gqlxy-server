@@ -102,18 +102,20 @@ int main() {
         }
     )";
 
-    auto result = schema.Resolve(query).get();
+    auto result = schema.Resolve({
+        .query = query
+    }).get();
 
-    if (!result.errors.empty()) {
-        cerr << "Errors: " << result.errors << endl;
+    if (result.errors.has_value()) {
+        cerr << "Errors: " << result.errors.value() << endl;
         return 1;
     }
 
     try {
-        cout << json::parse(result.data).dump(2) << endl;
+        cout << json::parse(result.data.value()).dump(2) << endl;
     } catch (const json::parse_error& e) {
         cerr << "JSON parse error: " << e.what() << endl;
-        cerr << "Raw: " << result.data << endl;
+        cerr << "Raw: " << result.data.value() << endl;
         return 1;
     }
 

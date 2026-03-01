@@ -9,7 +9,7 @@
 namespace ariane::graphql {
 
 namespace internal {
-struct Document;
+struct SchemaDefinition;
 }
 
 struct SchemaOptions {
@@ -19,25 +19,27 @@ struct SchemaOptions {
 };
 
 struct ResolveResult {
-    std::string data;
-    std::string errors;
+    std::optional<std::string> data;
+    std::optional<std::string> errors;
+};
+
+struct SchemaResolveArgs {
+    std::string query;
+    nlohmann::json variables = nlohmann::json::object();
 };
 
 class Schema {
 public:
     explicit Schema(const SchemaOptions& options);
 
-    const internal::Document& GetDocument() const { return *_document; }
-    const Resolver& GetResolvers() const { return _resolvers; }
-
-    Task<ResolveResult> Resolve(const std::string& query,
-                          const std::unordered_map<std::string, std::string>& variables = {});
+    [[nodiscard]] Task<ResolveResult> Resolve(const SchemaResolveArgs& args) const;
 
 private:
-    std::shared_ptr<internal::Document> _document;
+    std::shared_ptr<internal::SchemaDefinition> _schemaDefinition;
     Resolver _resolvers;
 
     void InjectIntrospectionResolvers();
+    void AddToResolver(const std::string& resolverName, const Resolver& resolver);
 };
 
 }
