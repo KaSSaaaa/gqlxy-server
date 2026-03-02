@@ -18,34 +18,6 @@ using FragmentLookup = unordered_map<string, FragmentDefinition>;
 using FieldErrors = vector<FieldError>;
 using Path = vector<string>;
 
-static vector<Field> FlattenSelections(const SelectionSet& ss, const FragmentLookup& frags,
-                                       const optional<string>& concreteType = nullopt) {
-    vector<Field> fields;
-    for (const auto& sel : ss.selections) {
-        visit(overloaded{
-           [&](const Field& f) { fields.push_back(f); },
-           [&](const FragmentSpread& s) {
-               if (!frags.contains(s.name))
-                   return;
-               auto& fragment = frags.at(s.name);
-               if (concreteType && fragment.typeCondition != *concreteType)
-                   return;
-               auto nested = FlattenSelections(fragment.selectionSet, frags, concreteType);
-               fields.insert(fields.end(), nested.begin(), nested.end());
-           },
-           [&](const InlineFragment& i) {
-               if (!i.selectionSet)
-                   return;
-               if (concreteType && i.typeCondition.has_value() && *i.typeCondition != *concreteType)
-                   return;
-               auto nested = FlattenSelections(*i.selectionSet, frags, concreteType);
-               fields.insert(fields.end(), nested.begin(), nested.end());
-           },
-        }, sel);
-    }
-    return fields;
-}
-
 static nlohmann::json ResolveArguments(const vector<Argument>& args, const nlohmann::json& variables) {
     auto obj = nlohmann::json::object();
     for (const auto& arg : args) {
@@ -61,6 +33,70 @@ static nlohmann::json ResolveArguments(const vector<Argument>& args, const nlohm
         }
     }
     return obj;
+}
+
+static optional<ValueResolver> ApplyDirectives(const vector<Directive>& directives, const Directives& allDirectives,
+                                               const nlohmann::json& variables, const ValueResolver& value) {
+    auto current = make_optional(value);
+    for (const auto& d : directives) {
+        auto it = allDirectives.find(d.name);
+        if (it == allDirectives.end())
+            continue;
+        current = it->second(ResolverArgs{.args = ResolveArguments(d.args, variables)}, *current);
+        if (!current.has_value())
+            return nullopt;
+    }
+    return current;
+}
+
+static ValueResolver JsonToValueResolver(const nlohmann::json& j) {
+    if (j.is_null())    return monostate{};
+    if (j.is_boolean()) return j.get<bool>();
+    if (j.is_number_integer()) return j.get<int>();
+    if (j.is_number_float())   return j.get<double>();
+    if (j.is_string())  return j.get<string>();
+    return monostate{};
+}
+
+static vector<Field> FlattenSelections(const SelectionSet& ss, const FragmentLookup& frags,
+                                       const Directives& directives, const nlohmann::json& variables,
+                                       const optional<string>& concreteType = nullopt);
+
+static vector<Field> FragmentFields(const SelectionSet& selectionSet,
+                                    const vector<Directive>& fieldDirectives,
+                                    const Directives& directives,
+                                    const nlohmann::json& variables,
+                                    const FragmentLookup& frags,
+                                    const optional<string>& typeCondition,
+                                    const optional<string>& concreteType) {
+    if (!ApplyDirectives(fieldDirectives, directives, variables, monostate{}).has_value())
+        return {};
+    if (concreteType && typeCondition.has_value() && typeCondition.value() != *concreteType)
+        return {};
+    return FlattenSelections(selectionSet, frags, directives, variables, concreteType);
+}
+
+static vector<Field> FlattenSelections(const SelectionSet& ss, const FragmentLookup& frags,
+                                       const Directives& directives, const nlohmann::json& variables,
+                                       const optional<string>& concreteType) {
+    vector<Field> fields;
+    for (const auto& sel : ss.selections) {
+        visit(overloaded{
+           [&](const Field& f) { fields.push_back(f); },
+           [&](const FragmentSpread& s) {
+               if (!frags.contains(s.name))
+                   return;
+               auto& fragment = frags.at(s.name);
+               auto nested = FragmentFields(fragment.selectionSet, s.directives, directives, variables, frags, fragment.typeCondition, concreteType);
+               fields.insert(fields.end(), nested.begin(), nested.end());
+           },
+           [&](const InlineFragment& i) {
+               auto nested = FragmentFields(*i.selectionSet, i.directives, directives, variables, frags, i.typeCondition, concreteType);
+               fields.insert(fields.end(), nested.begin(), nested.end());
+           },
+        }, sel);
+    }
+    return fields;
 }
 
 static optional<string> ResolveType(const Resolver& rootResolver, const Resolver& current, const string& typeName) {
@@ -96,14 +132,12 @@ static string FieldTypeName(const string& typeName, const string& fieldName,
     return "";
 }
 
-Task<nlohmann::json> Resolve(const Resolver& rootResolver,
+Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                              const ValueResolver& resolver,
-                             const ResolverArgs& args,
+                             const ResolverArgs& resolverArgs,
                              const SelectionSet* selectionSet,
                              const string& typeName,
-                             const SchemaDefinition& schemaDefinition,
                              const FragmentLookup& fragments,
-                             const nlohmann::json& variables,
                              FieldErrors& fieldErrors,
                              Path path) {
     co_return co_await visit(
@@ -116,12 +150,12 @@ Task<nlohmann::json> Resolve(const Resolver& rootResolver,
             [](const string& v) -> Task<nlohmann::json> { co_return v; },
             [](monostate) -> Task<nlohmann::json> { co_return nullptr; },
             [&](const Resolver& currentResolver) -> Task<nlohmann::json> {
-                auto resolvedType = ResolveType(rootResolver, currentResolver, typeName);
+                auto resolvedType = ResolveType(args.resolvers, currentResolver, typeName);
                 auto obj = nlohmann::json::object();
                 if (selectionSet == nullptr)
                     co_return obj;
 
-                for (const auto& field : FlattenSelections(*selectionSet, fragments, resolvedType)) {
+                for (const auto& field : FlattenSelections(*selectionSet, fragments, args.directives, args.variables, resolvedType)) {
                     const auto& outputKey = field.alias.value_or(field.name);
                     if (field.name == "__typename") {
                         if (!resolvedType.has_value())
@@ -135,19 +169,31 @@ Task<nlohmann::json> Resolve(const Resolver& rootResolver,
                         if (!currentResolver.contains(field.name))
                             throw runtime_error("Unknown property " + field.name);
 
-                        obj[outputKey] = co_await Resolve(
-                            rootResolver,
+                        auto resolvedJson = co_await Resolve(
+                            args,
                             currentResolver.at(field.name),
                             ResolverArgs{
-                                .args = ResolveArguments(field.arguments, variables)
+                                .args = ResolveArguments(field.arguments, args.variables)
                             },
                             field.selectionSet.get(),
-                            FieldTypeName(typeName, field.name, schemaDefinition),
-                            schemaDefinition,
+                            FieldTypeName(typeName, field.name, args.schemaDefinition),
                             fragments,
-                            variables,
                             fieldErrors,
                             childPath);
+
+                        if (field.directives.empty()) {
+                            obj[outputKey] = resolvedJson;
+                            continue;
+                        }
+                        auto afterDirectives = ApplyDirectives(field.directives, args.directives, args.variables,
+                                                               JsonToValueResolver(resolvedJson));
+                        if (!afterDirectives.has_value())
+                            continue;
+                        if (holds_alternative<monostate>(*afterDirectives))
+                            obj[outputKey] = resolvedJson;
+                        else
+                            obj[outputKey] = co_await Resolve(args, *afterDirectives, {}, nullptr, "",
+                                                              fragments, fieldErrors, childPath);
                     } catch (const exception& e) {
                         obj[outputKey] = nullptr;
                         fieldErrors.push_back(FieldError {
@@ -165,14 +211,12 @@ Task<nlohmann::json> Resolve(const Resolver& rootResolver,
                     elemPath.push_back(to_string(i));
                     try {
                         arr.push_back(co_await Resolve(
-                            rootResolver,
+                            args,
                             vec[i],
                             {},
                             selectionSet,
                             typeName,
-                            schemaDefinition,
                             fragments,
-                            variables,
                             fieldErrors,
                             elemPath));
                     } catch (const exception& e) {
@@ -183,22 +227,22 @@ Task<nlohmann::json> Resolve(const Resolver& rootResolver,
                 co_return arr;
             },
             [&](const FunctionResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(rootResolver, func(args), {}, selectionSet, typeName, schemaDefinition,
-                                           fragments, variables, fieldErrors, path);
+                co_return co_await Resolve(args, func(resolverArgs), {}, selectionSet, typeName,
+                                           fragments, fieldErrors, path);
             },
             [&](const AsyncFunctionResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(rootResolver, func(args).get(), {}, selectionSet, typeName,
-                                           schemaDefinition, fragments, variables, fieldErrors, path);
+                co_return co_await Resolve(args, func(resolverArgs).get(), {}, selectionSet, typeName,
+                                           fragments, fieldErrors, path);
             },
             [&](const CoroutineResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(rootResolver, co_await func(args), {}, selectionSet, typeName,
-                                           schemaDefinition, fragments, variables, fieldErrors, path);
+                co_return co_await Resolve(args, co_await func(resolverArgs), {}, selectionSet, typeName,
+                                           fragments, fieldErrors, path);
             },
             [&](const CallbackResolver& func) -> Task<nlohmann::json> {
                 promise<ValueResolver> p;
-                func(args, [&p](const auto& res) { p.set_value(res); });
-                co_return co_await Resolve(rootResolver, p.get_future().get(), {}, selectionSet, typeName,
-                                           schemaDefinition, fragments, variables, fieldErrors, path);
+                func(resolverArgs, [&p](const auto& res) { p.set_value(res); });
+                co_return co_await Resolve(args, p.get_future().get(), {}, selectionSet, typeName,
+                                           fragments, fieldErrors, path);
             },
             [&](const TypeResolver&) -> Task<nlohmann::json> { co_return nullptr; }
          },
@@ -235,25 +279,38 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                 continue;
 
             auto& fieldResolvers = get<Resolver>(typeResolver);
-            for (const auto& field : FlattenSelections(op.selectionSet, document.fragments)) {
+            for (const auto& field : FlattenSelections(op.selectionSet, document.fragments, args.directives, args.variables)) {
                 const auto& outputKey = field.alias.value_or(field.name);
                 if (!fieldResolvers.contains(field.name))
                     continue;
                 auto fieldTypeName = FieldTypeName(resolverType, field.name, args.schemaDefinition);
                 try {
-                    data[outputKey] = co_await Resolve(
-                         args.resolvers,
+                    auto resolvedJson = co_await Resolve(
+                         args,
                          fieldResolvers.at(field.name),
                          ResolverArgs{
                              .args = ResolveArguments(field.arguments, args.variables)
                          },
                          field.selectionSet.get(),
                          fieldTypeName.empty() ? resolverType : fieldTypeName,
-                         args.schemaDefinition,
                          document.fragments,
-                         args.variables,
                          fieldErrors,
                          {outputKey});
+
+                    //TODO Refactor this
+                    if (field.directives.empty()) {
+                        data[outputKey] = resolvedJson;
+                        continue;
+                    }
+                    auto afterDirectives = ApplyDirectives(field.directives, args.directives, args.variables,
+                                                           JsonToValueResolver(resolvedJson));
+                    if (!afterDirectives.has_value())
+                        continue;
+                    if (holds_alternative<monostate>(*afterDirectives))
+                        data[outputKey] = resolvedJson;
+                    else
+                        data[outputKey] = co_await Resolve(args, *afterDirectives, {}, nullptr, "",
+                                                           document.fragments, fieldErrors, {outputKey});
                 } catch (const exception& e) {
                     data[outputKey] = nullptr;
                     fieldErrors.push_back(FieldError {

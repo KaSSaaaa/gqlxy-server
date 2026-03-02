@@ -234,3 +234,55 @@ TEST(QueryParser, ParsesInlineFragmentWithoutTypeCondition) {
     const auto& inlineFrag = asInlineFragment(hero.selectionSet->selections[0]);
     EXPECT_FALSE(inlineFrag.typeCondition.has_value());
 }
+
+// ---------------------------------------------------------------------------
+// ParseOperations — directives
+// ---------------------------------------------------------------------------
+
+TEST(QueryParser, ParsesFieldDirectiveWithBoolArg) {
+    auto ops = ParseOperations("query($skip: Boolean!) { hero @skip(if: $skip) }");
+    const auto& field = asField(ops[0].selectionSet.selections[0]);
+    ASSERT_EQ(field.directives.size(), 1);
+    EXPECT_EQ(field.directives[0].name, "skip");
+    ASSERT_EQ(field.directives[0].args.size(), 1);
+    EXPECT_EQ(field.directives[0].args[0].name, "if");
+    EXPECT_EQ(field.directives[0].args[0].value, "$skip");
+}
+
+TEST(QueryParser, ParsesFieldDirectiveWithLiteralBoolArg) {
+    auto ops = ParseOperations("{ hero @include(if: true) }");
+    const auto& field = asField(ops[0].selectionSet.selections[0]);
+    ASSERT_EQ(field.directives.size(), 1);
+    EXPECT_EQ(field.directives[0].name, "include");
+    EXPECT_EQ(field.directives[0].args[0].value, "true");
+}
+
+TEST(QueryParser, FieldWithNoDirectivesHasEmptyVector) {
+    auto ops = ParseOperations("{ hero }");
+    const auto& field = asField(ops[0].selectionSet.selections[0]);
+    EXPECT_TRUE(field.directives.empty());
+}
+
+TEST(QueryParser, ParsesMultipleDirectivesOnField) {
+    auto ops = ParseOperations("{ hero @skip(if: true) @include(if: false) }");
+    const auto& field = asField(ops[0].selectionSet.selections[0]);
+    ASSERT_EQ(field.directives.size(), 2);
+    EXPECT_EQ(field.directives[0].name, "skip");
+    EXPECT_EQ(field.directives[1].name, "include");
+}
+
+TEST(QueryParser, ParsesDirectiveOnFragmentSpread) {
+    auto ops = ParseOperations("{ hero { ...HeroFields @skip(if: true) } }");
+    const auto& hero = asField(ops[0].selectionSet.selections[0]);
+    const auto& spread = asFragmentSpread(hero.selectionSet->selections[0]);
+    ASSERT_EQ(spread.directives.size(), 1);
+    EXPECT_EQ(spread.directives[0].name, "skip");
+}
+
+TEST(QueryParser, ParsesDirectiveOnInlineFragment) {
+    auto ops = ParseOperations("{ hero { ... on Droid @skip(if: true) { id } } }");
+    const auto& hero = asField(ops[0].selectionSet.selections[0]);
+    const auto& frag = asInlineFragment(hero.selectionSet->selections[0]);
+    ASSERT_EQ(frag.directives.size(), 1);
+    EXPECT_EQ(frag.directives[0].name, "skip");
+}

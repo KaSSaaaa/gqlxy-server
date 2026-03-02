@@ -20,6 +20,7 @@ struct ResolveQueryArgs {
   nlohmann::json variables;
   SchemaDefinition schemaDefinition;
   Resolver resolvers;
+  Directives directives;
 };
 
 Task<ResolveResult> ResolveOperations(ResolveQueryArgs args);

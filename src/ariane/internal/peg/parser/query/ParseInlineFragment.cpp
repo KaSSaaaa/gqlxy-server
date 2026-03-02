@@ -4,6 +4,7 @@
 #include <ariane/internal/utils/optional.h>
 #include <graphqlservice/internal/Grammar.h>
 
+#include "ParseDirectives.h"
 #include "ParseSelectionSet.h"
 
 using namespace std;
@@ -18,6 +19,7 @@ InlineFragment ParseInlineFragment(const peg::ast_node& node)  {
                 return make_optional(n->string());
             });
         }),
+        .directives = ParseDirectives(node),
         .selectionSet = and_then(first_node<peg::selection_set>(node), [](const auto* n) {
             return make_optional(make_shared<SelectionSet>(ParseSelectionSet(*n)));
         }).value_or(make_shared<SelectionSet>()),

@@ -26,6 +26,8 @@ using CoroutineResolver = std::function<Task<ValueResolver>(const ResolverArgs&)
 using CallbackResolver = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 using TypeResolver = std::function<std::optional<std::string>(const Resolver&)>;
+using DirectiveResolver = std::function<std::optional<ValueResolver>(const ResolverArgs& args, const ValueResolver& value)>;
+using Directives = std::unordered_map<std::string, DirectiveResolver>;
 
 struct ValueResolver : std::variant<int,
                                     uint64_t,

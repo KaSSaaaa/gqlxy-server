@@ -15,6 +15,7 @@ struct SchemaDefinition;
 struct SchemaOptions {
     std::string typeDefs;
     Resolver resolvers;
+    Directives directives;
     bool allowIntrospection = true;
 };
 
@@ -48,6 +49,7 @@ public:
 private:
     std::shared_ptr<internal::SchemaDefinition> _schemaDefinition;
     Resolver _resolvers;
+    Directives _directives;
 
     void InjectIntrospectionResolvers();
     void AddToResolver(const std::string& resolverName, const Resolver& resolver);

@@ -24,18 +24,11 @@ This document tracks what is already working and what remains to be built for a 
 - Field aliases — `alias: fieldName` correctly used as the JSON response key
 - Per-field error handling — resolver exceptions set the field to `null` and append a structured entry (with `message` and `path`) to `errors[]`; other fields continue resolving
 - Abstract type resolution — `TypeResolver` determines the concrete type of a union/interface field at runtime; inline fragments and named fragment spreads are filtered by the resolved concrete type; `__typename` always reflects the actual runtime type
+- `@skip` / `@include` directives — built-in runtime conditional field inclusion evaluated before resolution; custom directives registered via `SchemaOptions::directives` as `DirectiveResolver = std::function<bool(const ResolverArgs&)>`; applied to fields, inline fragments, and named fragment spreads; variable argument substitution supported
 
 ---
 
 ## What's missing
-
-### P0 — Required by the GraphQL specification
-
-| # | Feature | Notes |
-|---|---------|-------|
-| 10 | **`@skip` / `@include` directives** | Runtime conditional field inclusion — must be evaluated before a field is resolved. |
-
----
 
 ### P2 — Completeness and developer ergonomics
 
@@ -60,11 +53,15 @@ A validation layer that runs before execution and rejects invalid documents with
 
 ---
 
+### P4 - Subscription
+
+If you read this, improve the part of that .md for subscriptions
+
 ## Suggested implementation order
 
 ```
 Phase 1 — Core correctness   : #1, #2, #3  ✓
-Phase 2 — Spec compliance    : #11 ✓, #6 ✓, #7 ✓, #8 ✓, #9 ✓, #10
+Phase 2 — Spec compliance    : #11 ✓, #6 ✓, #7 ✓, #8 ✓, #9 ✓, #10 ✓
 Phase 3 — Type system        : #12 ✓
 Phase 4 — Ergonomics         : #13, #14, #15
 Phase 5 — Query validation   : #16, #17, #18, #19

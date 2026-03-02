@@ -11,6 +11,15 @@ using namespace ariane::graphql;
 using namespace ariane::graphql::internal;
 using namespace graphql;
 
+static const Directives BuiltinDirectives = {
+    {"skip", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
+        return args.args.value("if", false) ? nullopt : make_optional(v);
+    }},
+    {"include", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
+        return args.args.value("if", true) ? make_optional(v) : nullopt;
+    }},
+};
+
 Schema::Schema(const SchemaOptions& options) {
     _resolvers = options.resolvers;
     _schemaDefinition = ParseSchemaDefinition(options.typeDefs);
@@ -24,6 +33,10 @@ Schema::Schema(const SchemaOptions& options) {
 
     if (options.allowIntrospection)
         InjectIntrospectionResolvers();
+
+    _directives = BuiltinDirectives;
+    for (const auto& [name, fn] : options.directives)
+        _directives[name] = fn;
 }
 
 void Schema::InjectIntrospectionResolvers() {
@@ -53,5 +66,6 @@ Task<ResolveResult> Schema::Resolve(const SchemaResolveArgs& args) const {
         .variables = args.variables,
         .schemaDefinition = *_schemaDefinition,
         .resolvers = _resolvers,
+        .directives = _directives,
     });
 }

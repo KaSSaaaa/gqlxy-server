@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <future>
 #include <optional>
 
@@ -17,6 +18,29 @@ using json = nlohmann::json;
 
 class ResolveTest : public testing::Test {
 protected:
+    const string searchSchema = R"(
+        type Query {
+            search: SearchResult
+        }
+
+        union SearchResult = Book | Movie
+
+        type Book {
+            title: String
+        }
+
+        type Movie {
+            director: String
+        }
+    )";
+
+    static optional<string> searchTypeResolver(const Resolver& r) {
+        return r.contains("title") ? "Book" : "Movie";
+    }
+
+    const string twoFieldSchema = "type Query { a: String b: String }";
+    const Resolver twoFieldResolvers = {{"a", "alpha"}, {"b", "beta"}};
+
     static json resolve(const string& typeDefs,
                         Resolver queryResolvers,
                         const string& query) {
@@ -476,30 +500,6 @@ TEST_F(ResolveTest, NoErrorsKeyWhenAllFieldsSucceed) {
 // Abstract type resolution (#12)
 // ---------------------------------------------------------------------------
 
-namespace {
-const string searchSchema = R"(
-    type Query {
-        search: SearchResult
-    }
-
-    union SearchResult = Book | Movie
-
-    type Book {
-        title: String
-    }
-
-    type Movie {
-        director: String
-    }
-)";
-
-TypeResolver searchTypeResolver() {
-    return [](const Resolver& r) -> optional<string> {
-        return r.contains("title") ? "Book" : "Movie";
-    };
-}
-}
-
 TEST_F(ResolveTest, TypeResolverDeterminesConcreteType) {
     Schema schema({
         .typeDefs  = searchSchema,
@@ -509,8 +509,8 @@ TEST_F(ResolveTest, TypeResolverDeterminesConcreteType) {
                     {"title", "The Hobbit"}
                 }}
             }},
-            {"SearchResult", Resolver{
-                {"__resolveType", searchTypeResolver()}
+            {"SearchResult", Resolver {
+                {"__resolveType", searchTypeResolver}
             }}
         }
     });
@@ -542,7 +542,7 @@ TEST_F(ResolveTest, TypeResolverFiltersMismatchedInlineFragment) {
                 }}
             },
             {"SearchResult", Resolver{
-                {"__resolveType", searchTypeResolver()}
+                {"__resolveType", searchTypeResolver}
             }}
         }
     });
@@ -574,7 +574,7 @@ TEST_F(ResolveTest, TypeNameReturnsConcreteTypeFromTypeResolver) {
                 }}
             },
             {"SearchResult", Resolver{
-                {"__resolveType", searchTypeResolver()}
+                {"__resolveType", searchTypeResolver}
             }}
         }
     });
@@ -598,7 +598,7 @@ TEST_F(ResolveTest, NamedFragmentFilteredByTypeCondition) {
                 }}
             }},
             {"SearchResult", Resolver{
-                {"__resolveType", searchTypeResolver()}
+                {"__resolveType", searchTypeResolver}
             }}
         }
     });
@@ -624,4 +624,165 @@ TEST_F(ResolveTest, NamedFragmentFilteredByTypeCondition) {
     auto data = json::parse(result.data.value());
     EXPECT_EQ(data["search"]["title"], "1984");
     EXPECT_FALSE(data["search"].contains("director"));
+}
+
+// ---------------------------------------------------------------------------
+// Directives — @skip / @include (#10)
+// ---------------------------------------------------------------------------
+
+TEST_F(ResolveTest, SkipDirectiveWithTrueOmitsField) {
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @skip(if: true) b }");
+    EXPECT_FALSE(data.contains("a"));
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, SkipDirectiveWithFalseIncludesField) {
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @skip(if: false) b }");
+    EXPECT_EQ(data["a"], "alpha");
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, IncludeDirectiveWithTrueIncludesField) {
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @include(if: true) b }");
+    EXPECT_EQ(data["a"], "alpha");
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, IncludeDirectiveWithFalseOmitsField) {
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @include(if: false) b }");
+    EXPECT_FALSE(data.contains("a"));
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, SkipDirectiveWithVariable) {
+    Schema schema({
+        .typeDefs  = twoFieldSchema,
+        .resolvers = {{"Query", twoFieldResolvers}}
+    });
+    auto result = schema.Resolve({
+        .query = "query($s: Boolean!) { a @skip(if: $s) b }",
+        .variables = {{"s", true}}
+    }).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_FALSE(data.contains("a"));
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, IncludeDirectiveWithVariable) {
+    Schema schema({
+        .typeDefs  = twoFieldSchema,
+        .resolvers = {{"Query", twoFieldResolvers}}
+    });
+    auto result = schema.Resolve({
+        .query = "query($show: Boolean!) { a @include(if: $show) b }",
+        .variables = {{"show", false}}
+    }).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_FALSE(data.contains("a"));
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, SkipDirectiveOnInlineFragment) {
+    auto data = resolve(
+        "type Query { user: User } type User { id: Int name: String }",
+        {{"user", Resolver{{"id", 1}, {"name", "Alice"}}}},
+        R"({ user { id ... on User @skip(if: true) { name } } })");
+    EXPECT_TRUE(data["user"].contains("id"));
+    EXPECT_FALSE(data["user"].contains("name"));
+}
+
+TEST_F(ResolveTest, IncludeDirectiveOnInlineFragment) {
+    auto data = resolve(
+        "type Query { user: User } type User { id: Int name: String }",
+        {{"user", Resolver{{"id", 1}, {"name", "Alice"}}}},
+        R"({ user { id ... on User @include(if: false) { name } } })");
+    EXPECT_TRUE(data["user"].contains("id"));
+    EXPECT_FALSE(data["user"].contains("name"));
+}
+
+TEST_F(ResolveTest, SkipDirectiveOnNamedFragment) {
+    Schema schema({
+        .typeDefs  = "type Query { user: User } type User { id: Int name: String }",
+        .resolvers = {{"Query", Resolver{
+            {"user", Resolver{{"id", 2}, {"name", "Bob"}}}
+        }}}
+    });
+    auto result = schema.Resolve({
+        .query = R"(
+            fragment NameInfo on User { name }
+            { user { id ...NameInfo @skip(if: true) } }
+        )"
+    }).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["user"]["id"], 2);
+    EXPECT_FALSE(data["user"].contains("name"));
+}
+
+TEST_F(ResolveTest, CustomDirectiveIsEvaluated) {
+    Schema schema({
+        .typeDefs  = twoFieldSchema,
+        .resolvers = {{"Query", twoFieldResolvers}},
+        .directives = {
+            {"secret", [](const ResolverArgs& args, const ValueResolver&) -> optional<ValueResolver> {
+                return args.args.value("redact", false) ? nullopt : optional<ValueResolver>(monostate{});
+            }}
+        }
+    });
+    auto result = schema.Resolve({.query = "{ a @secret(redact: true) b }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_FALSE(data.contains("a"));
+    EXPECT_EQ(data["b"], "beta");
+}
+
+TEST_F(ResolveTest, CustomDirectiveCanBeOverridden) {
+    Schema schema({
+        .typeDefs  = twoFieldSchema,
+        .resolvers = {{"Query", twoFieldResolvers}},
+        .directives = {
+            {"skip", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
+                return optional<ValueResolver>(v);  // never skip
+            }}
+        }
+    });
+    auto result = schema.Resolve({.query = "{ a @skip(if: true) b }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["a"], "alpha");
+}
+
+TEST_F(ResolveTest, DirectiveCanTransformFieldValue) {
+    Schema schema({
+        .typeDefs  = "type Query { greeting: String }",
+        .resolvers = {{"Query", Resolver{{"greeting", "hello"}}}},
+        .directives = {
+            {"uppercase", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
+                auto str = get<string>(v);
+                transform(str.begin(), str.end(), str.begin(), ::toupper);
+                return optional<ValueResolver>(str);
+            }}
+        }
+    });
+    auto result = schema.Resolve({.query = "{ greeting @uppercase }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["greeting"], "HELLO");
+}
+
+TEST_F(ResolveTest, DirectiveTransformCanAccessArgs) {
+    Schema schema({
+        .typeDefs  = "type Query { value: String }",
+        .resolvers = {{"Query", Resolver{{"value", "hello world"}}}},
+        .directives = {
+            {"prefix", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
+                return optional<ValueResolver>(args.args.value("with", string{}) + get<string>(v));
+            }}
+        }
+    });
+    auto result = schema.Resolve({.query = R"({ value @prefix(with: ">>> ") })"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["value"], ">>> hello world");
 }
