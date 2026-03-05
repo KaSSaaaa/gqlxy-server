@@ -636,7 +636,7 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& 
     };
 }
 
-//TODO Clean this
+//TODO Refactor this
 static void collectTypeName(
     const string& typeName,
     unordered_set<string>& visited,
@@ -663,6 +663,7 @@ static void collectTypeName(
     }
 }
 
+//TODO Refactor this
 static vector<string> buildTypeOrder(const SchemaDefinition& schemaDefinition) {
     auto sortedNames = to_set(schemaDefinition.types | views::keys);
     unordered_set<string> visited(sortedNames.begin(), sortedNames.end());

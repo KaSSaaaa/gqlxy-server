@@ -1,6 +1,7 @@
 #include "ParseOperations.h"
 
 #include "ParseDocument.h"
+#include <ariane/internal/ast/Selection.h>
 
 using namespace std;
 

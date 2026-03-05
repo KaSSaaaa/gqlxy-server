@@ -11,7 +11,7 @@ using namespace ariane::graphql;
 using namespace ariane::graphql::internal;
 using namespace graphql;
 
-static const Directives BuiltinDirectives = {
+static const Directives builtinDirectives = {
     {"skip", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
         return args.args.value("if", false) ? nullopt : make_optional(v);
     }},
@@ -34,7 +34,7 @@ Schema::Schema(const SchemaOptions& options) {
     if (options.allowIntrospection)
         InjectIntrospectionResolvers();
 
-    _directives = BuiltinDirectives;
+    _directives = builtinDirectives;
     for (const auto& [name, fn] : options.directives)
         _directives[name] = fn;
 }

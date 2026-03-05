@@ -108,29 +108,27 @@ TEST_F(IntrospectionTests, CreatesTypeRefResolver) {
 }
 
 TEST_F(IntrospectionTests, CreatesEnumValueResolver) {
-    EnumValueDefinition enumValue;
-    enumValue.name = "ADMIN";
-    enumValue.description = "Administrator role";
+    auto enumResolver = CreateEnumValueResolver(EnumValueDefinition {
+        .name = "ADMIN",
+        .description = "Administrator role"
+    });
 
-    auto enumResolver = CreateEnumValueResolver(enumValue);
     ASSERT_FALSE(enumResolver.empty());
     ASSERT_TRUE(enumResolver.contains("name"));
 }
 
 TEST_F(IntrospectionTests, EnumTypeHasValues) {
-    TypeDefinition type;
-    type.kind = TypeKind::ENUM;
-    type.name = "Role";
-
-    EnumValueDefinition value1;
-    value1.name = "ADMIN";
-    type.enumValues.push_back(value1);
-
-    EnumValueDefinition value2;
-    value2.name = "USER";
-    type.enumValues.push_back(value2);
-
-    auto typeResolver = CreateTypeResolver(type, _emptySchema);
+    auto typeResolver = CreateTypeResolver(TypeDefinition {
+        .name = "Role",
+        .enumValues = {
+            EnumValueDefinition {
+                .name = "ADMIN",
+            },
+            EnumValueDefinition {
+                .name = "USER",
+            }
+        }
+    }, _emptySchema);
     ASSERT_FALSE(typeResolver.empty());
     ASSERT_TRUE(typeResolver.contains("enumValues"));
 }

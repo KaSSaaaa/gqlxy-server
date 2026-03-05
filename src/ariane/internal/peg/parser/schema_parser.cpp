@@ -2,8 +2,10 @@
 
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/peg/first_node.h>
-#include <ariane/internal/peg/transform_children.h>
+#include <ariane/internal/peg/is_type.h>
+#include <ariane/internal/peg/parser/query/ParseValue.h>
 #include <ariane/internal/utils/optional.h>
+#include <ariane/internal/utils/ranges.h>
 #include <graphqlservice/internal/Grammar.h>
 
 using namespace std;
@@ -48,60 +50,25 @@ static TypeRef ParseTypeRefFromNode(const peg::ast_node& node) {
     }).value();
 }
 
-//TODO clean this
 TypeRef ParseTypeRef(const peg::ast_node& node) {
-    if (node.is_type<peg::nonnull_type>()) {
-        auto innerNode = first_node<peg::list_type>(node);
-        if (!innerNode) {
-            innerNode = first_node<peg::named_type>(node);
-        }
-        if (innerNode) {
-            return TypeRef::NonNull(ParseTypeRef(*innerNode.value()));
-        }
-        return TypeRef::NonNull(TypeRef::Named("Unknown"));
-    }
-
-    if (node.is_type<peg::list_type>()) {
-        auto innerNode = first_node<peg::nonnull_type>(node);
-        if (!innerNode) {
-            innerNode = first_node<peg::list_type>(node);
-        }
-        if (!innerNode) {
-            innerNode = first_node<peg::named_type>(node);
-        }
-        if (innerNode) {
-            return TypeRef::List(ParseTypeRef(**innerNode));
-        }
-        return TypeRef::List(TypeRef::Named("Unknown"));
-    }
-
-    if (node.is_type<peg::named_type>()) {
+    if (node.is_type<peg::named_type>())
         return TypeRef::Named(node.string());
-    }
 
-    return TypeRef::Named("Unknown");
+    auto it = ranges::find_if(node.children, [](const auto& child) {
+        return is_type<peg::nonnull_type, peg::list_type, peg::named_type>(*child);
+    });
+
+    if (it == node.children.end())
+        return TypeRef::Named("Unknown");
+
+    auto innerType = ParseTypeRef(*it->get());
+    return node.is_type<peg::nonnull_type>() ? TypeRef::NonNull(innerType) : TypeRef::List(innerType);
 }
 
 static optional<string> ParseDefaultValue(const peg::ast_node& node) {
-    auto dv = first_node<peg::default_value>(node);
-    if (!dv) return nullopt;
-
-    const peg::ast_node& dvNode = *dv.value();
-    if (find_node<peg::true_keyword>(dvNode))
-        return "true";
-    if (find_node<peg::false_keyword>(dvNode))
-        return "false";
-    if (auto v = find_node<peg::list_value>(dvNode))
-        return (*v)->string();
-    if (auto v = find_node<peg::string_value>(dvNode))
-        return (*v)->string();
-    if (auto v = find_node<peg::integer_value>(dvNode))
-        return (*v)->string();
-    if (auto v = find_node<peg::float_value>(dvNode))
-        return (*v)->string();
-    if (auto v = find_node<peg::enum_value>(dvNode))
-        return (*v)->string();
-    return nullopt;
+    return and_then(first_node<peg::default_value>(node), [](const auto* defaultValue) {
+        return ParseValue(*defaultValue);
+    });
 }
 
 static DeprecationInfo ParseDeprecation(const peg::ast_node& node) {
@@ -169,10 +136,11 @@ FieldDefinition ParseField(const peg::ast_node& node) {
             return TypeRef::Named("Unknown");
         }).value(),
         .args = and_then(first_node<peg::arguments_definition>(node), [](const auto& argsNode) {
-            return transform_children<peg::input_field_definition, InputValueDefinition>(*argsNode,
-                [](const auto& child) {
-                    return ParseInputValue(child);
-                });
+            return to_vector(argsNode->children
+                | views::filter(is_type<peg::input_field_definition>())
+                | views::transform([](const auto& node) {
+                    return ParseInputValue(*node);
+                }));
         }),
         .deprecation = ParseDeprecation(node)
     };
@@ -180,9 +148,11 @@ FieldDefinition ParseField(const peg::ast_node& node) {
 
 vector<FieldDefinition> ParseFields(const optional<peg::ast_node*>& node) {
     return and_then(node, [](auto* node) {
-        return transform_children<peg::field_definition, FieldDefinition>(*node, [](const auto& node) {
-            return ParseField(node);
-        });
+        return to_vector(node->children
+            | views::filter(is_type<peg::field_definition>())
+            | views::transform([](const auto& node) {
+                return ParseField(*node);
+            }));
     });
 }
 
@@ -194,9 +164,11 @@ TypeDefinition ParseObjectType(const peg::ast_node& node) {
         }),
         .description = ParseDescription(node),
         .fields = ParseFields(first_node<peg::fields_definition>(node)),
-        .interfaces = transform_children<peg::interface_type, string>(node, [](const auto& child) {
-            return child.string();
-        })
+        .interfaces = to_vector(node.children
+            | views::filter(is_type<peg::interface_type>())
+            | views::transform([](const auto& child) {
+                return child->string();
+            }))
     };
 }
 
@@ -239,16 +211,22 @@ TypeDefinition ParseType(const peg::ast_node& node, const TypeKind& kind) {
         .kind = kind,
         .name = ParseName(node, kind),
         .description = ParseDescription(node),
-        .unionTypes = transform_children<peg::union_type, string>(node, [](const auto& child) {
-            return child.string();
-        }),
-        .enumValues = transform_children<peg::enum_value_definition, EnumValueDefinition>(node, [](const auto& child) {
-            return ParseEnumValue(child);
-        }),
+        .unionTypes = to_vector(node.children
+            | views::filter(is_type<peg::union_type>())
+            | views::transform([](const auto& child) {
+                return child->string();
+            })),
+        .enumValues = to_vector(node.children
+            | views::filter(is_type<peg::enum_value_definition>())
+            | views::transform([](const auto& child) {
+                return ParseEnumValue(*child);
+            })),
         .inputFields = and_then(first_node<peg::input_fields_definition>(node), [](const auto& in) {
-            return transform_children<peg::input_field_definition, InputValueDefinition>(*in, [](const auto& child) {
-                return ParseInputValue(child);
-            });
+            return to_vector(in->children
+                | views::filter(is_type<peg::input_field_definition>())
+                | views::transform([](const auto& child) {
+                    return ParseInputValue(*child);
+                }));
         })
     };
 }
@@ -259,13 +237,17 @@ static DirectiveDefinition ParseDirective(const peg::ast_node& node) {
             return n->string();
         }),
         .description = ParseDescription(node),
-        .locations = transform_children<peg::directive_location, DirectiveLocation>(node, [](const auto& locNode) {
-            return *DirectiveLocation::_from_string_nothrow(locNode.string().c_str());
-        }),
+        .locations = to_vector(node.children
+            | views::filter(is_type<peg::directive_location>())
+            | views::transform([](const auto& locNode) {
+                return *DirectiveLocation::_from_string_nothrow(locNode->string().c_str());
+            })),
         .args = and_then(first_node<peg::arguments_definition>(node), [](const auto* args) {
-            return transform_children<peg::input_field_definition, InputValueDefinition>(*args, [](const auto& child) {
-                return ParseInputValue(child);
-            });
+            return to_vector(args->children
+                | views::filter(is_type<peg::input_field_definition>())
+                | views::transform([](const auto& child) {
+                    return ParseInputValue(*child);
+                }));
         }),
         .isRepeatable = first_node<peg::repeatable_keyword>(node).has_value(),
     };

@@ -1,4 +1,5 @@
 #include <ariane/internal/ast/OperationDefinition.h>
+#include <ariane/internal/ast/Selection.h>
 #include <ariane/internal/peg/parser/query/ParseOperations.h>
 #include <gtest/gtest.h>
 
@@ -94,7 +95,7 @@ TEST(QueryParser, FieldWithNoAliasHasEmptyOptional) {
 TEST(QueryParser, ParsesNestedSelectionSet) {
     auto ops = ParseOperations("{ hero { id name } }");
     const auto& hero = asField(ops[0].selectionSet.selections[0]);
-    ASSERT_TRUE(hero.selectionSet != nullptr);
+    ASSERT_TRUE(hero.selectionSet.has_value());
     ASSERT_EQ(hero.selectionSet->selections.size(), 2);
     EXPECT_EQ(asField(hero.selectionSet->selections[0]).name, "id");
     EXPECT_EQ(asField(hero.selectionSet->selections[1]).name, "name");
@@ -103,7 +104,7 @@ TEST(QueryParser, ParsesNestedSelectionSet) {
 TEST(QueryParser, FieldWithNoSubselectionHasNullSelectionSet) {
     auto ops = ParseOperations("{ hero }");
     const auto& field = asField(ops[0].selectionSet.selections[0]);
-    EXPECT_EQ(field.selectionSet, nullptr);
+    EXPECT_FALSE(field.selectionSet.has_value());
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +224,7 @@ TEST(QueryParser, ParsesInlineFragmentWithTypeCondition) {
     const auto& inlineFrag = asInlineFragment(hero.selectionSet->selections[0]);
     ASSERT_TRUE(inlineFrag.typeCondition.has_value());
     EXPECT_EQ(*inlineFrag.typeCondition, "Droid");
-    ASSERT_TRUE(inlineFrag.selectionSet != nullptr);
+    ASSERT_TRUE(inlineFrag.selectionSet.has_value());
     EXPECT_EQ(asField(inlineFrag.selectionSet->selections[0]).name, "primaryFunction");
 }
 

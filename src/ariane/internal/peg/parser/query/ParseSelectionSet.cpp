@@ -1,9 +1,10 @@
 #include "ParseSelectionSet.h"
 
+#include <ariane/internal/peg/is_type.h>
+#include <ariane/internal/peg/parser/query/ParseSelection.h>
+#include <ariane/internal/utils/ranges.h>
 #include <graphqlservice/internal/Grammar.h>
 #include <graphqlservice/internal/SyntaxTree.h>
-
-#include "ParseSelection.h"
 
 using namespace std;
 using namespace graphql;
@@ -11,15 +12,13 @@ using namespace graphql;
 namespace ariane::graphql::internal {
 
 SelectionSet ParseSelectionSet(const peg::ast_node& node) {
-    SelectionSet result;
-    for (const auto& child : node.children) {
-        if (!child) continue;
-        if (child->is_type<peg::field>() ||
-            child->is_type<peg::fragment_spread>() ||
-            child->is_type<peg::inline_fragment>())
-            result.selections.push_back(ParseSelection(*child));
-    }
-    return result;
+    return SelectionSet {
+        .selections = to_vector(node.children
+            | views::filter(is_type<peg::field, peg::fragment_spread, peg::inline_fragment>())
+            | views::transform([](const auto& child) {
+                return ParseSelection(*child);
+            }))
+    };
 }
 
 }

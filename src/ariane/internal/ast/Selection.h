@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Argument.h"
-#include "Directive.h"
+#include "SelectionSet.h"
 
-#include <memory>
+#include <ariane/internal/ast/Argument.h>
+#include <ariane/internal/ast/Directive.h>
+#include <ariane/internal/ast/Fragments.h>
+#include <ariane/resolvers.h>
 #include <optional>
 #include <string>
 #include <variant>
@@ -11,14 +13,12 @@
 
 namespace ariane::graphql::internal {
 
-struct SelectionSet;
-
 struct Field {
     std::optional<std::string> alias;
     std::string name;
     std::vector<Argument> arguments;
     std::vector<Directive> directives;
-    std::shared_ptr<SelectionSet> selectionSet; //TODO Replace with optional<shared_ptr<SelectionSet>>
+    std::optional<SelectionSet> selectionSet;
 };
 
 struct FragmentSpread {
@@ -29,9 +29,23 @@ struct FragmentSpread {
 struct InlineFragment {
     std::optional<std::string> typeCondition;
     std::vector<Directive> directives;
-    std::shared_ptr<SelectionSet> selectionSet; //TODO Replace with optional<shared_ptr<SelectionSet>>
+    std::optional<SelectionSet> selectionSet;
 };
 
-using Selection = std::variant<Field, FragmentSpread, InlineFragment>;
+struct Selection : std::variant<Field, FragmentSpread, InlineFragment> {
+
+};
+
+std::vector<Field> FragmentFields(const SelectionSet& selectionSet,
+                                  const std::vector<Directive>& fieldDirectives,
+                                  const Directives& directives,
+                                  const nlohmann::json& variables,
+                                  const Fragments& frags,
+                                  const std::optional<std::string>& typeCondition,
+                                  const std::optional<std::string>& concreteType);
+
+std::vector<Field> FlattenSelections(const SelectionSet& ss, const Fragments& frags,
+                                     const Directives& directives, const nlohmann::json& variables,
+                                     const std::optional<std::string>& concreteType = std::nullopt);
 
 }

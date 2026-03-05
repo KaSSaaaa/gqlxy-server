@@ -4,6 +4,7 @@
 #include <ariane/internal/utils/optional.h>
 #include <graphqlservice/internal/Grammar.h>
 #include <ariane/internal/ast/SelectionSet.h>
+#include <ariane/internal/ast/Selection.h>
 
 #include "ParseSelectionSet.h"
 

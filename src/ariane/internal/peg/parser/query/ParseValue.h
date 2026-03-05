@@ -4,6 +4,6 @@
 
 namespace ariane::graphql::internal {
 
-std::string ParseArgumentValue(const ::graphql::peg::ast_node& node);
+std::optional<std::string> ParseValue(const ::graphql::peg::ast_node& node);
 
 }

@@ -21,8 +21,8 @@ InlineFragment ParseInlineFragment(const peg::ast_node& node)  {
         }),
         .directives = ParseDirectives(node),
         .selectionSet = and_then(first_node<peg::selection_set>(node), [](const auto* n) {
-            return make_optional(make_shared<SelectionSet>(ParseSelectionSet(*n)));
-        }).value_or(make_shared<SelectionSet>()),
+            return make_optional(ParseSelectionSet(*n));
+        }),
     };
 }
 

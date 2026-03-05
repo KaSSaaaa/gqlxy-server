@@ -30,9 +30,11 @@ struct FieldError {
     std::vector<ErrorLocation> locations;
 };
 
+using FieldErrors = std::vector<FieldError>;
+
 struct ResolveResult {
     std::optional<std::string> data;
-    std::optional<std::vector<FieldError>> errors;
+    std::optional<FieldErrors> errors;
 };
 
 struct SchemaResolveArgs {
@@ -44,7 +46,7 @@ class Schema {
 public:
     explicit Schema(const SchemaOptions& options);
 
-    [[nodiscard]] Task<ResolveResult> Resolve(const SchemaResolveArgs& args) const;
+    Task<ResolveResult> Resolve(const SchemaResolveArgs& args) const;
 
 private:
     std::shared_ptr<internal::SchemaDefinition> _schemaDefinition;

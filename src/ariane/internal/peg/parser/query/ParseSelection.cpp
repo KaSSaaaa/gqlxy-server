@@ -1,6 +1,7 @@
 #include "ParseSelection.h"
 
 #include <graphqlservice/internal/Grammar.h>
+#include <ariane/internal/ast/Selection.h>
 
 #include "ParseField.h"
 #include "ParseFragmentSpread.h"
@@ -13,10 +14,10 @@ namespace ariane::graphql::internal {
 
 Selection ParseSelection(const peg::ast_node& node) {
     if (node.is_type<peg::field>())
-        return ParseSelectionField(node);
+        return { ParseSelectionField(node) };
     if (node.is_type<peg::fragment_spread>())
-        return ParseFragmentSpread(node);
-    return ParseInlineFragment(node);
+        return { ParseFragmentSpread(node) };
+    return { ParseInlineFragment(node) };
 }
 
 }
