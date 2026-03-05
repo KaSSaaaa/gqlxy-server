@@ -2,6 +2,8 @@
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/ranges.h>
+
+#include <iostream>
 #include <ranges>
 #include <unordered_set>
 
@@ -636,54 +638,6 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& 
     };
 }
 
-//TODO Refactor this
-static void collectTypeName(
-    const string& typeName,
-    unordered_set<string>& visited,
-    vector<string>& result,
-    const SchemaDefinition& schemaDefinition
-) {
-    if (visited.contains(typeName)) return;
-    visited.insert(typeName);
-    result.push_back(typeName);
-
-    if (!schemaDefinition.types.contains(typeName)) return; // built-in or unknown: no further DFS
-    const auto& type = schemaDefinition.types.at(typeName);
-
-    for (const auto& iface : type.interfaces)
-        collectTypeName(iface, visited, result, schemaDefinition);
-    for (const auto& ut : type.unionTypes)
-        collectTypeName(ut, visited, result, schemaDefinition);
-    for (const auto& f : type.inputFields)
-        collectTypeName(f.type.typeName(), visited, result, schemaDefinition);
-    for (const auto& field : type.fields) {
-        collectTypeName(field.type.typeName(), visited, result, schemaDefinition);
-        for (const auto& arg : field.args)
-            collectTypeName(arg.type.typeName(), visited, result, schemaDefinition);
-    }
-}
-
-//TODO Refactor this
-static vector<string> buildTypeOrder(const SchemaDefinition& schemaDefinition) {
-    auto sortedNames = to_set(schemaDefinition.types | views::keys);
-    unordered_set<string> visited(sortedNames.begin(), sortedNames.end());
-    vector<string> result;
-
-    for (const auto& name : sortedNames) {
-        visited.erase(name); // unmark so DFS will process it
-        collectTypeName(name, visited, result, schemaDefinition);
-    }
-
-    for (const auto& name : introspectionTypeNames) {
-        if (!visited.contains(name)) {
-            visited.insert(name);
-            result.push_back(name);
-        }
-    }
-
-    return result;
-}
-
 static optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schemaDefinition, const string& name) {
     if (schemaDefinition.types.contains(name)) return schemaDefinition.types.at(name);
     if (builtinScalarsMap.contains(name)) return builtinScalarsMap.at(name);
@@ -692,12 +646,14 @@ static optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schema
 }
 
 Resolver CreateSchemaResolver(const SchemaDefinition& schemaDefinition) {
-    auto orderedTypes = to_vector(buildTypeOrder(schemaDefinition)
-        | views::filter([&schemaDefinition](const auto& type) { return GetTypeDefinition(schemaDefinition, type).has_value(); })
-        | views::transform([&schemaDefinition](const auto& type) { return GetTypeDefinition(schemaDefinition, type); }));
+    auto orderedTypes = to_vector(
+        concat(to_set(schemaDefinition.types | views::keys),
+            builtInScalars | views::transform([](const auto& t) { return t.name; }),
+            introspectionTypeNames)
+        | views::transform([&schemaDefinition](const auto& type) { return GetTypeDefinition(schemaDefinition, type); })
+        | views::filter([](const auto& type) { return type.has_value(); }));
 
-    vector<DirectiveDefinition> allDirectives = schemaDefinition.directives;
-    ranges::copy(builtInDirectives, back_inserter(allDirectives));
+    auto allDirectives = concat(schemaDefinition.directives, builtInDirectives);
 
     return Resolver {
         {"queryType", and_then(schemaDefinition.queryTypeName, [](const auto& name) {

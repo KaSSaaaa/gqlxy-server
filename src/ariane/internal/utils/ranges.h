@@ -36,4 +36,14 @@ auto to_map(R&& r) {
     return std::map<TKey, TValue>(std::ranges::begin(r), std::ranges::end(r));
 }
 
+template <std::ranges::input_range First, std::ranges::input_range... Rest>
+    requires (std::convertible_to<std::ranges::range_value_t<Rest>, std::ranges::range_value_t<First>> && ...)
+auto concat(First&& first, Rest&&... rest) {
+    using T = std::ranges::range_value_t<First>;
+    std::vector<T> result;
+    std::ranges::copy(first, std::back_inserter(result));
+    (std::ranges::copy(rest, std::back_inserter(result)), ...);
+    return result;
+}
+
 }
