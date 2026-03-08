@@ -786,3 +786,158 @@ TEST_F(ResolveTest, DirectiveTransformCanAccessArgs) {
     ASSERT_FALSE(result.errors.has_value());
     EXPECT_EQ(json::parse(result.data.value())["value"], ">>> hello world");
 }
+
+// ---------------------------------------------------------------------------
+// Custom scalars
+// ---------------------------------------------------------------------------
+
+class JsonScalar : public ScalarType {
+public:
+    JsonScalar(const json& v) : ScalarType([=]() { return v.dump();}) {}
+
+    static const ScalarResolver resolver;
+};
+const ScalarResolver JsonScalar::resolver = [](const json& j) -> json {
+    return json::parse(j.get<string>());
+};
+
+TEST_F(ResolveTest, CustomScalarTransformsValue) {
+    Schema schema({
+        .typeDefs  = "scalar JSON type Query { data: JSON }",
+        .resolvers = {
+            {"Query", Resolver{
+                {"data", json({{"key", "value"}}).dump()}
+            }}
+        },
+        .scalars   = {
+            {"JSON", JsonScalar::resolver}
+        }
+    });
+    auto result = schema.Resolve({.query = "{ data }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["data"], json({{"key", "value"}}).dump());
+}
+
+class UnixTime : public ScalarType {
+public:
+    UnixTime(int time) : ScalarType([=]() { return json {
+        {"unix", time}
+    }; }) {}
+
+    static const ScalarResolver resolver;
+};
+const ScalarResolver UnixTime::resolver = [](const nlohmann::json& v) {
+    return json{{"unix", v.get<int>()}};
+};
+
+TEST_F(ResolveTest, CustomScalarOnNestedField) {
+    Schema schema({
+        .typeDefs  = "scalar Timestamp type User { createdAt: Timestamp } type Query { user: User }",
+        .resolvers = {
+            {"Query", Resolver{
+                {"user", Resolver{
+                    {"createdAt", UnixTime(1704067200)}
+                }}
+            }}
+        },
+        .scalars = {
+            {"Timestamp", UnixTime::resolver}
+        }
+    });
+    auto result = schema.Resolve({.query = "{ user { createdAt } }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["user"]["createdAt"]["unix"], 1704067200);
+}
+
+TEST_F(ResolveTest, UnregisteredCustomScalarPassesThroughAsIs) {
+    Schema schema({
+        .typeDefs  = "scalar DateTime type Query { ts: DateTime }",
+        .resolvers = {{"Query", Resolver{{"ts", "2024-01-01"}}}}
+    });
+    auto result = schema.Resolve({.query = "{ ts }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["ts"], "2024-01-01");
+}
+
+class DateScalar : public ScalarType {
+public:
+    DateScalar(const string& v) : ScalarType([=]() -> json { return {{"iso", v}}; }) {}
+
+    static const ScalarResolver resolver;
+};
+const ScalarResolver DateScalar::resolver = [](const json& v) {
+    return json{{"iso", v.get<string>()}};
+};
+
+TEST_F(ResolveTest, CustomScalarParsesVariableInput) {
+    Schema schema({
+        .typeDefs  = R"(
+            scalar Date
+
+            type Query {
+                event(on: Date!): String
+            }
+        )",
+        .resolvers = {{"Query", Resolver{{"event", FunctionResolver([](const ResolverArgs& r) -> ValueResolver {
+            return r.args["on"]["iso"].get<string>();
+        })}}}},
+        .scalars = {
+            {"Date", DateScalar::resolver}
+        }
+    });
+    auto result = schema.Resolve({
+        .query = "query($d: Date!) { event(on: $d) }",
+        .variables = {{"d", "2024-06-01"}}
+    }).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["event"], "2024-06-01");
+}
+
+TEST_F(ResolveTest, CustomScalarParsesLiteralInput) {
+    Schema schema({
+        .typeDefs  = R"(scalar Date type Query { event(on: Date!): String })",
+        .resolvers = {
+            {"Query", Resolver{
+                {"event", FunctionResolver([](const ResolverArgs& r) -> ValueResolver {
+                    return r.args["on"]["iso"].get<string>();
+                })}
+            }}
+        },
+        .scalars = {
+            {"Date", DateScalar::resolver}
+        }
+    });
+    auto result = schema.Resolve({.query = R"({ event(on: "2024-06-01") })"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["event"], "2024-06-01");
+}
+
+TEST_F(ResolveTest, CustomScalarReturnedDirectlyFromResolver) {
+    Schema schema({
+        .typeDefs  = "scalar JSON type Query { data: JSON }",
+        .resolvers = {{"Query", Resolver{
+            {"data", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+                return JsonScalar(json {
+                    {"key", "value"}
+                });
+            })}
+        }}}
+    });
+    auto result = schema.Resolve({.query = "{ data }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["data"], json({{"key", "value"}}).dump());
+}
+
+TEST_F(ResolveTest, CustomScalarReturnedDirectlyWithTransform) {
+    Schema schema({
+        .typeDefs  = "scalar Timestamp type Query { ts: Timestamp }",
+        .resolvers = {{"Query", Resolver{
+            {"ts", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+                return UnixTime(1704067200);
+            })}
+        }}}
+    });
+    auto result = schema.Resolve({.query = "{ ts }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["ts"]["unix"], 1704067200);
+}

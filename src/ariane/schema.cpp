@@ -37,6 +37,7 @@ Schema::Schema(const SchemaOptions& options) {
     _directives = builtinDirectives;
     for (const auto& [name, fn] : options.directives)
         _directives[name] = fn;
+    _scalars = options.scalars;
 }
 
 void Schema::InjectIntrospectionResolvers() {
@@ -67,5 +68,6 @@ Task<ResolveResult> Schema::Resolve(const SchemaResolveArgs& args) const {
         .schemaDefinition = *_schemaDefinition,
         .resolvers = _resolvers,
         .directives = _directives,
+        .scalars = _scalars,
     });
 }

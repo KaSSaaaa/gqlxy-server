@@ -1,10 +1,11 @@
 #pragma once
 
+#include <ariane/scalars.h>
 #include <ariane/task.h>
-#include <nlohmann/json.hpp>
 #include <functional>
 #include <future>
 #include <list>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -26,6 +27,8 @@ using CoroutineResolver = std::function<Task<ValueResolver>(const ResolverArgs&)
 using CallbackResolver = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 using TypeResolver = std::function<std::optional<std::string>(const Resolver&)>;
+using ScalarResolver = std::function<nlohmann::json(const nlohmann::json&)>;
+using Scalars = std::unordered_map<std::string, ScalarResolver>;
 using DirectiveResolver = std::function<std::optional<ValueResolver>(const ResolverArgs& args, const ValueResolver& value)>;
 using Directives = std::unordered_map<std::string, DirectiveResolver>;
 
@@ -42,6 +45,7 @@ struct ValueResolver : std::variant<int,
                                     CoroutineResolver,
                                     CallbackResolver,
                                     TypeResolver,
+                                    ScalarType,
                                     std::monostate> {
     using variant::variant;
 

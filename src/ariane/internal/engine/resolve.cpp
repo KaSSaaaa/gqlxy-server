@@ -66,6 +66,8 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
             [](float v) -> Task<nlohmann::json> { co_return v; },
             [](bool v) -> Task<nlohmann::json> { co_return v; },
             [](const string& v) -> Task<nlohmann::json> { co_return v; },
+            [](const TypeResolver&) -> Task<nlohmann::json> { co_return nullptr; },
+            [](const ScalarType& s) -> Task<nlohmann::json> { co_return s.serialize(); },
             [](monostate) -> Task<nlohmann::json> { co_return nullptr; },
             [&](const Resolver& currentResolver) -> Task<nlohmann::json> {
                 auto resolvedType = ResolveType(args.resolvers, currentResolver, typeName);
@@ -162,7 +164,6 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                 co_return co_await Resolve(args, p.get_future().get(), {}, selectionSet, typeName,
                                            fragments, fieldErrors, path);
             },
-            [&](const TypeResolver&) -> Task<nlohmann::json> { co_return nullptr; }
          },
          resolver);
 }
@@ -207,7 +208,7 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                          args,
                          fieldResolvers.at(field.name),
                          ResolverArgs{
-                             .args = ResolveArguments(field.arguments, args.variables)
+                             .args = ResolveArguments(field, args, resolverType)
                          },
                          field.selectionSet,
                          fieldTypeName.value_or(resolverType),

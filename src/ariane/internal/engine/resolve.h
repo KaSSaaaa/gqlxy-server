@@ -21,6 +21,7 @@ struct ResolveQueryArgs {
   SchemaDefinition schemaDefinition;
   Resolver resolvers;
   Directives directives;
+  Scalars scalars;
 };
 
 Task<ResolveResult> ResolveOperations(ResolveQueryArgs args);
