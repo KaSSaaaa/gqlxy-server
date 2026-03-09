@@ -25,7 +25,7 @@ vector<InputValueDefinition> FieldArgDefs(const string& typeName, const string& 
 json ResolveArguments(const Field& field,
                       const ResolveQueryArgs& args,
                       const string& typeName) {
-    auto& [query, variables, schemaDefinition, resolvers, directives, scalars] = args;
+    auto& [query, variables, schemaDefinition, resolvers, directives, scalars, operationName, context] = args;
     auto argDefs = FieldArgDefs(typeName, field.name, schemaDefinition);
 
     return accumulate(field.arguments.begin(), field.arguments.end(), json::object(), [&](auto obj, const auto& arg) {

@@ -1,13 +1,17 @@
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
 
-#include <algorithm>
 #include <iostream>
 #include <string>
 
 using namespace std;
 using namespace ariane::graphql;
 using json = nlohmann::json;
+
+template <std::ranges::input_range R>
+auto to_string(R&& r) {
+    return std::string(std::ranges::begin(r), std::ranges::end(r));
+}
 
 static void run(const string& label, Schema& schema, const string& query,
                 const json& variables = json::object()) {
@@ -42,15 +46,13 @@ int main() {
         },
         .directives = {
             {"redact", [](const ResolverArgs& args, const ValueResolver&) -> optional<ValueResolver> {
-                return args.args.value("if", false) ? nullopt : optional<ValueResolver>(monostate{});
+                return args.Args().value("if", false) ? nullopt : optional<ValueResolver>(monostate{});
             }},
             {"uppercase", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
-                auto str = get<string>(v);
-                transform(str.begin(), str.end(), str.begin(), ::toupper);
-                return optional<ValueResolver>(str);
+                return to_string(get<string>(v) | views::transform(::toupper));
             }},
             {"prefix", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
-                return optional<ValueResolver>(args.args.value("with", string{}) + get<string>(v));
+                return args.Args().value("with", string{}) + get<string>(v);
             }},
         }
     });

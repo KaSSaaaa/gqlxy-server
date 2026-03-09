@@ -15,7 +15,7 @@ optional<ValueResolver> ApplyDirectives(const vector<Directive>& directives,
 
     for (const auto& [name, args] : directives) {
         auto& directive = allDirectives.at(name);
-        current = directive(ResolverArgs{ .args = ResolveArguments(args, variables) }, *current);
+        current = directive(ResolverArgs({ .args = ResolveArguments(args, variables) }), *current);
         if (!current.has_value())
             break;
     }

@@ -1,11 +1,10 @@
+#include <ariane/internal/utils/ranges.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
 #include <ariane/task.h>
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
-
-#include <algorithm>
 #include <future>
+#include <nlohmann/json.hpp>
 #include <optional>
 
 using namespace std;
@@ -328,7 +327,7 @@ TEST_F(ResolveTest, ResolvesShorthandQuery) {
 TEST_F(ResolveTest, PassesIntArgToResolver) {
     auto data = resolve("type Query { square(x: Int!): Int }",
                         {{"square", FunctionResolver([](const ResolverArgs& a) {
-                            return a.args["x"].get<int>() * a.args["x"].get<int>();
+                            return a.Args()["x"].get<int>() * a.Args()["x"].get<int>();
                         })}},
                         "query { square(x: 5) }");
     EXPECT_EQ(data["square"], 25);
@@ -337,7 +336,7 @@ TEST_F(ResolveTest, PassesIntArgToResolver) {
 TEST_F(ResolveTest, PassesStringArgToResolver) {
     auto data = resolve("type Query { greet(name: String!): String }",
                         {{"greet", FunctionResolver([](const ResolverArgs& a) {
-                            return "Hello, " + a.args["name"].get<string>();
+                            return "Hello, " + a.Args()["name"].get<string>();
                         })}},
                         R"(query { greet(name: "Alice") })");
     EXPECT_EQ(data["greet"], "Hello, Alice");
@@ -346,7 +345,7 @@ TEST_F(ResolveTest, PassesStringArgToResolver) {
 TEST_F(ResolveTest, PassesBoolArgToResolver) {
     auto data = resolve("type Query { flag(on: Boolean!): Boolean }",
                         {{"flag", FunctionResolver([](const ResolverArgs& a) {
-                            return a.args["on"].get<bool>();
+                            return a.Args()["on"].get<bool>();
                         })}},
                         "query { flag(on: true) }");
     EXPECT_EQ(data["flag"], true);
@@ -355,7 +354,7 @@ TEST_F(ResolveTest, PassesBoolArgToResolver) {
 TEST_F(ResolveTest, PassesMultipleArgsToResolver) {
     auto data = resolve("type Query { add(a: Int!, b: Int!): Int }",
                         {{"add", FunctionResolver([](const ResolverArgs& r) {
-                            return r.args["a"].get<int>() + r.args["b"].get<int>();
+                            return r.Args()["a"].get<int>() + r.Args()["b"].get<int>();
                         })}},
                         "query { add(a: 3, b: 4) }");
     EXPECT_EQ(data["add"], 7);
@@ -371,7 +370,7 @@ TEST_F(ResolveTest, SubstitutesVariableInArgument) {
         .resolvers = {
             {"Query", Resolver{
                 {"echo", FunctionResolver([](const ResolverArgs& a) {
-                    return a.args["msg"].get<string>();
+                    return a.Args()["msg"].get<string>();
                 })}
             }}
         }
@@ -394,7 +393,7 @@ TEST_F(ResolveTest, SubstitutesIntVariable) {
         .resolvers = {
             {"Query", Resolver{
                 {"double", FunctionResolver([](const ResolverArgs& a) {
-                    return a.args["n"].get<int>() * 2;
+                    return a.Args()["n"].get<int>() * 2;
                 })}
             }}
         }
@@ -727,7 +726,7 @@ TEST_F(ResolveTest, CustomDirectiveIsEvaluated) {
         .resolvers = {{"Query", twoFieldResolvers}},
         .directives = {
             {"secret", [](const ResolverArgs& args, const ValueResolver&) -> optional<ValueResolver> {
-                return args.args.value("redact", false) ? nullopt : optional<ValueResolver>(monostate{});
+                return args.Args().value("redact", false) ? nullopt : optional<ValueResolver>(monostate{});
             }}
         }
     });
@@ -760,9 +759,7 @@ TEST_F(ResolveTest, DirectiveCanTransformFieldValue) {
         .resolvers = {{"Query", Resolver{{"greeting", "hello"}}}},
         .directives = {
             {"uppercase", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
-                auto str = get<string>(v);
-                transform(str.begin(), str.end(), str.begin(), ::toupper);
-                return optional<ValueResolver>(str);
+                return internal::to_string(get<string>(v) | views::transform(::toupper));
             }}
         }
     });
@@ -778,7 +775,7 @@ TEST_F(ResolveTest, DirectiveTransformCanAccessArgs) {
         .resolvers = {{"Query", Resolver{{"value", "hello world"}}}},
         .directives = {
             {"prefix", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
-                return optional<ValueResolver>(args.args.value("with", string{}) + get<string>(v));
+                return optional<ValueResolver>(args.Args().value("with", string{}) + get<string>(v));
             }}
         }
     });
@@ -795,10 +792,9 @@ class JsonScalar : public ScalarType {
 public:
     JsonScalar(const json& v) : ScalarType([=]() { return v.dump();}) {}
 
-    static const ScalarResolver resolver;
-};
-const ScalarResolver JsonScalar::resolver = [](const json& j) -> json {
-    return json::parse(j.get<string>());
+    static json Parse(const json& j) {
+        return json::parse(j.get<string>());
+    }
 };
 
 TEST_F(ResolveTest, CustomScalarTransformsValue) {
@@ -810,7 +806,7 @@ TEST_F(ResolveTest, CustomScalarTransformsValue) {
             }}
         },
         .scalars   = {
-            {"JSON", JsonScalar::resolver}
+            {"JSON", JsonScalar::Parse}
         }
     });
     auto result = schema.Resolve({.query = "{ data }"}).get();
@@ -824,10 +820,9 @@ public:
         {"unix", time}
     }; }) {}
 
-    static const ScalarResolver resolver;
-};
-const ScalarResolver UnixTime::resolver = [](const nlohmann::json& v) {
-    return json{{"unix", v.get<int>()}};
+    static json Parse(const json& v) {
+        return {{"unix", v.get<int>()}};
+    }
 };
 
 TEST_F(ResolveTest, CustomScalarOnNestedField) {
@@ -841,7 +836,7 @@ TEST_F(ResolveTest, CustomScalarOnNestedField) {
             }}
         },
         .scalars = {
-            {"Timestamp", UnixTime::resolver}
+            {"Timestamp", UnixTime::Parse}
         }
     });
     auto result = schema.Resolve({.query = "{ user { createdAt } }"}).get();
@@ -863,10 +858,9 @@ class DateScalar : public ScalarType {
 public:
     DateScalar(const string& v) : ScalarType([=]() -> json { return {{"iso", v}}; }) {}
 
-    static const ScalarResolver resolver;
-};
-const ScalarResolver DateScalar::resolver = [](const json& v) {
-    return json{{"iso", v.get<string>()}};
+    static json Parse(const json& v) {
+        return {{"iso", v.get<string>()}};
+    }
 };
 
 TEST_F(ResolveTest, CustomScalarParsesVariableInput) {
@@ -879,10 +873,10 @@ TEST_F(ResolveTest, CustomScalarParsesVariableInput) {
             }
         )",
         .resolvers = {{"Query", Resolver{{"event", FunctionResolver([](const ResolverArgs& r) -> ValueResolver {
-            return r.args["on"]["iso"].get<string>();
+            return r.Args()["on"]["iso"].get<string>();
         })}}}},
         .scalars = {
-            {"Date", DateScalar::resolver}
+            {"Date", DateScalar::Parse}
         }
     });
     auto result = schema.Resolve({
@@ -899,12 +893,12 @@ TEST_F(ResolveTest, CustomScalarParsesLiteralInput) {
         .resolvers = {
             {"Query", Resolver{
                 {"event", FunctionResolver([](const ResolverArgs& r) -> ValueResolver {
-                    return r.args["on"]["iso"].get<string>();
+                    return r.Args()["on"]["iso"].get<string>();
                 })}
             }}
         },
         .scalars = {
-            {"Date", DateScalar::resolver}
+            {"Date", DateScalar::Parse}
         }
     });
     auto result = schema.Resolve({.query = R"({ event(on: "2024-06-01") })"}).get();
@@ -941,3 +935,125 @@ TEST_F(ResolveTest, CustomScalarReturnedDirectlyWithTransform) {
     ASSERT_FALSE(result.errors.has_value());
     EXPECT_EQ(json::parse(result.data.value())["ts"]["unix"], 1704067200);
 }
+
+// ---------------------------------------------------------------------------
+// Resolver context (#13)
+// ---------------------------------------------------------------------------
+
+struct RequestContext {
+    string userId;
+};
+
+TEST_F(ResolveTest, ContextIsThreadedToResolver) {
+    Schema schema({
+        .typeDefs  = "type Query { me: String }",
+        .resolvers = {{"Query", Resolver{
+            {"me", FunctionResolver([](const ResolverArgs& r) -> ValueResolver {
+                return r.Context<shared_ptr<RequestContext>>()->userId;
+            })}
+        }}}
+    });
+    auto ctx = make_shared<RequestContext>(RequestContext{"user-42"});
+    auto result = schema.Resolve<shared_ptr<RequestContext>>({.query = "{ me }", .context = ctx}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["me"], "user-42");
+}
+
+TEST_F(ResolveTest, ContextIsThreadedToNestedResolver) {
+    Schema schema({
+        .typeDefs  = "type User { name: String } type Query { user: User }",
+        .resolvers = {
+            {"Query", Resolver{
+                {"user", Resolver{
+                    {"name", FunctionResolver([](const ResolverArgs& r) -> ValueResolver {
+                        return "Hello " + r.Context<shared_ptr<RequestContext>>()->userId;
+                    })}
+                }}
+            }}
+        }
+    });
+    auto ctx = make_shared<RequestContext>(RequestContext{"alice"});
+    auto result = schema.Resolve<shared_ptr<RequestContext>>({.query = "{ user { name } }", .context = ctx}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["user"]["name"], "Hello alice");
+}
+
+TEST_F(ResolveTest, EmptyContextDoesNotCrash) {
+    Schema schema({
+        .typeDefs  = "type Query { ping: String }",
+        .resolvers = {{"Query", Resolver{{"ping", "pong"}}}}
+    });
+    auto result = schema.Resolve({.query = "{ ping }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["ping"], "pong");
+}
+
+// ---------------------------------------------------------------------------
+// Operation name selection (#15)
+// ---------------------------------------------------------------------------
+
+class OperationNameTest : public testing::Test {
+protected:
+    const string typeDefs = "type Query { a: String b: String }";
+    const Resolver queryResolvers = {{"a", "alpha"}, {"b", "beta"}};
+};
+
+TEST_F(OperationNameTest, SelectsNamedOperation) {
+    Schema schema({.typeDefs = typeDefs, .resolvers = {{"Query", queryResolvers}}});
+    auto result = schema.Resolve({
+        .query = "query GetA { a } query GetB { b }",
+        .operationName = "GetA"
+    }).get();
+    ASSERT_FALSE(result.errors.has_value());
+    auto data = json::parse(result.data.value());
+    EXPECT_EQ(data["a"], "alpha");
+    EXPECT_FALSE(data.contains("b"));
+}
+
+TEST_F(OperationNameTest, ErrorOnUnknownOperationName) {
+    Schema schema({.typeDefs = typeDefs, .resolvers = {{"Query", queryResolvers}}});
+    auto result = schema.Resolve({
+        .query = "query GetA { a }",
+        .operationName = "NonExistent"
+    }).get();
+    ASSERT_TRUE(result.errors.has_value());
+    EXPECT_NE(result.errors.value()[0].message.find("NonExistent"), string::npos);
+}
+
+TEST_F(OperationNameTest, ErrorOnMultipleOperationsWithoutName) {
+    Schema schema({.typeDefs = typeDefs, .resolvers = {{"Query", queryResolvers}}});
+    auto result = schema.Resolve({
+        .query = "query GetA { a } query GetB { b }"
+    }).get();
+    ASSERT_TRUE(result.errors.has_value());
+    EXPECT_NE(result.errors.value()[0].message.find("operationName"), string::npos);
+}
+
+TEST_F(OperationNameTest, SingleOperationWithoutNameStillWorks) {
+    Schema schema({.typeDefs = typeDefs, .resolvers = {{"Query", queryResolvers}}});
+    auto result = schema.Resolve({.query = "query GetA { a }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    EXPECT_EQ(json::parse(result.data.value())["a"], "alpha");
+}
+
+// ---------------------------------------------------------------------------
+// Serial mutation execution (#14)
+// ---------------------------------------------------------------------------
+
+TEST(MutationTest, MutationFieldsExecuteInDocumentOrder) {
+    vector<string> order;
+    Schema schema({
+        .typeDefs  = "type Mutation { first: String second: String third: String } type Query { noop: String }",
+        .resolvers = {
+            {"Mutation", Resolver{
+                {"first",  FunctionResolver([&](const ResolverArgs&) -> ValueResolver { order.push_back("first");  return "1"; })},
+                {"second", FunctionResolver([&](const ResolverArgs&) -> ValueResolver { order.push_back("second"); return "2"; })},
+                {"third",  FunctionResolver([&](const ResolverArgs&) -> ValueResolver { order.push_back("third");  return "3"; })},
+            }}
+        }
+    });
+    auto result = schema.Resolve({.query = "mutation { first second third }"}).get();
+    ASSERT_FALSE(result.errors.has_value());
+    ASSERT_EQ(order, (vector<string>{"first", "second", "third"}));
+}
+

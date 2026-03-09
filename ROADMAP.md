@@ -25,24 +25,11 @@ This document tracks what is already working and what remains to be built for a 
 - Per-field error handling — resolver exceptions set the field to `null` and append a structured entry (with `message` and `path`) to `errors[]`; other fields continue resolving
 - Abstract type resolution — `TypeResolver` determines the concrete type of a union/interface field at runtime; inline fragments and named fragment spreads are filtered by the resolved concrete type; `__typename` always reflects the actual runtime type
 - `@skip` / `@include` directives — built-in runtime conditional field inclusion evaluated before resolution; custom directives registered via `SchemaOptions::directives` as `DirectiveResolver = std::function<bool(const ResolverArgs&)>`; applied to fields, inline fragments, and named fragment spreads; variable argument substitution supported
+- Custom scalars — `ScalarType` base class for output serialization; `ScalarResolver` functions in `SchemaOptions::scalars` for input coercion of scalar arguments; unregistered scalars pass through as-is
+- Resolver context — `SchemaResolveArgs::context` (`std::any`) is threaded through execution and available on every `ResolverArgs::context`; carries request-scoped state (auth, DB connection, etc.) without coupling the library to a concrete type
+- Serial mutation execution — top-level mutation fields execute strictly in document order (spec §6.3.1); each field is fully resolved before the next begins
+- Operation name selection — `SchemaResolveArgs::operationName` selects a named operation when the document contains multiple; omitting it with a multi-operation document returns a structured error
 
----
-
-## What's missing
-
-### P1 — Spec compliance
-
-**Custom scalars** — The GraphQL spec allows user-defined scalar types (e.g., `scalar DateTime`) with custom serialization and deserialization logic. Currently, only built-in scalars (`String`, `Int`, `Float`, `Boolean`, `ID`) are supported. A `ScalarResolver` type should allow registering custom coercion functions in `SchemaOptions`, enabling full spec compliance for custom scalar handling. ⚠️ **High priority** for spec compliance.
-
----
-
-### P2 — Completeness and developer ergonomics
-
-| # | Feature | Notes |
-|---|---------|-------|
-| 13 | **Resolver context** | Resolvers have no way to receive a request-scoped context (auth, DB connection, etc.). A `Context` type should be threaded through the execution. |
-| 14 | **Serial mutation execution** | The spec requires top-level mutation fields to execute strictly in document order. |
-| 15 | **Operation name selection** | `Resolve()` should accept an `operationName` parameter and select the matching named operation when the document contains multiple operations. |
 
 ---
 
@@ -109,7 +96,7 @@ Implement the Apollo Federation subgraph specification so that an Ariane schema 
 Phase 1 — Core correctness   : #1, #2, #3  ✓
 Phase 2 — Spec compliance    : #11, #6, #7, #8, #9, #10 ✓
 Phase 3 — Type system        : #12 ✓
-Phase 4 — Ergonomics         : #13, #14, #15
+Phase 4 — Ergonomics         : #13, #14, #15 ✓
 Phase 5 — Query validation   : #16, #17, #18, #19
 Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25
 Phase 7 — Schema stitching   : #26, #27, #28, #29, #30

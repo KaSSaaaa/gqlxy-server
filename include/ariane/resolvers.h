@@ -2,6 +2,7 @@
 
 #include <ariane/scalars.h>
 #include <ariane/task.h>
+#include <any>
 #include <functional>
 #include <future>
 #include <list>
@@ -16,8 +17,29 @@ namespace ariane::graphql {
 
 struct ValueResolver;
 
-struct ResolverArgs {
+struct ResolverArgsParams {
     nlohmann::json args = nlohmann::json::object();
+    std::any context;
+};
+class ResolverArgs {
+public:
+    explicit ResolverArgs(const ResolverArgsParams& params = {})
+        : _context(params.context),
+          _args(params.args) {
+
+    }
+
+    const nlohmann::json& Args() const { return _args; }
+
+    template<typename T>
+    T& Context() { return std::any_cast<T&>(_context); }
+
+    template<typename T>
+    const T& Context() const { return std::any_cast<const T&>(_context); }
+
+private:
+    nlohmann::json _args;
+    std::any _context;
 };
 
 using Resolver = std::unordered_map<std::string, ValueResolver>;

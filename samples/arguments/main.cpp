@@ -46,7 +46,7 @@ int main() {
         .resolvers = {
             {"Query", Resolver {
                 {"node", FunctionResolver([&nodes](const ResolverArgs& args) -> ValueResolver {
-                    if (auto node = nodes.find(args.args["id"].get<string>()); node != nodes.end()) {
+                    if (auto node = nodes.find(args.Args()["id"].get<string>()); node != nodes.end()) {
                         return node->second;
                     }
                     return nullopt;

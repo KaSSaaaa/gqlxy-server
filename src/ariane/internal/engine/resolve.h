@@ -1,8 +1,9 @@
 #pragma once
-#include <ariane/internal/ast/Document.h>
+
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/schema.h>
 #include <ariane/task.h>
+#include <any>
 #include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <unordered_map>
@@ -22,6 +23,8 @@ struct ResolveQueryArgs {
   Resolver resolvers;
   Directives directives;
   Scalars scalars;
+  std::string operationName;
+  std::any context;
 };
 
 Task<ResolveResult> ResolveOperations(ResolveQueryArgs args);

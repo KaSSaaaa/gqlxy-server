@@ -13,10 +13,10 @@ using namespace graphql;
 
 static const Directives builtinDirectives = {
     {"skip", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
-        return args.args.value("if", false) ? nullopt : make_optional(v);
+        return args.Args().value("if", false) ? nullopt : make_optional(v);
     }},
     {"include", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
-        return args.args.value("if", true) ? make_optional(v) : nullopt;
+        return args.Args().value("if", true) ? make_optional(v) : nullopt;
     }},
 };
 
@@ -46,7 +46,7 @@ void Schema::InjectIntrospectionResolvers() {
             return CreateSchemaResolver(*schemaDefinition);
         }},
         {"__type", [schemaDefinition = _schemaDefinition](const ResolverArgs& args) -> ValueResolver {
-            if (auto it = schemaDefinition->types.find(args.args["name"]); it != schemaDefinition->types.end()) {
+            if (auto it = schemaDefinition->types.find(args.Args()["name"]); it != schemaDefinition->types.end()) {
                 return CreateTypeResolver(it->second, *schemaDefinition);
             }
             return nullopt;
@@ -61,13 +61,18 @@ void Schema::AddToResolver(const string& resolverName, const Resolver& resolver)
     MergeResolvers(get<Resolver>(_resolvers.at(resolverName)), resolver);
 }
 
-Task<ResolveResult> Schema::Resolve(const SchemaResolveArgs& args) const {
+Task<ResolveResult> Schema::ResolveInternal(const string& query,
+                                             const nlohmann::json& variables,
+                                             const string& operationName,
+                                             any context) const {
     return ResolveOperations(ResolveQueryArgs {
-        .query = args.query,
-        .variables = args.variables,
+        .query = query,
+        .variables = variables,
         .schemaDefinition = *_schemaDefinition,
         .resolvers = _resolvers,
         .directives = _directives,
         .scalars = _scalars,
+        .operationName = operationName,
+        .context = std::move(context),
     });
 }

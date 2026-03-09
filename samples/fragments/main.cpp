@@ -49,12 +49,12 @@ int main() {
                         {"1", {{"id","1"}, {"name","Alice"},   {"email","alice@example.com"}, {"bio","GraphQL enthusiast"}}},
                         {"2", {{"id","2"}, {"name","Bob"},     {"email","bob@example.com"},   {"bio","C++ developer"}}},
                     };
-                    auto it = users.find(args.args["id"].get<string>());
+                    auto it = users.find(args.Args()["id"].get<string>());
                     if (it != users.end()) return it->second;
                     return nullopt;
                 })},
                 {"post", FunctionResolver([](const ResolverArgs& args) -> ValueResolver {
-                    if (args.args["id"].get<string>() != "42") return nullopt;
+                    if (args.Args()["id"].get<string>() != "42") return nullopt;
                     return Resolver{
                         {"id",    "42"},
                         {"title", "Fragments in GraphQL"},

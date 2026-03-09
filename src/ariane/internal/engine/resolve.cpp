@@ -92,9 +92,10 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                         auto resolvedJson = co_await Resolve(
                             args,
                             currentResolver.at(field.name),
-                            ResolverArgs{
-                                .args = ResolveArguments(field.arguments, args.variables)
-                            },
+                            ResolverArgs({
+                                .args = ResolveArguments(field.arguments, args.variables),
+                                .context = args.context,
+                            }),
                             field.selectionSet,
                             FieldTypeName(typeName, field.name, args.schemaDefinition),
                             fragments,
@@ -112,7 +113,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                         if (holds_alternative<monostate>(*afterDirectives))
                             obj[outputKey] = resolvedJson;
                         else
-                            obj[outputKey] = co_await Resolve(args, *afterDirectives, {}, nullopt, "",
+                            obj[outputKey] = co_await Resolve(args, *afterDirectives, ResolverArgs(), nullopt, "",
                                                               fragments, fieldErrors, childPath);
                     } catch (const exception& e) {
                         obj[outputKey] = nullptr;
@@ -133,7 +134,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                         arr.push_back(co_await Resolve(
                             args,
                             vec[i],
-                            {},
+                            ResolverArgs(),
                             selectionSet,
                             typeName,
                             fragments,
@@ -147,21 +148,21 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                 co_return arr;
             },
             [&](const FunctionResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(args, func(resolverArgs), {}, selectionSet, typeName,
+                co_return co_await Resolve(args, func(resolverArgs), ResolverArgs(), selectionSet, typeName,
                                            fragments, fieldErrors, path);
             },
             [&](const AsyncFunctionResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(args, func(resolverArgs).get(), {}, selectionSet, typeName,
+                co_return co_await Resolve(args, func(resolverArgs).get(), ResolverArgs(), selectionSet, typeName,
                                            fragments, fieldErrors, path);
             },
             [&](const CoroutineResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(args, co_await func(resolverArgs), {}, selectionSet, typeName,
+                co_return co_await Resolve(args, co_await func(resolverArgs), ResolverArgs(), selectionSet, typeName,
                                            fragments, fieldErrors, path);
             },
             [&](const CallbackResolver& func) -> Task<nlohmann::json> {
                 promise<ValueResolver> p;
                 func(resolverArgs, [&p](const auto& res) { p.set_value(res); });
-                co_return co_await Resolve(args, p.get_future().get(), {}, selectionSet, typeName,
+                co_return co_await Resolve(args, p.get_future().get(), ResolverArgs(), selectionSet, typeName,
                                            fragments, fieldErrors, path);
             },
          },
@@ -175,6 +176,22 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
         if (document.operations.empty() && args.query.find_first_not_of(" \t\n\r") != string::npos) {
             co_return ResolveResult {
                 .errors = FieldErrors{{.message = "Failed to parse query"}}
+            };
+        }
+
+        if (!args.operationName.empty()) {
+            auto it = ranges::find_if(document.operations, [&](const auto& op) {
+                return op.name.has_value() && op.name.value() == args.operationName;
+            });
+            if (it == document.operations.end()) {
+                co_return ResolveResult {
+                    .errors = FieldErrors{{.message = "Unknown operation: " + args.operationName}}
+                };
+            }
+            document.operations = {*it};
+        } else if (document.operations.size() > 1) {
+            co_return ResolveResult {
+                .errors = FieldErrors{{.message = "Must provide operationName when document contains multiple operations"}}
             };
         }
 
@@ -207,9 +224,10 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                     auto resolvedJson = co_await Resolve(
                          args,
                          fieldResolvers.at(field.name),
-                         ResolverArgs{
-                             .args = ResolveArguments(field, args, resolverType)
-                         },
+                         ResolverArgs({
+                             .args = ResolveArguments(field, args, resolverType),
+                             .context = args.context,
+                         }),
                          field.selectionSet,
                          fieldTypeName.value_or(resolverType),
                          document.fragments,
@@ -227,7 +245,7 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                             ? resolvedJson
                             : co_await Resolve(args,
                                                *afterDirectives,
-                                               {}, nullopt, "",
+                                               ResolverArgs(), nullopt, "",
                                                document.fragments,
                                                fieldErrors,
                                                {outputKey});
