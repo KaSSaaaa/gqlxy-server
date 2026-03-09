@@ -57,7 +57,14 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                              const optional<string>& typeName,
                              const Fragments& fragments,
                              FieldErrors& fieldErrors,
-                             Path path) {
+                             const Path& path) {
+    auto resolve = [&](const ValueResolver& currentResolver,
+                       const optional<SelectionSet>& fieldSelectionSet,
+                       const optional<string>& fieldTypeName,
+                       const Path& fieldPath,
+                       const ResolverArgs& currentArgs = ResolverArgs()) {
+        return Resolve(args, currentResolver, currentArgs, fieldSelectionSet, fieldTypeName, fragments, fieldErrors, fieldPath);
+    };
     co_return co_await visit(
         overloaded{
             [](int v) -> Task<nlohmann::json> { co_return v; },
@@ -89,18 +96,15 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                         if (!currentResolver.contains(field.name))
                             throw runtime_error("Unknown property " + field.name);
 
-                        auto resolvedJson = co_await Resolve(
-                            args,
-                            currentResolver.at(field.name),
-                            ResolverArgs({
-                                .args = ResolveArguments(field.arguments, args.variables),
-                                .context = args.context,
-                            }),
-                            field.selectionSet,
-                            FieldTypeName(typeName, field.name, args.schemaDefinition),
-                            fragments,
-                            fieldErrors,
-                            childPath);
+                        auto resolvedJson = co_await resolve(
+                             currentResolver.at(field.name),
+                             field.selectionSet,
+                             FieldTypeName(typeName, field.name, args.schemaDefinition),
+                             childPath,
+                             ResolverArgs({
+                                  .args = ResolveArguments(field.arguments, args.variables),
+                                  .context = args.context,
+                             }));
 
                         if (field.directives.empty()) {
                             obj[outputKey] = resolvedJson;
@@ -113,8 +117,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                         if (holds_alternative<monostate>(*afterDirectives))
                             obj[outputKey] = resolvedJson;
                         else
-                            obj[outputKey] = co_await Resolve(args, *afterDirectives, ResolverArgs(), nullopt, "",
-                                                              fragments, fieldErrors, childPath);
+                            obj[outputKey] = co_await resolve(*afterDirectives, nullopt, nullopt, childPath);
                     } catch (const exception& e) {
                         obj[outputKey] = nullptr;
                         fieldErrors.push_back(FieldError {
@@ -131,15 +134,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                     auto elemPath = path;
                     elemPath.push_back(to_string(i));
                     try {
-                        arr.push_back(co_await Resolve(
-                            args,
-                            vec[i],
-                            ResolverArgs(),
-                            selectionSet,
-                            typeName,
-                            fragments,
-                            fieldErrors,
-                            elemPath));
+                        arr.push_back(co_await resolve(vec[i], selectionSet, typeName, elemPath));
                     } catch (const exception& e) {
                         arr.push_back(nullptr);
                         fieldErrors.push_back({.message = e.what(), .path = elemPath});
@@ -148,22 +143,18 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                 co_return arr;
             },
             [&](const FunctionResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(args, func(resolverArgs), ResolverArgs(), selectionSet, typeName,
-                                           fragments, fieldErrors, path);
+                co_return co_await resolve(func(resolverArgs), selectionSet, typeName, path);
             },
             [&](const AsyncFunctionResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(args, func(resolverArgs).get(), ResolverArgs(), selectionSet, typeName,
-                                           fragments, fieldErrors, path);
+                co_return co_await resolve(func(resolverArgs).get(), selectionSet, typeName, path);
             },
             [&](const CoroutineResolver& func) -> Task<nlohmann::json> {
-                co_return co_await Resolve(args, co_await func(resolverArgs), ResolverArgs(), selectionSet, typeName,
-                                           fragments, fieldErrors, path);
+                co_return co_await resolve(co_await func(resolverArgs), selectionSet, typeName, path);
             },
             [&](const CallbackResolver& func) -> Task<nlohmann::json> {
                 promise<ValueResolver> p;
                 func(resolverArgs, [&p](const auto& res) { p.set_value(res); });
-                co_return co_await Resolve(args, p.get_future().get(), ResolverArgs(), selectionSet, typeName,
-                                           fragments, fieldErrors, path);
+                co_return co_await resolve(p.get_future().get(), selectionSet, typeName, path);
             },
          },
          resolver);
