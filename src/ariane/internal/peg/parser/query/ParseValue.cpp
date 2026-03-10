@@ -8,7 +8,7 @@ using namespace graphql;
 
 namespace ariane::graphql::internal {
 
-optional<std::string> ParseValue(const peg::ast_node& node) {
+optional<string> ParseValue(const peg::ast_node& node) {
     if (find_node<peg::true_keyword>(node))
         return "true";
     if (find_node<peg::false_keyword>(node))

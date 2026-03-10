@@ -1,5 +1,6 @@
 #include "ParseVariableDefinition.h"
 
+#include <ariane/internal/ast/Argument.h>
 #include <ariane/internal/peg/first_node.h>
 #include <ariane/internal/peg/parser/schema_parser.h>
 #include <ariane/internal/utils/optional.h>
@@ -13,8 +14,7 @@ namespace ariane::graphql::internal {
 VariableDefinition ParseVariableDefinition(const peg::ast_node& node) {
     return VariableDefinition {
         .name = and_then(first_node<peg::variable_name>(node), [](const auto* n) {
-            auto s = n->string();
-            return s.size() > 1 && s[0] == '$' ? s.substr(1) : s;
+            return Argument::Reference(n->string());
         }),
         .type = or_else(and_then(first_node<peg::nonnull_type>(node), [](const auto* n) {
             return make_optional(ParseTypeRef(*n));

@@ -156,12 +156,14 @@ TEST_F(ResolveTest, SelectionSetOnlyReturnsRequestedFields) {
     EXPECT_FALSE(data["user"].contains("email"));
 }
 
-TEST_F(ResolveTest, UnknownFieldOmittedFromResult) {
-    auto data = resolve("type Query { hello: String }",
-                        {{"hello", "world"}},
-                        "query { hello nonExistent }");
-    EXPECT_TRUE(data.contains("hello"));
-    EXPECT_FALSE(data.contains("nonExistent"));
+TEST_F(ResolveTest, UnknownFieldReturnsValidationError) {
+    Schema schema({
+        .typeDefs  = "type Query { hello: String }",
+        .resolvers = {{"Query", Resolver{{"hello", "world"}}}}
+    });
+    auto result = schema.Resolve({.query = "query { hello nonExistent }"}).get();
+    ASSERT_TRUE(result.errors.has_value());
+    EXPECT_EQ(result.errors.value()[0].message, "Cannot query field \"nonExistent\" on type \"Query\"");
 }
 
 TEST_F(ResolveTest, ResolvesTypename) {

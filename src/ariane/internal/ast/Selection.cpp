@@ -2,6 +2,7 @@
 
 #include <ariane/internal/ast/FragmentDefinition.h>
 #include <ariane/internal/engine/ApplyDirectives.h>
+#include <ariane/internal/utils/ranges.h>
 #include <ariane/internal/utils/visit.h>
 
 using namespace std;
@@ -22,29 +23,25 @@ vector<Field> FragmentFields(const SelectionSet& selectionSet,
     return FlattenSelections(selectionSet, frags, directives, variables, concreteType);
 }
 
-std::vector<Field> FlattenSelections(const SelectionSet& ss,
-                                     const Fragments& frags,
-                                     const Directives& directives,
-                                     const nlohmann::json& variables,
-                                     const std::optional<std::string>& concreteType)  {
-    vector<Field> fields;
-    for (const auto& sel : ss.selections) {
-        std::visit(overloaded{
-           [&](const Field& f) { fields.push_back(f); },
-           [&](const FragmentSpread& s) {
+vector<Field> FlattenSelections(const SelectionSet& ss,
+                                const Fragments& frags,
+                                const Directives& directives,
+                                const nlohmann::json& variables,
+                                const optional<string>& concreteType) {
+    return concat(ss.selections | views::transform([&](const auto& sel) {
+        return visit(overloaded{
+           [&](const Field& f) -> vector<Field> { return { f }; },
+           [&](const FragmentSpread& s) -> vector<Field> {
                if (!frags.contains(s.name))
-                   return;
+                   return {};
                auto& fragment = frags.at(s.name);
-               auto nested = FragmentFields(fragment.selectionSet, s.directives, directives, variables, frags, fragment.typeCondition, concreteType);
-               fields.insert(fields.end(), nested.begin(), nested.end());
+               return FragmentFields(fragment.selectionSet, s.directives, directives, variables, frags, fragment.typeCondition, concreteType);
            },
            [&](const InlineFragment& i) {
-               auto nested = FragmentFields(*i.selectionSet, i.directives, directives, variables, frags, i.typeCondition, concreteType);
-               fields.insert(fields.end(), nested.begin(), nested.end());
+               return FragmentFields(*i.selectionSet, i.directives, directives, variables, frags, i.typeCondition, concreteType);
            },
         }, sel);
-    }
-    return fields;
+    }) | views::join);
 }
 
 }

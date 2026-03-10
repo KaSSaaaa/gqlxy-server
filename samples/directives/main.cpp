@@ -8,9 +8,9 @@ using namespace std;
 using namespace ariane::graphql;
 using json = nlohmann::json;
 
-template <std::ranges::input_range R>
+template <ranges::input_range R>
 auto to_string(R&& r) {
-    return std::string(std::ranges::begin(r), std::ranges::end(r));
+    return string(ranges::begin(r), ranges::end(r));
 }
 
 static void run(const string& label, Schema& schema, const string& query,

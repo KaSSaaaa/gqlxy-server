@@ -80,7 +80,7 @@ int main() {
         writeFile(OUTPUT_PATH, jsonData.data());
         cout << jsonData << endl;
         cout << "========" << endl;
-        cout << "Are results equal : " << std::boolalpha << (jsonData == jsonResult) << endl;
+        cout << "Are results equal : " << boolalpha << (jsonData == jsonResult) << endl;
         cout << json::parse(__type.data.value()).dump(2) << endl;
     } catch (const json::parse_error& e) {
         cerr << "JSON parse error: " << e.what() << endl;

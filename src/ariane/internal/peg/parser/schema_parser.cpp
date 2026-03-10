@@ -253,7 +253,7 @@ static DirectiveDefinition ParseDirective(const peg::ast_node& node) {
     };
 }
 
-static unordered_map<string_view, std::function<TypeDefinition(const peg::ast_node&)>> typeParsers {
+static unordered_map<string_view, function<TypeDefinition(const peg::ast_node&)>> typeParsers {
     {graphqlpeg::demangle<peg::object_type_definition>(), [](const auto& node) {
         return ParseObjectType(node);
     }},
@@ -281,6 +281,7 @@ optional<TypeDefinition> ParseType(const peg::ast_node& node) {
     return nullopt;
 }
 
+//TODO Cleanup
 void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefinition, const unique_ptr<peg::ast_node>& node) {
     peg::for_each_child<peg::root_operation_definition>(*node, [schemaDefinition](const auto& operationDefinition) {
         auto operationType = and_then(first_node<peg::operation_type>(operationDefinition),

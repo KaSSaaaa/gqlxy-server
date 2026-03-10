@@ -29,20 +29,8 @@ This document tracks what is already working and what remains to be built for a 
 - Resolver context — `SchemaResolveArgs::context` (`std::any`) is threaded through execution and available on every `ResolverArgs::context`; carries request-scoped state (auth, DB connection, etc.) without coupling the library to a concrete type
 - Serial mutation execution — top-level mutation fields execute strictly in document order (spec §6.3.1); each field is fully resolved before the next begins
 - Operation name selection — `SchemaResolveArgs::operationName` selects a named operation when the document contains multiple; omitting it with a multi-operation document returns a structured error
+- Query validation — before execution, the document is validated against the schema: undeclared variables (#16), missing non-nullable variables (#17), unknown fields/arguments (#18), required arguments not supplied (#19)
 
-
----
-
-### P3 — Query validation
-
-A validation layer that runs before execution and rejects invalid documents with structured errors.
-
-| # | Feature | Notes |
-|---|---------|-------|
-| 16 | **Variable declaration validation** | Variables used in argument positions (e.g. `$id`) must be declared in the operation's variable definitions (`query Foo($id: ID!)`). Undeclared variables should be rejected rather than silently substituted. |
-| 17 | **Variable type coercion & nullability** | Declared variable types must be coercible to the argument type. Non-nullable variables without a default must be provided. |
-| 18 | **Unknown field / argument validation** | Fields and arguments referenced in a query must exist on the schema type; unknown names should be rejected with a structured error. |
-| 19 | **Required argument validation** | Non-nullable arguments without a default value must be supplied at the call site. |
 
 ---
 
@@ -97,7 +85,7 @@ Phase 1 — Core correctness   : #1, #2, #3  ✓
 Phase 2 — Spec compliance    : #11, #6, #7, #8, #9, #10 ✓
 Phase 3 — Type system        : #12 ✓
 Phase 4 — Ergonomics         : #13, #14, #15 ✓
-Phase 5 — Query validation   : #16, #17, #18, #19
+Phase 5 — Query validation   : #16, #17, #18, #19 ✓
 Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25
 Phase 7 — Schema stitching   : #26, #27, #28, #29, #30
 Phase 8 — Federation         : #31, #32, #33, #34, #35, #36

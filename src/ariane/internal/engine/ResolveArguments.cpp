@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "ariane/internal/utils/ranges.h"
 #include "resolve.h"
 
 using namespace std;
@@ -12,14 +13,14 @@ using namespace nlohmann;
 
 namespace ariane::graphql::internal {
 
-//TODO clean this
 vector<InputValueDefinition> FieldArgDefs(const string& typeName, const string& fieldName,
                                                         const SchemaDefinition& schema) {
     if (!schema.types.contains(typeName))
         return {};
-    const auto& fields = schema.types.at(typeName).fields;
-    auto it = ranges::find_if(fields, [&](const auto& f) { return f.name == fieldName; });
-    return it != fields.end() ? it->args : vector<InputValueDefinition>();
+
+    return concat(schema.types.at(typeName).fields
+        | views::filter([&](const auto& f) { return f.name == fieldName; })
+        | views::transform([](const auto& f) { return f.args; }) | views::join);
 }
 
 json ResolveArguments(const Field& field,
@@ -29,22 +30,19 @@ json ResolveArguments(const Field& field,
     auto argDefs = FieldArgDefs(typeName, field.name, schemaDefinition);
 
     return accumulate(field.arguments.begin(), field.arguments.end(), json::object(), [&](auto obj, const auto& arg) {
-        auto [name, rawValue] = arg;
-        bool isVar = rawValue.starts_with("$");
-        json value = isVar ? variables[rawValue.substr(1)] : json::parse(rawValue);
+        auto value = arg.Value(variables);
 
-        auto it = ranges::find_if(argDefs, [&](const auto& d) { return d.name == name; });
-        if (it != argDefs.end() && scalars.contains(it->type.typeName()))
-            value = scalars.at(it->type.typeName())(value);
+        auto it = ranges::find_if(argDefs, [&](const auto& d) { return d.name == arg.name; });
+        if (it != argDefs.end() && scalars.contains(it->type.TypeName()))
+            value = scalars.at(it->type.TypeName())(value);
 
-        obj[name] = value;
+        obj[arg.name] = value;
         return obj;
     });
 }
 json ResolveArguments(const vector<Argument>& arguments, const json& variables) {
     return accumulate(arguments.begin(), arguments.end(), json::object(), [&](auto obj, const auto& arg) {
-        auto [name, rawValue] = arg;
-        obj[name] = rawValue.starts_with("$") ? variables[rawValue.substr(1)] : json::parse(rawValue);
+        obj[arg.name] = arg.Value(variables);
         return obj;
     });
 }

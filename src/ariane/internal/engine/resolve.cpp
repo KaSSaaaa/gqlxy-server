@@ -1,9 +1,9 @@
 #include "resolve.h"
-
 #include <ariane/internal/ast/Fragments.h>
 #include <ariane/internal/ast/Selection.h>
 #include <ariane/internal/engine/ApplyDirectives.h>
 #include <ariane/internal/engine/ResolveArguments.h>
+#include <ariane/internal/engine/Validate.h>
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/json/JsonToValueResolver.h>
 #include <ariane/internal/peg/parser/query/ParseDocument.h>
@@ -46,7 +46,7 @@ static optional<string> FieldTypeName(const optional<string>& typeName, const st
 
         auto& fields = schemaDefinition.types.at(typeName.value()).fields;
         auto it = ranges::find_if(fields, [fieldName](const auto& field) { return field.name == fieldName; });
-        return it != fields.end() ? make_optional(it->type.typeName()) : nullopt;
+        return it != fields.end() ? make_optional(it->type.TypeName()) : nullopt;
     });
 }
 
@@ -185,6 +185,9 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                 .errors = FieldErrors{{.message = "Must provide operationName when document contains multiple operations"}}
             };
         }
+
+        if (auto errs = ValidateDocument(document, args.schemaDefinition, args.variables); !errs.empty())
+            co_return ResolveResult{.errors = errs};
 
         nlohmann::json data = nlohmann::json::object();
         FieldErrors fieldErrors;

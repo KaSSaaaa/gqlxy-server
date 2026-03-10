@@ -3,6 +3,7 @@
 #include <ariane/schema.h>
 #include <gtest/gtest.h>
 
+using namespace std;
 using namespace ariane::graphql;
 using namespace ariane::graphql::internal;
 
@@ -39,18 +40,18 @@ TEST(SchemaParser, ParsesFieldTypes) {
     )");
     const auto& userType = schemaDefinition->types.at("User");
 
-    auto idField = std::ranges::find_if(userType.fields, [](const FieldDefinition& f) { return f.name == "id"; });
+    auto idField = ranges::find_if(userType.fields, [](const FieldDefinition& f) { return f.name == "id"; });
     ASSERT_NE(idField, userType.fields.end());
     EXPECT_EQ(idField->type.kind._value, TypeRefKind::NON_NULL);
     EXPECT_EQ(idField->type.ofType->kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(idField->type.ofType->name, "ID");
 
-    auto emailField = std::ranges::find_if(userType.fields, [](const FieldDefinition& f) { return f.name == "email"; });
+    auto emailField = ranges::find_if(userType.fields, [](const FieldDefinition& f) { return f.name == "email"; });
     ASSERT_NE(emailField, userType.fields.end());
     EXPECT_EQ(emailField->type.kind._value, TypeRefKind::NamedType);
     EXPECT_EQ(emailField->type.name, "String");
 
-    auto tagsField = std::ranges::find_if(userType.fields, [](const FieldDefinition& f) { return f.name == "tags"; });
+    auto tagsField = ranges::find_if(userType.fields, [](const FieldDefinition& f) { return f.name == "tags"; });
     ASSERT_NE(tagsField, userType.fields.end());
     EXPECT_EQ(tagsField->type.kind._value, TypeRefKind::LIST);
 }

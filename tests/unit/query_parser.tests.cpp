@@ -10,15 +10,15 @@ using namespace ariane::graphql::internal;
 // ---------------------------------------------------------------------------
 
 static const Field& asField(const Selection& s) {
-    return std::get<Field>(s);
+    return get<Field>(s);
 }
 
 static const FragmentSpread& asFragmentSpread(const Selection& s) {
-    return std::get<FragmentSpread>(s);
+    return get<FragmentSpread>(s);
 }
 
 static const InlineFragment& asInlineFragment(const Selection& s) {
-    return std::get<InlineFragment>(s);
+    return get<InlineFragment>(s);
 }
 
 // ---------------------------------------------------------------------------
@@ -179,14 +179,14 @@ TEST(QueryParser, ParsesMultipleVariableDefinitions) {
 TEST(QueryParser, ParsesVariableTypeNamed) {
     auto ops = ParseOperations("query($id: ID) { hero }");
     ASSERT_EQ(ops[0].variableDefinitions.size(), 1);
-    EXPECT_EQ(ops[0].variableDefinitions[0].type.typeName(), "ID");
+    EXPECT_EQ(ops[0].variableDefinitions[0].type.TypeName(), "ID");
 }
 
 TEST(QueryParser, ParsesVariableTypeNonNull) {
     auto ops = ParseOperations("query($id: ID!) { hero }");
     const auto& varDef = ops[0].variableDefinitions[0];
     EXPECT_EQ(varDef.type.kind._value, TypeRefKind::NON_NULL);
-    EXPECT_EQ(varDef.type.typeName(), "ID");
+    EXPECT_EQ(varDef.type.TypeName(), "ID");
 }
 
 TEST(QueryParser, ParsesVariableWithDefaultValue) {

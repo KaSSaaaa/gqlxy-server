@@ -1,11 +1,19 @@
-#include <ariane/internal/introspection/types/TypeRef.h>
+#include "TypeRef.h"
 
 using namespace std;
 
 namespace ariane::graphql::internal {
 
-std::string TypeRef::typeName() const {
-    return ofType != nullptr ? ofType->typeName() : name;
+string TypeRef::TypeName() const {
+    return ofType != nullptr ? ofType->TypeName() : name;
+}
+
+string TypeRef::ToString() const {
+    if (kind._value == TypeRefKind::LIST)
+        return "[" + ofType->ToString() + "]";
+    if (kind._value == TypeRefKind::NON_NULL)
+        return ofType->ToString() + "!";
+    return name;
 }
 
 TypeRef TypeRef::Named(const string& typeName) {

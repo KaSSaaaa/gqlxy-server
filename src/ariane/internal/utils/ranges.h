@@ -4,6 +4,7 @@
 #include <ranges>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace ariane::graphql::internal {
@@ -18,6 +19,12 @@ template <std::ranges::input_range R>
 auto to_set(R&& r) {
     using T = std::ranges::range_value_t<R>;
     return std::set<T>(std::ranges::begin(r), std::ranges::end(r));
+}
+
+template <std::ranges::input_range R>
+auto to_unordered_set(R&& r) {
+    using T = std::ranges::range_value_t<R>;
+    return std::unordered_set<T>(std::ranges::begin(r), std::ranges::end(r));
 }
 
 template <std::ranges::input_range R>
