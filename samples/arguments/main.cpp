@@ -15,9 +15,7 @@ using json = nlohmann::json;
 
 static string readFile(const char* path) {
     ifstream f(path);
-    if (!f) {
-        throw runtime_error(string("Cannot open schema file: ") + path);
-    }
+    if (!f) throw runtime_error(string("Cannot open schema file: ") + path);
     ostringstream ss;
     ss << f.rdbuf();
     return ss.str();

@@ -237,25 +237,15 @@ static DirectiveDefinition ParseDirective(const peg::ast_node& node) {
     };
 }
 
+static optional<TypeDefinition> ParseExtension(const peg::ast_node& node);
+
 static unordered_map<string_view, function<TypeDefinition(const peg::ast_node&)>> typeParsers {
-    {graphqlpeg::demangle<peg::object_type_definition>(), [](const auto& node) {
-        return ParseObjectType(node);
-    }},
-    {graphqlpeg::demangle<peg::scalar_type_definition>(), [](const auto& node) {
-        return ParseType(node, TypeKind::SCALAR);
-    }},
-    {graphqlpeg::demangle<peg::enum_type_definition>(), [](const auto& node) {
-        return ParseType(node, TypeKind::ENUM);
-    }},
-    {graphqlpeg::demangle<peg::interface_type_definition>(), [](const auto& node) {
-        return ParseInterfaceType(node);
-    }},
-    {graphqlpeg::demangle<peg::union_type_definition>(), [](const auto& node) {
-        return ParseType(node, TypeKind::UNION);
-    }},
-    {graphqlpeg::demangle<peg::input_object_type_definition>(), [](const auto& node) {
-        return ParseType(node, TypeKind::INPUT_OBJECT);
-    }},
+    {graphqlpeg::demangle<peg::object_type_definition>(), ParseObjectType},
+    {graphqlpeg::demangle<peg::interface_type_definition>(), ParseInterfaceType},
+    {graphqlpeg::demangle<peg::scalar_type_definition>(), [](const auto& node) { return ParseType(node, TypeKind::SCALAR); }},
+    {graphqlpeg::demangle<peg::enum_type_definition>(), [](const auto& node) { return ParseType(node, TypeKind::ENUM); }},
+    {graphqlpeg::demangle<peg::union_type_definition>(), [](const auto& node) { return ParseType(node, TypeKind::UNION); }},
+    {graphqlpeg::demangle<peg::input_object_type_definition>(), [](const auto& node) { return ParseType(node, TypeKind::INPUT_OBJECT); }},
 };
 
 optional<TypeDefinition> ParseType(const peg::ast_node& node) {
@@ -263,6 +253,32 @@ optional<TypeDefinition> ParseType(const peg::ast_node& node) {
         return it->second(node);
     }
     return nullopt;
+}
+
+static unordered_map<string_view, function<TypeDefinition(const peg::ast_node&)>> extensionParsers {
+    {graphqlpeg::demangle<peg::object_type_extension>(), ParseObjectType},
+    {graphqlpeg::demangle<peg::interface_type_extension>(), ParseInterfaceType},
+    {graphqlpeg::demangle<peg::union_type_extension>(), [](const auto& n) { return ParseType(n, TypeKind::UNION); }},
+    {graphqlpeg::demangle<peg::enum_type_extension>(), [](const auto& n) { return ParseType(n, TypeKind::ENUM); }},
+    {graphqlpeg::demangle<peg::input_object_type_extension>(), [](const auto& n) { return ParseType(n, TypeKind::INPUT_OBJECT); }},
+};
+
+static optional<TypeDefinition> ParseExtension(const peg::ast_node& node) {
+    if (auto it = extensionParsers.find(node.type); it != extensionParsers.end()) {
+        return it->second(node);
+    }
+    return nullopt;
+}
+
+static void ApplyExtension(SchemaDefinition& schema, const TypeDefinition& ext) {
+    auto it = schema.types.find(ext.name);
+    if (it == schema.types.end()) return;
+    auto& type = it->second;
+    ranges::copy(ext.fields, back_inserter(type.fields));
+    ranges::copy(ext.interfaces, back_inserter(type.interfaces));
+    ranges::copy(ext.unionTypes, back_inserter(type.unionTypes));
+    ranges::copy(ext.enumValues, back_inserter(type.enumValues));
+    ranges::copy(ext.inputFields, back_inserter(type.inputFields));
 }
 
 // TODO Cleanup
@@ -305,10 +321,14 @@ shared_ptr<SchemaDefinition> ParseSchemaDefinition(const string& typeDefs) {
             }
         }
 
-        for (const auto& [name, type] : schemaDefinition->types) {
-            for (const auto& interface : type.interfaces) {
-                schemaDefinition->types[interface].possibleTypes.push_back(name);
-            }
+        for (const auto& ext : ast.root->children
+            | views::transform([](const auto& node) { return ParseExtension(*node); })
+            | views::filter([](const auto& ext) { return ext.has_value(); })) {
+            ApplyExtension(*schemaDefinition, ext.value());
+        }
+
+        for (const auto& [name, interface] : schemaDefinition->InterfacesPerType()) {
+            schemaDefinition->types[interface].possibleTypes.push_back(name);
         }
 
     } catch (const exception&) {

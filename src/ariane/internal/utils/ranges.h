@@ -48,13 +48,29 @@ auto to_string(R&& r) {
     return std::string(std::ranges::begin(r), std::ranges::end(r));
 }
 
+template <typename T>
+concept associative_range = std::ranges::input_range<T>
+    && requires { typename std::remove_cvref_t<T>::mapped_type; };
+
 template <std::ranges::input_range First, std::ranges::input_range... Rest>
-    requires (std::convertible_to<std::ranges::range_value_t<Rest>, std::ranges::range_value_t<First>> && ...)
+    requires (!associative_range<First>)
+          && (std::convertible_to<std::ranges::range_value_t<Rest>, std::ranges::range_value_t<First>> && ...)
 auto concat(First&& first, Rest&&... rest) {
     using T = std::ranges::range_value_t<First>;
     std::vector<T> result;
-    std::ranges::copy(first, std::back_inserter(result));
-    (std::ranges::copy(rest, std::back_inserter(result)), ...);
+    std::ranges::copy(first, std::inserter(result, std::ranges::end(result)));
+    (std::ranges::copy(rest, std::inserter(result, std::ranges::end(result))), ...);
+    return result;
+}
+
+template <associative_range First, associative_range... Rest>
+    requires (std::same_as<typename std::remove_cvref_t<First>::key_type,    typename std::remove_cvref_t<Rest>::key_type> && ...)
+          && (std::same_as<typename std::remove_cvref_t<First>::mapped_type, typename std::remove_cvref_t<Rest>::mapped_type> && ...)
+auto concat(First&& first, Rest&&... rest) {
+    using K = typename std::remove_cvref_t<First>::key_type;
+    using V = typename std::remove_cvref_t<First>::mapped_type;
+    std::unordered_map<K, V> result(std::ranges::begin(first), std::ranges::end(first));
+    (result.insert(std::ranges::begin(rest), std::ranges::end(rest)), ...);
     return result;
 }
 

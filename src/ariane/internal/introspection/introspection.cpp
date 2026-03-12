@@ -1,11 +1,10 @@
 #include "introspection.h"
+#include <ariane/internal/ast/BuildInScalars.h>
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/ranges.h>
-
 #include <iostream>
 #include <ranges>
-#include <unordered_set>
 
 using namespace std;
 using namespace ariane::graphql::internal;
@@ -20,34 +19,6 @@ static const auto __NonNull__List__NonNull__Type = TypeRef::NonNull(__List__NonN
 static const auto _String = TypeRef::Named("String");
 static const auto _Boolean = TypeRef::Named("Boolean");
 static const auto __InputValue = TypeRef::Named("__InputValue");
-
-static const vector builtInScalars = {
-    TypeDefinition {
-        .kind = TypeKind::SCALAR,
-        .name = "String",
-        .description = "The `String` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text."
-    },
-    TypeDefinition{
-        .kind = TypeKind::SCALAR,
-        .name = "Int",
-        .description = "The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1."
-    },
-    TypeDefinition{
-        .kind = TypeKind::SCALAR,
-        .name = "Boolean",
-        .description = "The `Boolean` scalar type represents `true` or `false`."
-    },
-    TypeDefinition{
-        .kind = TypeKind::SCALAR,
-        .name = "Float",
-        .description = "The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point)."
-    },
-    TypeDefinition{
-        .kind = TypeKind::SCALAR,
-        .name = "ID",
-        .description = "The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `\"4\"`) or integer (such as `4`) input value will be accepted as an ID."
-    }
-};
 
 static const vector builtInDirectives = {
     DirectiveDefinition{
@@ -471,13 +442,9 @@ static auto introspectionTypeNames = views::transform(introspectionTypeDefinitio
     return typeDef.name;
 });
 
-static auto builtinScalarsMap = to_map(builtInScalars | views::transform([](const auto& typeDef) {
-    return make_pair(typeDef.name, typeDef);
-}));
-
 static string resolveKind(const string& typeName, const SchemaDefinition& schemaDefinition) {
     if (schemaDefinition.types.contains(typeName)) return schemaDefinition.types.at(typeName).kind._to_string();
-    if (builtinScalarsMap.contains(typeName))
+    if (BuiltinScalarsMap.contains(typeName))
         return "SCALAR";
 
     auto it = ranges::find_if(introspectionTypeDefinitions, [&](const auto& t) { return t.name == typeName; });
@@ -640,7 +607,7 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& 
 
 static optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schemaDefinition, const string& name) {
     if (schemaDefinition.types.contains(name)) return schemaDefinition.types.at(name);
-    if (builtinScalarsMap.contains(name)) return builtinScalarsMap.at(name);
+    if (BuiltinScalarsMap.contains(name)) return BuiltinScalarsMap.at(name);
     if (introspectionTypeMap.contains(name)) return introspectionTypeMap.at(name);
     return nullopt;
 }
@@ -648,7 +615,7 @@ static optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schema
 Resolver CreateSchemaResolver(const SchemaDefinition& schemaDefinition) {
     auto orderedTypes = to_vector(
         concat(to_set(schemaDefinition.types | views::keys),
-            builtInScalars | views::transform([](const auto& t) { return t.name; }),
+            BuiltInScalars | views::transform([](const auto& t) { return t.name; }),
             introspectionTypeNames)
         | views::transform([&schemaDefinition](const auto& type) { return GetTypeDefinition(schemaDefinition, type); })
         | views::filter([](const auto& type) { return type.has_value(); }));

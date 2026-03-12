@@ -51,15 +51,30 @@ Implement the GraphQL subscription execution path as defined by the June 2018+ s
 
 ### P5 — Schema Stitching
 
-Merge multiple independent `Schema` instances into a single unified schema. All merging happens at library level without a network gateway.
+Merge multiple independent `Schema` instances into a single unified schema via `Schema::Stitch()`.
 
 | # | Feature | Notes |
 |---|---------|-------|
-| 26 | **SDL merging** | Combine `typeDefs` strings from multiple schemas, detecting and rejecting duplicate type names with a clear error. Scalar and directive definitions may be de-duplicated safely. |
-| 27 | **Resolver map merging** | Merge `Resolver` maps from all sub-schemas. Conflicting root-type field names must be flagged as errors; nested type resolvers are merged recursively. |
-| 28 | **Type extension stitching** | Support `extend type Foo { … }` SDL to add fields from one schema onto a type declared in another, enabling cross-schema field composition. |
-| 29 | **Delegation** | When a stitched field's resolver is absent in the merged map, delegate resolution to the originating sub-schema's `Resolve()` path rather than returning null. |
-| 30 | **`SchemaStitcher` API** | A `SchemaStitcher` builder that accepts multiple `Schema` references and produces a new merged `Schema`: `SchemaStitcher{}.add(a).add(b).stitch()`. |
+| 26 | **SDL merging** | Types from both schemas are merged at the `SchemaDefinition` level. Duplicate non-root type names produce a `runtime_error`. Built-in scalars and introspection types are deduplicated silently. |
+| 27 | **Resolver map merging** | Resolver maps are deep-merged. Conflicting user-defined field resolvers produce a `runtime_error`; `__`-prefixed system fields are safely deduplicated. |
+| 28 | **Root type field merging** | `Query`, `Mutation`, and `Subscription` fields from both schemas are combined automatically — no `extend type` syntax required. |
+| 29 | **Introspection consistency** | After stitching, `__schema` and `__type` are re-injected pointing at the merged type map, so introspection correctly reflects all types from both schemas. |
+| 30 | **`Schema::Stitch()` API** | `schema.Stitch(other)` returns a new `Schema`. Chains naturally: `a.Stitch(b).Stitch(c)`. |
+
+---
+
+### SDL `extend` keyword
+
+Support the GraphQL `extend type` SDL keyword (and the equivalent for interfaces, unions, enums, and input types) directly within a schema's `typeDefs` string.
+
+| # | Feature | Notes |
+|---|---------|-------|
+| 37 | **`extend type`** | Appends fields and implemented interfaces to an existing object type. |
+| 38 | **`extend interface`** | Appends fields to an existing interface type. `possibleTypes` linking is updated accordingly. |
+| 39 | **`extend union`** | Appends member types to an existing union. |
+| 40 | **`extend enum`** | Appends values to an existing enum type. |
+| 41 | **`extend input`** | Appends fields to an existing input object type. |
+| 42 | **Unknown type silently ignored** | Extending a type that is not defined in the same SDL is silently ignored (no throw). |
 
 ---
 
@@ -87,6 +102,7 @@ Phase 3 — Type system        : #12 ✓
 Phase 4 — Ergonomics         : #13, #14, #15 ✓
 Phase 5 — Query validation   : #16, #17, #18, #19 ✓
 Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25 ✓
-Phase 7 — Schema stitching   : #26, #27, #28, #29, #30
-Phase 8 — Federation         : #31, #32, #33, #34, #35, #36
+Phase 7 — Schema stitching   : #26, #27, #28, #29, #30 ✓
+Phase 8 — SDL extend         : #37, #38, #39, #40, #41, #42 ✓
+Phase 9 — Federation         : #31, #32, #33, #34, #35, #36
 ```

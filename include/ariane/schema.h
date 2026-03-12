@@ -44,11 +44,18 @@ public:
         return SubscribeInternal(args.query, args.variables, args.operationName, args.context);
     }
 
+    Schema Stitch(const Schema& other) const;
+
 private:
     std::shared_ptr<internal::SchemaDefinition> _schemaDefinition;
     Resolver _resolvers;
     Directives _directives;
     Scalars _scalars;
+
+    Schema(const std::shared_ptr<internal::SchemaDefinition>& schemaDefinition,
+           const Resolver& resolvers,
+           const Directives& directives,
+           const Scalars& scalars);
 
     Task<ResolveResult> ResolveInternal(const std::string& query,
                                         const nlohmann::json& variables,

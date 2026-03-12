@@ -7,6 +7,7 @@
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/json/JsonToValueResolver.h>
 #include <ariane/internal/peg/parser/query/ParseDocument.h>
+#include <ariane/internal/utils/expect.h>
 #include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/visit.h>
 #include <ariane/resolvers.h>
@@ -86,16 +87,14 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                 for (const auto& field : FlattenSelections(*selectionSet, fragments, args.directives, args.variables, resolvedType)) {
                     const auto& outputKey = field.alias.value_or(field.name);
                     if (field.name == "__typename") {
-                        if (!resolvedType.has_value())
-                            throw runtime_error("__resolveType returned nullopt for abstract type: " + typeName.value_or("Unknown"));
+                        expect(resolvedType.has_value(), format("__resolveType returned nullopt for abstract type: {}", typeName.value_or("Unknown")));
                         obj[outputKey] = resolvedType;
                         continue;
                     }
                     auto childPath = path;
                     childPath.push_back(outputKey);
                     try {
-                        if (!currentResolver.contains(field.name))
-                            throw runtime_error("Unknown property " + field.name);
+                        expect(currentResolver.contains(field.name), format("Unknown property {}", field.name));
 
                         auto resolvedJson = co_await resolve(
                              currentResolver.at(field.name),

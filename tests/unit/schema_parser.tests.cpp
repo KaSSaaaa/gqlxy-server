@@ -129,3 +129,111 @@ TEST(SchemaParser, ParsesUnionTypes) {
     EXPECT_EQ(petType.name, "Pet");
     EXPECT_EQ(petType.unionTypes.size(), 2);
 }
+
+TEST(SchemaParser, ExtendsObjectTypeWithFields) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        type User {
+            id: ID!
+            name: String
+        }
+        extend type User {
+            email: String
+            age: Int
+        }
+    )");
+    ASSERT_TRUE(schemaDefinition->types.contains("User"));
+
+    const auto& user = schemaDefinition->types.at("User");
+    EXPECT_EQ(user.fields.size(), 4);
+    EXPECT_EQ(user.fields[2].name, "email");
+    EXPECT_EQ(user.fields[3].name, "age");
+}
+
+TEST(SchemaParser, ExtendsObjectTypeWithInterfaces) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        interface Node {
+            id: ID!
+        }
+        type User {
+            id: ID!
+            name: String
+        }
+        extend type User implements Node {
+            email: String
+        }
+    )");
+    ASSERT_TRUE(schemaDefinition->types.contains("User"));
+
+    const auto& user = schemaDefinition->types.at("User");
+    ASSERT_EQ(user.interfaces.size(), 1);
+    EXPECT_EQ(user.interfaces[0], "Node");
+    EXPECT_EQ(user.fields.size(), 3);
+
+    const auto& node = schemaDefinition->types.at("Node");
+    ASSERT_EQ(node.possibleTypes.size(), 1);
+    EXPECT_EQ(node.possibleTypes[0], "User");
+}
+
+TEST(SchemaParser, ExtendsInterfaceWithFields) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        interface Node {
+            id: ID!
+        }
+        extend interface Node {
+            createdAt: String
+        }
+    )");
+    ASSERT_TRUE(schemaDefinition->types.contains("Node"));
+
+    const auto& node = schemaDefinition->types.at("Node");
+    EXPECT_EQ(node.fields.size(), 2);
+    EXPECT_EQ(node.fields[1].name, "createdAt");
+}
+
+TEST(SchemaParser, ExtendsUnionType) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        type Dog { name: String }
+        type Cat { name: String }
+        type Fish { name: String }
+        union Pet = Dog | Cat
+        extend union Pet = Fish
+    )");
+    ASSERT_TRUE(schemaDefinition->types.contains("Pet"));
+
+    const auto& pet = schemaDefinition->types.at("Pet");
+    EXPECT_EQ(pet.unionTypes.size(), 3);
+    EXPECT_EQ(pet.unionTypes[2], "Fish");
+}
+
+TEST(SchemaParser, ExtendsEnumType) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        enum Status { ACTIVE INACTIVE }
+        extend enum Status { PENDING }
+    )");
+    ASSERT_TRUE(schemaDefinition->types.contains("Status"));
+
+    const auto& status = schemaDefinition->types.at("Status");
+    EXPECT_EQ(status.enumValues.size(), 3);
+    EXPECT_EQ(status.enumValues[2].name, "PENDING");
+}
+
+TEST(SchemaParser, ExtendsInputType) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        input CreateUser { name: String }
+        extend input CreateUser { email: String }
+    )");
+    ASSERT_TRUE(schemaDefinition->types.contains("CreateUser"));
+
+    const auto& createUser = schemaDefinition->types.at("CreateUser");
+    EXPECT_EQ(createUser.inputFields.size(), 2);
+    EXPECT_EQ(createUser.inputFields[1].name, "email");
+}
+
+TEST(SchemaParser, ExtendUnknownTypeIsIgnored) {
+    auto schemaDefinition = ParseSchemaDefinition(R"(
+        type User { id: ID! }
+        extend type Ghost { name: String }
+    )");
+    EXPECT_FALSE(schemaDefinition->types.contains("Ghost"));
+    EXPECT_EQ(schemaDefinition->types.at("User").fields.size(), 1);
+}

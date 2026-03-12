@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include <ariane/internal/utils/expect.h>
 #include <fstream>
 #include <sstream>
 
@@ -11,7 +12,7 @@ using json = nlohmann::json;
 
 static string readFile(const char* path) {
     ifstream f(path);
-    if (!f) throw runtime_error(string("Cannot open file: ") + path);
+    internal::expect(!!f, format("Cannot open file: {}", path));
     ostringstream ss;
     ss << f.rdbuf();
     return ss.str();

@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <ranges>
 
 #include "DirectiveDefinition.h"
 #include "TypeDefinition.h"
@@ -16,6 +17,13 @@ struct SchemaDefinition {
     std::optional<std::string> queryTypeName;
     std::optional<std::string> mutationTypeName;
     std::optional<std::string> subscriptionTypeName;
+
+    auto InterfacesPerType() {
+        using namespace std;
+        return types | views::transform([](const auto& type) {
+            return type.second.interfaces | views::transform([&](const auto& interface) { return make_pair(type.first, interface); });
+        }) | views::join;
+    }
 };
 
 }
