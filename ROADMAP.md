@@ -86,7 +86,7 @@ Phase 2 — Spec compliance    : #11, #6, #7, #8, #9, #10 ✓
 Phase 3 — Type system        : #12 ✓
 Phase 4 — Ergonomics         : #13, #14, #15 ✓
 Phase 5 — Query validation   : #16, #17, #18, #19 ✓
-Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25
+Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25 ✓
 Phase 7 — Schema stitching   : #26, #27, #28, #29, #30
 Phase 8 — Federation         : #31, #32, #33, #34, #35, #36
 ```

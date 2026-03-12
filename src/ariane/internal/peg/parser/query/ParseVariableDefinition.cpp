@@ -27,10 +27,10 @@ VariableDefinition ParseVariableDefinition(const peg::ast_node& node) {
                 });
             });
         }).value_or(TypeRef::Named("Unknown")),
-        .defaultValue = and_then(first_node<peg::default_value>(node), [](const auto* dv) {
+        .defaultValue = and_then(first_node<peg::default_value>(node), [](const auto* dv) -> optional<string> {
             if (!dv->children.empty() && dv->children[0] && dv->children[0]->has_content())
                 return make_optional(dv->children[0]->string());
-            return make_optional(string{});
+            return nullopt;
         }),
     };
 }

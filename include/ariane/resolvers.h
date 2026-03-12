@@ -1,8 +1,9 @@
 #pragma once
 
+#include "subscription.h"
+#include <any>
 #include <ariane/scalars.h>
 #include <ariane/task.h>
-#include <any>
 #include <functional>
 #include <future>
 #include <list>
@@ -24,8 +25,8 @@ struct ResolverArgsParams {
 class ResolverArgs {
 public:
     explicit ResolverArgs(const ResolverArgsParams& params = {})
-        : _context(params.context),
-          _args(params.args) {
+        : _args(params.args),
+          _context(params.context) {
 
     }
 
@@ -49,6 +50,7 @@ using CoroutineResolver = std::function<Task<ValueResolver>(const ResolverArgs&)
 using CallbackResolver = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 using TypeResolver = std::function<std::optional<std::string>(const Resolver&)>;
+using SubscriptionResolver = std::function<SubscriptionEventStream(const ResolverArgs&)>;
 using ScalarResolver = std::function<nlohmann::json(const nlohmann::json&)>;
 using Scalars = std::unordered_map<std::string, ScalarResolver>;
 using DirectiveResolver = std::function<std::optional<ValueResolver>(const ResolverArgs& args, const ValueResolver& value)>;
@@ -67,6 +69,7 @@ struct ValueResolver : std::variant<int,
                                     CoroutineResolver,
                                     CallbackResolver,
                                     TypeResolver,
+                                    SubscriptionResolver,
                                     ScalarType,
                                     std::monostate> {
     using variant::variant;
@@ -77,11 +80,35 @@ struct ValueResolver : std::variant<int,
     ValueResolver(std::initializer_list<std::pair<const std::string, ValueResolver>>&& init)
         : variant(Resolver(init.begin(), init.end())) {}
     ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector(list)) {}
-    ValueResolver(const std::list<ValueResolver>& list)
-        : variant(std::vector(list.begin(), list.end())) {}
+    ValueResolver(const std::list<ValueResolver>& list) : variant(std::vector(list.begin(), list.end())) {}
 
     template <typename T>
-    ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(*opt) : variant(std::monostate{})) {}
+    ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(opt.value()) : variant(std::monostate{})) {}
+
+    template <typename T>
+    bool Is() const {
+        return std::holds_alternative<T>(*this);
+    }
+
+    template <typename T>
+    const T& As() const {
+        return std::get<T>(*this);
+    }
+
+    template <typename T>
+    T& As() {
+        return std::get<T>(*this);
+    }
+
+    template <typename T>
+    std::optional<T> AsIf() const {
+        return Is<T>() ? std::make_optional(std::get<T>(*this)) : std::nullopt;
+    }
+
+    bool IsNull() const {
+        return Is<std::monostate>();
+    }
+
 };
 
 }

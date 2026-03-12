@@ -742,10 +742,12 @@ TEST_F(ResolveTest, CustomDirectiveIsEvaluated) {
 TEST_F(ResolveTest, CustomDirectiveCanBeOverridden) {
     Schema schema({
         .typeDefs  = twoFieldSchema,
-        .resolvers = {{"Query", twoFieldResolvers}},
+        .resolvers = {
+            {"Query", twoFieldResolvers}
+        },
         .directives = {
             {"skip", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
-                return optional<ValueResolver>(v);  // never skip
+                return v;  // never skip
             }}
         }
     });
@@ -774,10 +776,14 @@ TEST_F(ResolveTest, DirectiveCanTransformFieldValue) {
 TEST_F(ResolveTest, DirectiveTransformCanAccessArgs) {
     Schema schema({
         .typeDefs  = "type Query { value: String }",
-        .resolvers = {{"Query", Resolver{{"value", "hello world"}}}},
+        .resolvers = {
+            {"Query", Resolver{
+                {"value", "hello world"}
+            }}
+        },
         .directives = {
             {"prefix", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
-                return optional<ValueResolver>(args.Args().value("with", string{}) + get<string>(v));
+                return args.Args().value("with", "") + v.As<string>();
             }}
         }
     });

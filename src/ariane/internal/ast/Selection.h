@@ -32,9 +32,7 @@ struct InlineFragment {
     std::optional<SelectionSet> selectionSet;
 };
 
-struct Selection : std::variant<Field, FragmentSpread, InlineFragment> {
-
-};
+struct Selection : std::variant<Field, FragmentSpread, InlineFragment> {};
 
 std::vector<Field> FragmentFields(const SelectionSet& selectionSet,
                                   const std::vector<Directive>& fieldDirectives,
@@ -44,8 +42,10 @@ std::vector<Field> FragmentFields(const SelectionSet& selectionSet,
                                   const std::optional<std::string>& typeCondition,
                                   const std::optional<std::string>& concreteType);
 
-std::vector<Field> FlattenSelections(const SelectionSet& ss, const Fragments& frags,
-                                     const Directives& directives, const nlohmann::json& variables,
+std::vector<Field> FlattenSelections(const SelectionSet& ss,
+                                     const Fragments& frags,
+                                     const Directives& directives,
+                                     const nlohmann::json& variables,
                                      const std::optional<std::string>& concreteType = std::nullopt);
 
 }

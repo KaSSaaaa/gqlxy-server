@@ -186,21 +186,13 @@ TypeDefinition ParseInterfaceType(const peg::ast_node& node) {
 string ParseName(const peg::ast_node& node, const TypeKind& kind) {
     switch (kind) {
         case TypeKind::ENUM:
-            return and_then(first_node<peg::enum_name>(node), [](const auto* n) {
-                return n->string();
-            });
+            return and_then(first_node<peg::enum_name>(node), [](const auto* n) { return n->string(); });
         case TypeKind::SCALAR:
-            return and_then(first_node<peg::scalar_name>(node), [](const auto* n) {
-                return n->string();
-            });
+            return and_then(first_node<peg::scalar_name>(node), [](const auto* n) { return n->string(); });
         case TypeKind::UNION:
-            return and_then(first_node<peg::union_name>(node), [](const auto* n) {
-                return n->string();
-            });
+            return and_then(first_node<peg::union_name>(node), [](const auto* n) { return n->string(); });
         case TypeKind::INPUT_OBJECT:
-            return and_then(first_node<peg::object_name>(node), [](const auto* n) {
-                return n->string();
-            });
+            return and_then(first_node<peg::object_name>(node), [](const auto* n) { return n->string(); });
         default:
             return "";
     }
@@ -213,20 +205,14 @@ TypeDefinition ParseType(const peg::ast_node& node, const TypeKind& kind) {
         .description = ParseDescription(node),
         .unionTypes = to_vector(node.children
             | views::filter(is_type<peg::union_type>())
-            | views::transform([](const auto& child) {
-                return child->string();
-            })),
+            | views::transform([](const auto& child) { return child->string(); })),
         .enumValues = to_vector(node.children
             | views::filter(is_type<peg::enum_value_definition>())
-            | views::transform([](const auto& child) {
-                return ParseEnumValue(*child);
-            })),
+            | views::transform([](const auto& child) { return ParseEnumValue(*child); })),
         .inputFields = and_then(first_node<peg::input_fields_definition>(node), [](const auto& in) {
             return to_vector(in->children
                 | views::filter(is_type<peg::input_field_definition>())
-                | views::transform([](const auto& child) {
-                    return ParseInputValue(*child);
-                }));
+                | views::transform([](const auto& child) { return ParseInputValue(*child); }));
         })
     };
 }
@@ -245,9 +231,7 @@ static DirectiveDefinition ParseDirective(const peg::ast_node& node) {
         .args = and_then(first_node<peg::arguments_definition>(node), [](const auto* args) {
             return to_vector(args->children
                 | views::filter(is_type<peg::input_field_definition>())
-                | views::transform([](const auto& child) {
-                    return ParseInputValue(*child);
-                }));
+                | views::transform([](const auto& child) { return ParseInputValue(*child); }));
         }),
         .isRepeatable = first_node<peg::repeatable_keyword>(node).has_value(),
     };
@@ -281,8 +265,9 @@ optional<TypeDefinition> ParseType(const peg::ast_node& node) {
     return nullopt;
 }
 
-//TODO Cleanup
-void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefinition, const unique_ptr<peg::ast_node>& node) {
+// TODO Cleanup
+void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefinition,
+                           const unique_ptr<peg::ast_node>& node) {
     peg::for_each_child<peg::root_operation_definition>(*node, [schemaDefinition](const auto& operationDefinition) {
         auto operationType = and_then(first_node<peg::operation_type>(operationDefinition),
             [](const auto* operation) { return make_optional(operation->string()); }).value_or("");

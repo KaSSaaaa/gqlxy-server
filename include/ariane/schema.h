@@ -1,8 +1,9 @@
 #pragma once
 
-#include <ariane/resolvers.h>
-
 #include <any>
+#include <ariane/resolvers.h>
+#include <ariane/results.h>
+#include <ariane/subscription.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -21,25 +22,7 @@ struct SchemaOptions {
     bool allowIntrospection = true;
 };
 
-struct ErrorLocation {
-    int line;
-    int column;
-};
-
-struct FieldError {
-    std::string message;
-    std::vector<std::string> path;
-    std::vector<ErrorLocation> locations;
-};
-
-using FieldErrors = std::vector<FieldError>;
-
-struct ResolveResult {
-    std::optional<std::string> data;
-    std::optional<FieldErrors> errors;
-};
-
-template<typename TContext = std::monostate>
+template <typename TContext = std::monostate>
 struct SchemaResolveArgs {
     std::string query;
     nlohmann::json variables = nlohmann::json::object();
@@ -51,9 +34,14 @@ class Schema {
 public:
     explicit Schema(const SchemaOptions& options);
 
-    template<typename TContext = std::monostate>
+    template <typename TContext = std::monostate>
     Task<ResolveResult> Resolve(const SchemaResolveArgs<TContext>& args) const {
         return ResolveInternal(args.query, args.variables, args.operationName, args.context);
+    }
+
+    template <typename TContext = std::monostate>
+    SubscriptionHandle Subscribe(const SchemaResolveArgs<TContext>& args) const {
+        return SubscribeInternal(args.query, args.variables, args.operationName, args.context);
     }
 
 private:
@@ -66,6 +54,11 @@ private:
                                         const nlohmann::json& variables,
                                         const std::string& operationName,
                                         std::any context) const;
+
+    SubscriptionHandle SubscribeInternal(const std::string& query,
+                                         const nlohmann::json& variables,
+                                         const std::string& operationName,
+                                         std::any context) const;
 
     void InjectIntrospectionResolvers();
     void AddToResolver(const std::string& resolverName, const Resolver& resolver);

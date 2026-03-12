@@ -2,6 +2,7 @@
 
 #include <ariane/internal/MergeResolvers.h>
 #include <ariane/internal/engine/resolve.h>
+#include <ariane/internal/engine/subscribe.h>
 #include <ariane/internal/introspection/introspection.h>
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/peg/parser/schema_parser.h>
@@ -58,14 +59,30 @@ void Schema::AddToResolver(const string& resolverName, const Resolver& resolver)
     if (!_resolvers.contains(resolverName)) {
         _resolvers[resolverName] = Resolver{};
     }
-    MergeResolvers(get<Resolver>(_resolvers.at(resolverName)), resolver);
+    MergeResolvers(_resolvers.at(resolverName).As<Resolver>(), resolver);
 }
 
 Task<ResolveResult> Schema::ResolveInternal(const string& query,
-                                             const nlohmann::json& variables,
-                                             const string& operationName,
-                                             any context) const {
+                                            const nlohmann::json& variables,
+                                            const string& operationName,
+                                            any context) const {
     return ResolveOperations(ResolveQueryArgs {
+        .query = query,
+        .variables = variables,
+        .schemaDefinition = *_schemaDefinition,
+        .resolvers = _resolvers,
+        .directives = _directives,
+        .scalars = _scalars,
+        .operationName = operationName,
+        .context = std::move(context),
+    });
+}
+
+SubscriptionHandle Schema::SubscribeInternal(const string& query,
+                                                  const nlohmann::json& variables,
+                                                  const string& operationName,
+                                                  any context) const {
+    return internal::Subscribe(ResolveQueryArgs {
         .query = query,
         .variables = variables,
         .schemaDefinition = *_schemaDefinition,

@@ -49,10 +49,10 @@ int main() {
                 return args.Args().value("if", false) ? nullopt : optional<ValueResolver>(monostate{});
             }},
             {"uppercase", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
-                return to_string(get<string>(v) | views::transform(::toupper));
+                return to_string(v.As<string>() | views::transform(::toupper));
             }},
             {"prefix", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
-                return args.Args().value("with", string{}) + get<string>(v);
+                return args.Args().value("with", "") + v.As<string>();
             }},
         }
     });

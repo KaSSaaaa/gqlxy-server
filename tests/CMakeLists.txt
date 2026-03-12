@@ -25,3 +25,10 @@ target_compile_definitions(ariane_e2e_tests PRIVATE
     INTROSPECTION_RESULT_PATH="${CMAKE_SOURCE_DIR}/samples/introspection/result.json"
 )
 gtest_discover_tests(ariane_e2e_tests)
+
+file(GLOB INTEGRATION_TEST_SOURCES "integration/*.cpp")
+
+add_executable(ariane_integration_tests ${INTEGRATION_TEST_SOURCES})
+target_link_libraries(ariane_integration_tests PRIVATE ariane::graphql GTest::gtest_main)
+target_include_directories(ariane_integration_tests PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+gtest_discover_tests(ariane_integration_tests)

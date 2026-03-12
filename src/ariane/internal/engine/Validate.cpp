@@ -89,12 +89,12 @@ static FieldErrors ValidateVariableValues(const OperationDefinition& op, const j
 }
 
 static FieldErrors ValidateSelections(const vector<Selection>& selections,
-                               const string& typeName,
-                               const SchemaDefinition& schema,
-                               const vector<VariableDefinition>& varDefs,
-                               const json& variables,
-                               const Fragments& frags,
-                               vector<string> path);
+                                      const string& typeName,
+                                      const SchemaDefinition& schema,
+                                      const vector<VariableDefinition>& varDefs,
+                                      const json& variables,
+                                      const Fragments& frags,
+                                      vector<string> path);
 
 static FieldErrors ValidateFieldArgumentsExist(const Field& field,
                                                const FieldDefinition& fieldDefinition,
@@ -110,13 +110,13 @@ static FieldErrors ValidateFieldArgumentsExist(const Field& field,
     }));
 }
 
-//TODO Cleanup
+// TODO Cleanup
 static FieldErrors ValidateRequiredFieldArguments(const Field& field,
-                                               const FieldDefinition& fieldDefinition,
-                                               const vector<VariableDefinition>& variableDefinitions,
-                                               const json& variables,
-                                               const string& typeName,
-                                               const vector<string>& fieldPath) {
+                                                  const FieldDefinition& fieldDefinition,
+                                                  const vector<VariableDefinition>& variableDefinitions,
+                                                  const json& variables,
+                                                  const string& typeName,
+                                                  const vector<string>& fieldPath) {
     return to_vector(fieldDefinition.args | views::filter([](const auto& arg) {
         return arg.type.kind._value == TypeRefKind::NON_NULL && !arg.defaultValue.has_value();
     }) | views::transform([&](const auto& arg) -> optional<FieldError> {
@@ -144,14 +144,14 @@ static FieldErrors ValidateRequiredFieldArguments(const Field& field,
     | views::transform([](const auto& err) { return err.value(); }));
 }
 
-//TODO Cleanup
+// TODO Cleanup
 static FieldErrors ValidateField(const Field& field,
-                          const string& typeName,
-                          const SchemaDefinition& schema,
-                          const vector<VariableDefinition>& varDefs,
-                          const json& variables,
-                          const Fragments& frags,
-                          const vector<string>& path) {
+                                 const string& typeName,
+                                 const SchemaDefinition& schema,
+                                 const vector<VariableDefinition>& varDefs,
+                                 const json& variables,
+                                 const Fragments& frags,
+                                 const vector<string>& path) {
     auto fieldPath = path;
     fieldPath.push_back(field.alias.value_or(field.name));
 
@@ -181,14 +181,14 @@ static FieldErrors ValidateField(const Field& field,
     );
 }
 
-//TODO Cleanup
+// TODO Cleanup
 static FieldErrors ValidateSelections(const vector<Selection>& selections,
-                               const string& typeName,
-                               const SchemaDefinition& schema,
-                               const vector<VariableDefinition>& varDefs,
-                               const json& variables,
-                               const Fragments& frags,
-                               vector<string> path) {
+                                      const string& typeName,
+                                      const SchemaDefinition& schema,
+                                      const vector<VariableDefinition>& varDefs,
+                                      const json& variables,
+                                      const Fragments& frags,
+                                      vector<string> path) {
     return concat(selections | views::transform([&](const auto& sel) -> FieldErrors {
         return visit(overloaded{
                    [&](const Field& f) -> FieldErrors {

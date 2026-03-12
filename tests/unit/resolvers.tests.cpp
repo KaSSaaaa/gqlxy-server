@@ -9,102 +9,102 @@ using namespace ariane::graphql;
 
 TEST(Resolvers, SupportsBasicTypes) {
     ValueResolver intResolver(42);
-    EXPECT_TRUE(holds_alternative<int>(intResolver));
-    EXPECT_EQ(get<int>(intResolver), 42);
+    EXPECT_TRUE(intResolver.Is<int>());
+    EXPECT_EQ(intResolver.As<int>(), 42);
 
     ValueResolver uint64Resolver(uint64_t(42));
-    EXPECT_TRUE(holds_alternative<uint64_t>(uint64Resolver));
-    EXPECT_EQ(get<uint64_t>(uint64Resolver), 42);
+    EXPECT_TRUE(uint64Resolver.Is<uint64_t>());
+    EXPECT_EQ(uint64Resolver.As<uint64_t>(), 42);
 
     ValueResolver stringResolver(string("Hello"));
-    EXPECT_TRUE(holds_alternative<string>(stringResolver));
-    EXPECT_EQ(get<string>(stringResolver), "Hello");
+    EXPECT_TRUE(stringResolver.Is<string>());
+    EXPECT_EQ(stringResolver.As<string>(), "Hello");
 
     ValueResolver doubleResolver(3.14);
-    EXPECT_TRUE(holds_alternative<double>(doubleResolver));
-    EXPECT_DOUBLE_EQ(get<double>(doubleResolver), 3.14);
+    EXPECT_TRUE(doubleResolver.Is<double>());
+    EXPECT_DOUBLE_EQ(doubleResolver.As<double>(), 3.14);
 
     ValueResolver floatResolver(3.14f);
-    EXPECT_TRUE(holds_alternative<float>(floatResolver));
-    EXPECT_FLOAT_EQ(get<float>(floatResolver), 3.14f);
+    EXPECT_TRUE(floatResolver.Is<float>());
+    EXPECT_FLOAT_EQ(floatResolver.As<float>(), 3.14f);
 
     ValueResolver boolResolver(true);
-    EXPECT_TRUE(holds_alternative<bool>(boolResolver));
-    EXPECT_EQ(get<bool>(boolResolver), true);
+    EXPECT_TRUE(boolResolver.Is<bool>());
+    EXPECT_EQ(boolResolver.As<bool>(), true);
 }
 
 TEST(Resolvers, SupportsNullValues) {
     ValueResolver nullResolver(nullopt);
-    EXPECT_TRUE(holds_alternative<monostate>(nullResolver));
+    EXPECT_TRUE(nullResolver.IsNull());
 
     ValueResolver monostateResolver(monostate{});
-    EXPECT_TRUE(holds_alternative<monostate>(monostateResolver));
+    EXPECT_TRUE(monostateResolver.IsNull());
 }
 
 TEST(Resolvers, SupportsOptionalTypes) {
     optional<int> presentInt = 42;
     ValueResolver resolver1(presentInt);
-    EXPECT_TRUE(holds_alternative<int>(resolver1));
-    EXPECT_EQ(get<int>(resolver1), 42);
+    EXPECT_TRUE(resolver1.Is<int>());
+    EXPECT_EQ(resolver1.As<int>(), 42);
 
     optional<string> presentString = "Hello";
     ValueResolver resolver2(presentString);
-    EXPECT_TRUE(holds_alternative<string>(resolver2));
-    EXPECT_EQ(get<string>(resolver2), "Hello");
+    EXPECT_TRUE(resolver2.Is<string>());
+    EXPECT_EQ(resolver2.As<string>(), "Hello");
 
     optional<int> absentInt = nullopt;
     ValueResolver resolver3(absentInt);
-    EXPECT_TRUE(holds_alternative<monostate>(resolver3));
+    EXPECT_TRUE(resolver3.IsNull());
 
     optional<string> absentString = nullopt;
     ValueResolver resolver4(absentString);
-    EXPECT_TRUE(holds_alternative<monostate>(resolver4));
+    EXPECT_TRUE(resolver4.IsNull());
 }
 
 TEST(Resolvers, SupportsFunctionResolvers) {
     auto funcResolver = [](const auto&) -> ValueResolver { return 42; };
 
     ValueResolver resolver(funcResolver);
-    EXPECT_TRUE(holds_alternative<FunctionResolver>(resolver));
+    EXPECT_TRUE(resolver.Is<FunctionResolver>());
 }
 
 TEST(Resolvers, SupportsAsyncFunctionResolvers) {
-    auto asyncResolver = [](const ResolverArgs&) -> future<ValueResolver> {
+    AsyncFunctionResolver asyncResolver = [](const ResolverArgs&) -> future<ValueResolver> {
         return async(launch::async, []() -> ValueResolver { return 42; });
     };
 
     ValueResolver resolver(asyncResolver);
-    EXPECT_TRUE(holds_alternative<AsyncFunctionResolver>(resolver));
+    EXPECT_TRUE(resolver.Is<AsyncFunctionResolver>());
 }
 
 TEST(Resolvers, SupportsCoroutineResolvers) {
-    auto coroutineResolver = [](const ResolverArgs&) -> Task<ValueResolver> { co_return 42; };
+    CoroutineResolver coroutineResolver = [](const ResolverArgs&) -> Task<ValueResolver> { co_return 42; };
 
     ValueResolver resolver(coroutineResolver);
-    EXPECT_TRUE(holds_alternative<CoroutineResolver>(resolver));
+    EXPECT_TRUE(resolver.Is<CoroutineResolver>());
 
-    auto& func = get<CoroutineResolver>(resolver);
+    auto& func = resolver.As<CoroutineResolver>();
     auto task = func(ResolverArgs{});
     ValueResolver result = task.get();
-    EXPECT_TRUE(holds_alternative<int>(result));
-    EXPECT_EQ(get<int>(result), 42);
+    EXPECT_TRUE(result.Is<int>());
+    EXPECT_EQ(result.As<int>(), 42);
 }
 
 TEST(Resolvers, SupportsCallbackResolvers) {
-    auto callbackResolver = [](const ResolverArgs&, const function<void(const ValueResolver&)>& callback) {
+    CallbackResolver callbackResolver = [](const ResolverArgs&, const function<void(const ValueResolver&)>& callback) {
         callback(42);
     };
 
     ValueResolver resolver(callbackResolver);
-    EXPECT_TRUE(holds_alternative<CallbackResolver>(resolver));
+    EXPECT_TRUE(resolver.Is<CallbackResolver>());
 
-    auto& func = get<CallbackResolver>(resolver);
+    auto& func = resolver.As<CallbackResolver>();
     ValueResolver result;
     func(ResolverArgs{}, [&result](const ValueResolver& value) {
         result = value;
     });
-    EXPECT_TRUE(holds_alternative<int>(result));
-    EXPECT_EQ(get<int>(result), 42);
+    EXPECT_TRUE(result.Is<int>());
+    EXPECT_EQ(result.As<int>(), 42);
 }
 
 TEST(Resolvers, SupportsOptionalFunctionForNullables) {
@@ -118,11 +118,11 @@ TEST(Resolvers, SupportsOptionalFunctionForNullables) {
     };
 
     ValueResolver resolver(wrappedResolver);
-    EXPECT_TRUE(holds_alternative<FunctionResolver>(resolver));
+    EXPECT_TRUE(resolver.Is<FunctionResolver>());
 
-    auto& func = get<FunctionResolver>(resolver);
+    auto& func = resolver.As<FunctionResolver>();
     ValueResolver result = func(ResolverArgs{});
-    EXPECT_TRUE(holds_alternative<monostate>(result));
+    EXPECT_TRUE(result.IsNull());
 }
 
 TEST(Resolvers, SupportsNestedResolvers) {
@@ -133,13 +133,13 @@ TEST(Resolvers, SupportsNestedResolvers) {
     };
 
     ValueResolver resolver(nestedResolver);
-    EXPECT_TRUE(holds_alternative<Resolver>(resolver));
+    EXPECT_TRUE(resolver.Is<Resolver>());
 
-    auto& resolverList = get<Resolver>(resolver);
-    unordered_map<string, ValueResolver> resolverMap(resolverList.begin(), resolverList.end());
+    auto& resolverList = resolver.As<Resolver>();
+    unordered_map resolverMap(resolverList.begin(), resolverList.end());
     EXPECT_EQ(resolverMap.size(), 3);
 
-    EXPECT_TRUE(holds_alternative<monostate>(resolverMap.at("nullable")));
+    EXPECT_TRUE(resolverMap.at("nullable").IsNull());
 }
 
 TEST(Resolvers, SupportsVectorOfResolvers) {
@@ -149,25 +149,25 @@ TEST(Resolvers, SupportsVectorOfResolvers) {
     vec.emplace_back(3);
 
     ValueResolver resolver(vec);
-    EXPECT_TRUE(holds_alternative<vector<ValueResolver>>(resolver));
+    EXPECT_TRUE(resolver.Is<vector<ValueResolver>>());
 
-    auto& resolverVec = get<vector<ValueResolver>>(resolver);
+    auto& resolverVec = resolver.As<vector<ValueResolver>>();
     EXPECT_EQ(resolverVec.size(), 3);
-    EXPECT_TRUE(holds_alternative<int>(resolverVec[0]));
-    EXPECT_EQ(get<int>(resolverVec[0]), 1);
-    EXPECT_EQ(get<int>(resolverVec[1]), 2);
-    EXPECT_EQ(get<int>(resolverVec[2]), 3);
+    EXPECT_TRUE(resolverVec[0].Is<int>());
+    EXPECT_EQ(resolverVec[0].As<int>(), 1);
+    EXPECT_EQ(resolverVec[1].As<int>(), 2);
+    EXPECT_EQ(resolverVec[2].As<int>(), 3);
 }
 
 TEST(Resolvers, SupportsInitializerListOfResolvers) {
     ValueResolver resolver({1, 2, 3});
-    EXPECT_TRUE(holds_alternative<vector<ValueResolver>>(resolver));
+    EXPECT_TRUE(resolver.Is<vector<ValueResolver>>());
 
-    auto& resolverVec = get<vector<ValueResolver>>(resolver);
+    auto& resolverVec = resolver.As<vector<ValueResolver>>();
     EXPECT_EQ(resolverVec.size(), 3);
-    EXPECT_EQ(get<int>(resolverVec[0]), 1);
-    EXPECT_EQ(get<int>(resolverVec[1]), 2);
-    EXPECT_EQ(get<int>(resolverVec[2]), 3);
+    EXPECT_EQ(resolverVec[0].As<int>(), 1);
+    EXPECT_EQ(resolverVec[1].As<int>(), 2);
+    EXPECT_EQ(resolverVec[2].As<int>(), 3);
 }
 
 TEST(Resolvers, SupportsListOfResolvers) {
@@ -177,22 +177,22 @@ TEST(Resolvers, SupportsListOfResolvers) {
     list.emplace_back("third");
 
     ValueResolver resolver(list);
-    EXPECT_TRUE(holds_alternative<vector<ValueResolver>>(resolver));
+    EXPECT_TRUE(resolver.Is<vector<ValueResolver>>());
 
-    auto& resolverVec = get<vector<ValueResolver>>(resolver);
+    auto& resolverVec = resolver.As<vector<ValueResolver>>();
     EXPECT_EQ(resolverVec.size(), 3);
-    EXPECT_EQ(get<string>(resolverVec[0]), "first");
-    EXPECT_EQ(get<string>(resolverVec[1]), "second");
-    EXPECT_EQ(get<string>(resolverVec[2]), "third");
+    EXPECT_EQ(resolverVec[0].As<string>(), "first");
+    EXPECT_EQ(resolverVec[1].As<string>(), "second");
+    EXPECT_EQ(resolverVec[2].As<string>(), "third");
 }
 
 TEST(Resolvers, SupportsCStringLiteral) {
     ValueResolver resolver("Hello");
-    EXPECT_TRUE(holds_alternative<string>(resolver));
-    EXPECT_EQ(get<string>(resolver), "Hello");
+    EXPECT_TRUE(resolver.Is<string>());
+    EXPECT_EQ(resolver.As<string>(), "Hello");
 
     const char* cstr = "World";
     ValueResolver resolver2(cstr);
-    EXPECT_TRUE(holds_alternative<string>(resolver2));
-    EXPECT_EQ(get<string>(resolver2), "World");
+    EXPECT_TRUE(resolver2.Is<string>());
+    EXPECT_EQ(resolver2.As<string>(), "World");
 }

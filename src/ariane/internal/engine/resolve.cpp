@@ -24,22 +24,22 @@ static optional<string> ResolveType(const Resolver& rootResolver, const Resolver
     if (!typeName.has_value() || !rootResolver.contains(typeName.value()))
         return nullopt;
 
-    auto* typeEntry = get_if<Resolver>(&rootResolver.at(typeName.value()));
-    if (!typeEntry || !typeEntry->contains("__resolveType"))
+    auto typeEntry = rootResolver.at(typeName.value()).AsIf<Resolver>();
+    if (!typeEntry.has_value() || !typeEntry->contains("__resolveType"))
         return nullopt;
 
     auto& resolveType = typeEntry->at("__resolveType");
-    if (holds_alternative<string>(resolveType))
-        return get<string>(resolveType);
-
-    if (!holds_alternative<TypeResolver>(resolveType))
-        return nullopt;
-
-    return get<TypeResolver>(resolveType)(current);
+    return or_else(and_then(resolveType.AsIf<string>(), [](const auto& resolveType) {
+        return make_optional(resolveType);
+    }), [&]() {
+        return and_then(resolveType.AsIf<TypeResolver>(), [&](const auto& t) {
+            return t(current);
+        });
+    });
 }
 
-static optional<string> FieldTypeName(const optional<string>& typeName, const string& fieldName,
-                                      const SchemaDefinition& schemaDefinition) {
+optional<string> FieldTypeName(const optional<string>& typeName, const string& fieldName,
+                               const SchemaDefinition& schemaDefinition) {
     return and_then(typeName, [&](const auto& t) -> optional<string> {
         if (!schemaDefinition.types.contains(t))
             return nullopt;
@@ -74,6 +74,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
             [](bool v) -> Task<nlohmann::json> { co_return v; },
             [](const string& v) -> Task<nlohmann::json> { co_return v; },
             [](const TypeResolver&) -> Task<nlohmann::json> { co_return nullptr; },
+            [](const SubscriptionResolver&) -> Task<nlohmann::json> { co_return nullptr; },
             [](const ScalarType& s) -> Task<nlohmann::json> { co_return s.serialize(); },
             [](monostate) -> Task<nlohmann::json> { co_return nullptr; },
             [&](const Resolver& currentResolver) -> Task<nlohmann::json> {
@@ -114,10 +115,10 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                                                                JsonToValueResolver(resolvedJson));
                         if (!afterDirectives.has_value())
                             continue;
-                        if (holds_alternative<monostate>(*afterDirectives))
-                            obj[outputKey] = resolvedJson;
-                        else
-                            obj[outputKey] = co_await resolve(*afterDirectives, nullopt, nullopt, childPath);
+
+                        obj[outputKey] = !afterDirectives->IsNull()
+                            ? co_await resolve(*afterDirectives, nullopt, nullopt, childPath)
+                            : resolvedJson;
                     } catch (const exception& e) {
                         obj[outputKey] = nullptr;
                         fieldErrors.push_back(FieldError {
@@ -160,7 +161,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
          resolver);
 }
 
-Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
+Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
     try {
         auto document = ParseDocument(args.query);
 
@@ -205,10 +206,10 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                 continue;
 
             auto& typeResolver = args.resolvers.at(resolverType);
-            if (!holds_alternative<Resolver>(typeResolver))
+            if (!typeResolver.Is<Resolver>())
                 continue;
 
-            auto& fieldResolvers = get<Resolver>(typeResolver);
+            auto& fieldResolvers = typeResolver.As<Resolver>();
             for (const auto& field : FlattenSelections(op.selectionSet, document.fragments, args.directives, args.variables)) {
                 const auto& outputKey = field.alias.value_or(field.name);
                 if (!fieldResolvers.contains(field.name))
@@ -235,7 +236,7 @@ Task<ResolveResult> ResolveOperations(ResolveQueryArgs args) {
                                                                       args.variables,
                                                                       JsonToValueResolver(resolvedJson));
                                afterDirectives.has_value()) {
-                        data[outputKey] = holds_alternative<monostate>(*afterDirectives)
+                        data[outputKey] = afterDirectives->IsNull()
                             ? resolvedJson
                             : co_await Resolve(args,
                                                *afterDirectives,
