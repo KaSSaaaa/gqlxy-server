@@ -3,6 +3,7 @@
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/peg/first_node.h>
 #include <ariane/internal/peg/is_type.h>
+#include <ariane/internal/peg/parser/query/ParseDirectives.h>
 #include <ariane/internal/peg/parser/query/ParseValue.h>
 #include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/ranges.h>
@@ -168,7 +169,8 @@ TypeDefinition ParseObjectType(const peg::ast_node& node) {
             | views::filter(is_type<peg::interface_type>())
             | views::transform([](const auto& child) {
                 return child->string();
-            }))
+            })),
+        .directives = ParseDirectives(node)
     };
 }
 
@@ -179,7 +181,8 @@ TypeDefinition ParseInterfaceType(const peg::ast_node& node) {
             return node->string();
         }),
         .description = ParseDescription(node),
-        .fields = ParseFields(first_node<peg::fields_definition>(node))
+        .fields = ParseFields(first_node<peg::fields_definition>(node)),
+        .directives = ParseDirectives(node)
     };
 }
 

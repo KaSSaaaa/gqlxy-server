@@ -48,6 +48,14 @@ auto to_string(R&& r) {
     return std::string(std::ranges::begin(r), std::ranges::end(r));
 }
 
+template <std::ranges::range R>
+auto to_optional(R&& r, std::ranges::iterator_t<R> it)
+    -> std::optional<std::ranges::range_value_t<R>>
+{
+    if (it == std::ranges::end(r)) return std::nullopt;
+    return *it;
+}
+
 template <typename T>
 concept associative_range = std::ranges::input_range<T>
     && requires { typename std::remove_cvref_t<T>::mapped_type; };

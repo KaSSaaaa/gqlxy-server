@@ -87,7 +87,7 @@ Implement the Apollo Federation subgraph specification so that an Ariane schema 
 | 31 | **Federation SDL directives** | Parse and register `@key`, `@external`, `@requires`, `@provides`, and `@extends` in the SDL type system. These must survive round-tripping through `__Service.sdl`. |
 | 32 | **`_service` query** | Auto-inject a root `_service: _Service!` field that returns `{ sdl }` — the full annotated SDL string of the subgraph, required by the gateway for schema composition. |
 | 33 | **`_entities` query** | Auto-inject `_entities(representations: [_Any!]!): [_Entity]!`. For each `__typename` + key fields representation, dispatch to the matching `@key` entity resolver and return the resolved object. |
-| 34 | **Entity resolver API** | A new `EntityResolver = std::function<ValueResolver(const ResolverArgs&)>` registered per entity type in `SchemaOptions`. Receives the key fields as `args` and returns the hydrated object. |
+| 34 | **Entity resolver API** | Entity resolvers use `__resolveReference` — a `FunctionResolver` placed directly in the entity type's `Resolver` map (e.g. `{"User", Resolver{{"__resolveReference", fn}}}`). Apollo Server-style: no separate resolver map, `@key` types and their reference resolvers live side by side in `resolvers`. |
 | 35 | **Federation v2 support** | Support the `@link` directive and `@federation` import syntax introduced in Federation v2, allowing the subgraph to declare which federation spec version it targets. |
 | 36 | **Composition hints** | Validate that every type annotated with `@key` has a corresponding entity resolver registered; emit a structured error at `Schema` construction time if not. |
 
@@ -104,5 +104,5 @@ Phase 5 — Query validation   : #16, #17, #18, #19 ✓
 Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25 ✓
 Phase 7 — Schema stitching   : #26, #27, #28, #29, #30 ✓
 Phase 8 — SDL extend         : #37, #38, #39, #40, #41, #42 ✓
-Phase 9 — Federation         : #31, #32, #33, #34, #35, #36
+Phase 9 — Federation         : #31, #32, #33, #34, #35, #36 ✓
 ```

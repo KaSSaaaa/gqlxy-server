@@ -9,6 +9,7 @@
 #include "EnumValueDefinition.h"
 #include "FieldDefinition.h"
 #include "InputValueDefinition.h"
+#include <ariane/internal/ast/Directive.h>
 
 namespace ariane::graphql::internal {
 
@@ -25,6 +26,7 @@ struct TypeDefinition {
     std::vector<std::string> unionTypes;
     std::vector<EnumValueDefinition> enumValues;
     std::vector<InputValueDefinition> inputFields;
+    std::vector<Directive> directives;
 };
 
 }

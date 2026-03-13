@@ -31,6 +31,10 @@ TypeRef TypeRef::NonNull(TypeRef inner) {
     };
 }
 
+TypeRef TypeRef::NonNullList(TypeRef inner) {
+    return NonNull(List(std::move(inner)));
+}
+
 TypeRef TypeRef::List(TypeRef inner) {
     return TypeRef {
         .kind = TypeRefKind::LIST,

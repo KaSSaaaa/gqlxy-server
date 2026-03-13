@@ -20,6 +20,7 @@ struct SchemaOptions {
     Directives directives;
     Scalars scalars;
     bool allowIntrospection = true;
+    bool federation = false;
 };
 
 template <typename TContext = std::monostate>

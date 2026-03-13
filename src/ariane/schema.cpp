@@ -1,6 +1,7 @@
 #include <ariane/schema.h>
 
 #include <ariane/internal/MergeResolvers.h>
+#include <ariane/internal/engine/federation.h>
 #include <ariane/internal/engine/resolve.h>
 #include <ariane/internal/engine/subscribe.h>
 #include <ariane/internal/introspection/introspection.h>
@@ -26,6 +27,11 @@ static const Directives builtinDirectives = {
 Schema::Schema(const SchemaOptions& options) {
     _resolvers = options.resolvers;
     _schemaDefinition = ParseSchemaDefinition(options.typeDefs);
+
+    if (options.federation)
+        InjectFederation(_schemaDefinition, _resolvers, {
+            .typeDefs = options.typeDefs
+        });
 
     for (const auto& [name, type] : _schemaDefinition->types)
         if (type.kind._value == TypeKind::OBJECT)

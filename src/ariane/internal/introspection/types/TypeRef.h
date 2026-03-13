@@ -19,6 +19,7 @@ struct TypeRef {
 
     static TypeRef Named(const std::string& typeName);
     static TypeRef NonNull(TypeRef inner);
+    static TypeRef NonNullList(TypeRef inner);
     static TypeRef List(TypeRef inner);
     static TypeRef ListNonNull(TypeRef inner);
     static TypeRef NonNullListNonNull(TypeRef inner);
