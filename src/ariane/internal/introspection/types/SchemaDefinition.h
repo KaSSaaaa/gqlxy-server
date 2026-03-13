@@ -1,13 +1,13 @@
 #pragma once
 
-#include <map>
-#include <optional>
-#include <string>
-#include <vector>
-#include <ranges>
-
 #include "DirectiveDefinition.h"
 #include "TypeDefinition.h"
+#include <ariane/internal/utils/ranges.h>
+#include <map>
+#include <optional>
+#include <ranges>
+#include <string>
+#include <vector>
 
 namespace ariane::graphql::internal {
 
@@ -20,9 +20,9 @@ struct SchemaDefinition {
 
     auto InterfacesPerType() {
         using namespace std;
-        return types | views::transform([](const auto& type) {
+        return flat_map(types, [](const auto& type) {
             return type.second.interfaces | views::transform([&](const auto& interface) { return make_pair(type.first, interface); });
-        }) | views::join;
+        });
     }
 };
 

@@ -83,4 +83,17 @@ auto concat(First&& first, Rest&&... rest) {
     return result;
 }
 
+template<std::ranges::input_range R, typename F>
+    requires std::ranges::input_range<std::decay_t<std::invoke_result_t<F, std::ranges::range_reference_t<R>>>>
+auto flat_map(R&& r, F&& f) {
+    using Inner = std::decay_t<std::invoke_result_t<F, std::ranges::range_reference_t<R>>>;
+    using T = std::ranges::range_value_t<Inner>;
+    std::vector<T> result;
+    for (auto&& x : r) {
+        auto sub = f(x);
+        result.insert(result.end(), std::ranges::begin(sub), std::ranges::end(sub));
+    }
+    return result;
+}
+
 }

@@ -31,11 +31,9 @@ static auto extractVariableReferences = views::filter([](const auto& arg) { retu
 static vector<string> CollectFieldVariableReferences(const Field& f, const Fragments& frags) {
     return concat(
          f.arguments | extractVariableReferences,
-         concat(f.directives
-             | views::transform([&](const Directive& directive) {
-                 return directive.args | extractVariableReferences;
-               })
-             | views::join),
+         flat_map(f.directives, [&](const Directive& directive) {
+             return directive.args | extractVariableReferences;
+         }),
          and_then(f.selectionSet, [&](const auto& selectionSet) {
              return CollectVarRefs(selectionSet, frags);
          })
@@ -43,7 +41,7 @@ static vector<string> CollectFieldVariableReferences(const Field& f, const Fragm
 }
 
 static vector<string> CollectVarRefs(const SelectionSet& ss, const Fragments& frags) {
-    return concat(ss.selections | views::transform([&](const auto& selection) {
+    return flat_map(ss.selections, [&](const auto& selection) -> vector<string> {
         return visit(overloaded{
                    [&](const Field& f) -> vector<string> {
                        return CollectFieldVariableReferences(f, frags);
@@ -58,7 +56,7 @@ static vector<string> CollectVarRefs(const SelectionSet& ss, const Fragments& fr
                    },
               },
               selection);
-    }) | views::join);
+    });
 }
 
 static FieldErrors ValidateVariableDeclarations(const OperationDefinition& op, const Fragments& frags) {
@@ -190,7 +188,7 @@ static FieldErrors ValidateSelections(const vector<Selection>& selections,
                                       const json& variables,
                                       const Fragments& frags,
                                       vector<string> path) {
-    return concat(selections | views::transform([&](const auto& sel) -> FieldErrors {
+    return flat_map(selections, [&](const auto& sel) -> FieldErrors {
         return visit(overloaded{
                    [&](const Field& f) -> FieldErrors {
                        if (f.name.starts_with("__"))
@@ -214,7 +212,7 @@ static FieldErrors ValidateSelections(const vector<Selection>& selections,
                        return FieldErrors{};
                    },
               }, sel);
-    }) | views::join);
+    });
 }
 
 static string RootTypeName(const OperationType& opType, const SchemaDefinition& schema) {
@@ -228,7 +226,7 @@ static string RootTypeName(const OperationType& opType, const SchemaDefinition& 
 FieldErrors ValidateDocument(const Document& document,
                              const SchemaDefinition& schema,
                              const json& variables) {
-    return to_vector(concat(document.operations | views::transform([&](const auto& op) {
+    return flat_map(document.operations, [&](const auto& op) {
         return concat(
             ValidateVariableDeclarations(op, document.fragments),
             ValidateVariableValues(op, variables),
@@ -237,7 +235,7 @@ FieldErrors ValidateDocument(const Document& document,
                                schema, op.variableDefinitions,
                                variables, document.fragments, {})
         );
-    }) | views::join));
+    });
 }
 
 }

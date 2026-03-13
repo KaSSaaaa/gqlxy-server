@@ -18,9 +18,10 @@ vector<InputValueDefinition> FieldArgDefs(const string& typeName, const string& 
     if (!schema.types.contains(typeName))
         return {};
 
-    return concat(schema.types.at(typeName).fields
-        | views::filter([&](const auto& f) { return f.name == fieldName; })
-        | views::transform([](const auto& f) { return f.args; }) | views::join);
+    return flat_map(
+        schema.types.at(typeName).fields | views::filter([&](const auto& f) { return f.name == fieldName; }),
+        [](const auto& f) { return f.args; }
+    );
 }
 
 json ResolveArguments(const Field& field,

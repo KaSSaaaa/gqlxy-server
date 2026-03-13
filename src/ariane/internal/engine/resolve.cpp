@@ -134,7 +134,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                 nlohmann::json arr = nlohmann::json::array();
                 for (size_t i = 0; i < vec.size(); i++) {
                     auto elemPath = path;
-                    elemPath.push_back(to_string(i));
+                    elemPath.push_back(std::to_string(i));
                     try {
                         arr.push_back(co_await resolve(vec[i], selectionSet, typeName, elemPath));
                     } catch (const exception& e) {

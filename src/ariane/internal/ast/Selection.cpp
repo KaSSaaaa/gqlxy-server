@@ -28,7 +28,7 @@ vector<Field> FlattenSelections(const SelectionSet& ss,
                                 const Directives& directives,
                                 const nlohmann::json& variables,
                                 const optional<string>& concreteType) {
-    return concat(ss.selections | views::transform([&](const auto& sel) {
+    return flat_map(ss.selections, [&](const auto& sel) {
         return visit(overloaded{
            [&](const Field& f) -> vector<Field> { return { f }; },
            [&](const FragmentSpread& s) -> vector<Field> {
@@ -41,7 +41,7 @@ vector<Field> FlattenSelections(const SelectionSet& ss,
                return FragmentFields(*i.selectionSet, i.directives, directives, variables, frags, i.typeCondition, concreteType);
            },
         }, sel);
-    }) | views::join);
+    });
 }
 
 }
