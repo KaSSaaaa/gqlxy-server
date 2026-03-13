@@ -13,6 +13,7 @@
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
 #include <ariane/task.h>
+#include <format>
 #include <nlohmann/json.hpp>
 
 using namespace std;

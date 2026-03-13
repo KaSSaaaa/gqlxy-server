@@ -12,6 +12,7 @@
 #include <ariane/internal/utils/ranges.h>
 #include <ariane/internal/utils/visit.h>
 #include <algorithm>
+#include <format>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_set>

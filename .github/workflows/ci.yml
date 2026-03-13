@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.preset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            preset: x64-linux-debug
+            triplet: x64-linux
+          - os: ubuntu-latest
+            preset: x64-linux-release
+            triplet: x64-linux
+          - os: windows-latest
+            preset: x64-windows-debug
+            triplet: x64-windows
+          - os: windows-latest
+            preset: x64-windows-release
+            triplet: x64-windows
+          - os: macos-14
+            preset: arm64-osx-debug
+            triplet: arm64-osx
+          - os: macos-14
+            preset: arm64-osx-release
+            triplet: arm64-osx
+          - os: macos-13
+            preset: x64-osx-debug
+            triplet: x64-osx
+          - os: macos-13
+            preset: x64-osx-release
+            triplet: x64-osx
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GCC 13 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y g++-13 ninja-build
+          echo "CC=gcc-13" >> $GITHUB_ENV
+          echo "CXX=g++-13" >> $GITHUB_ENV
+
+      - name: Set VCPKG_ROOT (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: echo "VCPKG_ROOT=/usr/local/share/vcpkg" >> $GITHUB_ENV
+
+      - name: Set VCPKG_ROOT (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/out/build/${{ matrix.preset }}/vcpkg_installed
+          key: vcpkg-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ matrix.triplet }}-
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build out/build/${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --test-dir out/build/${{ matrix.preset }} --output-on-failure

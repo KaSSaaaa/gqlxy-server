@@ -1,5 +1,20 @@
 {
   "name": "ariane-graphql-server",
-  "version-string": "0.1.0",
-  "dependencies": ["gtest", "cppgraphqlgen", "pegtl", "nlohmann-json", "better-enums"]
+  "version": "0.1.0",
+  "description": "C++ GraphQL server engine that let's you develop your server how you want it",
+  "homepage": "https://github.com/KaSSaaaa/ariane-graphql-server",
+  "license": "MIT",
+  "supports": "!uwp",
+  "dependencies": [
+    "cppgraphqlgen",
+    "nlohmann-json",
+    "pegtl",
+    "better-enums"
+  ],
+  "features": {
+    "tests": {
+      "description": "Build and run the test suite",
+      "dependencies": ["gtest"]
+    }
+  }
 }

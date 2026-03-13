@@ -1,6 +1,5 @@
 #include <ariane/internal/Channel.h>
 #include <ariane/pubsub.h>
-#include <gtest/internal/gtest-port.h>
 #include <mutex>
 #include <unordered_map>
 #include <vector>

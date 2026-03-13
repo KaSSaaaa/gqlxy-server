@@ -39,8 +39,14 @@ set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
 
 add_subdirectory(src)
-add_subdirectory(tests)
-add_subdirectory(samples)
+
+if(BUILD_TESTING AND PROJECT_IS_TOP_LEVEL)
+    add_subdirectory(tests)
+endif()
+
+if(PROJECT_IS_TOP_LEVEL)
+    add_subdirectory(samples)
+endif()
 
 include(CMakePackageConfigHelpers)
 

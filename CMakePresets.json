@@ -3,31 +3,118 @@
   "configurePresets": [
     {
       "name": "base",
-      "displayName": "Configure with vcpkg (Debug)",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/vcpkg-debug",
       "cacheVariables": {
-        "ENABLE_VCPKG_BOOTSTRAP": "ON"
+        "BUILD_TESTING": "ON",
+        "ENABLE_VCPKG_BOOTSTRAP": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_MANIFEST_FEATURES": "tests"
       }
     },
     {
-      "name": "arm64-debug",
-      "displayName": "Configure with vcpkg (Debug, arm64)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/arm64-debug",
+      "name": "base-arm64-osx",
+      "hidden": true,
+      "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "BUILD_TESTING": "ON",
-        "ENABLE_VCPKG_BOOTSTRAP": "ON",
-        "VCPKG_TRIPLET": "arm64-osx",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/out/build/arm64-debug/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        "VCPKG_TRIPLET": "arm64-osx"
       }
-    }
-  ],
-  "buildPresets": [
+    },
     {
-      "name": "default",
-      "configurePreset": "arm64-debug"
+      "name": "base-x64-osx",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "VCPKG_TRIPLET": "x64-osx"
+      }
+    },
+    {
+      "name": "base-x64-linux",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "VCPKG_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "base-x64-windows",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "VCPKG_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "arm64-osx-debug",
+      "displayName": "arm64 macOS Debug",
+      "inherits": "base-arm64-osx",
+      "binaryDir": "${sourceDir}/out/build/arm64-osx-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "arm64-osx-release",
+      "displayName": "arm64 macOS Release",
+      "inherits": "base-arm64-osx",
+      "binaryDir": "${sourceDir}/out/build/arm64-osx-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "x64-osx-debug",
+      "displayName": "x64 macOS Debug",
+      "inherits": "base-x64-osx",
+      "binaryDir": "${sourceDir}/out/build/x64-osx-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-osx-release",
+      "displayName": "x64 macOS Release",
+      "inherits": "base-x64-osx",
+      "binaryDir": "${sourceDir}/out/build/x64-osx-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "x64-linux-debug",
+      "displayName": "x64 Linux Debug",
+      "inherits": "base-x64-linux",
+      "binaryDir": "${sourceDir}/out/build/x64-linux-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-linux-release",
+      "displayName": "x64 Linux Release",
+      "inherits": "base-x64-linux",
+      "binaryDir": "${sourceDir}/out/build/x64-linux-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "x64-windows-debug",
+      "displayName": "x64 Windows Debug",
+      "inherits": "base-x64-windows",
+      "binaryDir": "${sourceDir}/out/build/x64-windows-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-windows-release",
+      "displayName": "x64 Windows Release",
+      "inherits": "base-x64-windows",
+      "binaryDir": "${sourceDir}/out/build/x64-windows-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ]
 }

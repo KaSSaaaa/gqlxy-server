@@ -1,6 +1,7 @@
 #include "MergeResolvers.h"
 
 #include <ariane/internal/utils/expect.h>
+#include <format>
 
 using namespace std;
 

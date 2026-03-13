@@ -9,6 +9,7 @@
 #include <ariane/internal/peg/parser/schema_parser.h>
 #include <ariane/internal/ast/BuildInScalars.h>
 #include <ariane/internal/utils/expect.h>
+#include <format>
 
 using namespace std;
 using namespace ariane::graphql;

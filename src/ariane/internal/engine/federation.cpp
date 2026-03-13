@@ -9,6 +9,7 @@
 #include <ariane/internal/utils/expect.h>
 #include <ariane/internal/utils/optional.h>
 #include <ariane/internal/utils/ranges.h>
+#include <format>
 
 using namespace std;
 
