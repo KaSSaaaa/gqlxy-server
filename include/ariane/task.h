@@ -69,4 +69,7 @@ struct Task {
     }
 };
 
+template<typename> struct is_task : std::false_type {};
+template<typename T> struct is_task<Task<T>> : std::true_type {};
+
 }

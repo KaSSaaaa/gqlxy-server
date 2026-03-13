@@ -1,9 +1,11 @@
 #include "subscribe.h"
 
+#include <ariane/ResolverArgs.h>
 #include <ariane/internal/ast/Selection.h>
 #include <ariane/internal/engine/ResolveArguments.h>
 #include <ariane/internal/peg/parser/query/ParseDocument.h>
 #include <ariane/internal/utils/ranges.h>
+#include <format>
 #include <nlohmann/json.hpp>
 
 using namespace std;

@@ -35,16 +35,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install GCC 13 (Linux)
+      - name: Install GCC 14 (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get install -y g++-13 ninja-build
-          echo "CC=gcc-13" >> $GITHUB_ENV
-          echo "CXX=g++-13" >> $GITHUB_ENV
+          sudo apt-get update -y
+          sudo apt-get install -y g++-14 ninja-build cmake
+          echo "CC=gcc-14" >> $GITHUB_ENV
+          echo "CXX=g++-14" >> $GITHUB_ENV
 
       - name: Set VCPKG_ROOT
+        if: runner.os != 'Windows'
         shell: bash
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+        run: |
+          if [ -n "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+            echo "$VCPKG_INSTALLATION_ROOT" >> $GITHUB_PATH
+          else
+            git clone https://github.com/microsoft/vcpkg.git /tmp/vcpkg --depth=1
+            /tmp/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+            echo "VCPKG_ROOT=/tmp/vcpkg" >> $GITHUB_ENV
+            echo "/tmp/vcpkg" >> $GITHUB_PATH
+          fi
+
+      - name: Set VCPKG_ROOT (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4

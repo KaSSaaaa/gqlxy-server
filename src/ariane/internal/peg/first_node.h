@@ -1,8 +1,9 @@
 #pragma once
 
-#include <graphqlservice/internal/SyntaxTree.h>
-
+#include <functional>
 #include <optional>
+
+#include <graphqlservice/internal/SyntaxTree.h>
 
 namespace ariane::graphql::internal {
 

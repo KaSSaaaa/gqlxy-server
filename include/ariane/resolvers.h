@@ -1,9 +1,8 @@
 #pragma once
 
 #include "subscription.h"
-#include <any>
 #include <ariane/scalars.h>
-#include <ariane/task.h>
+#include <ariane/resolvers/CoroutineResolver.h>
 #include <functional>
 #include <future>
 #include <list>
@@ -15,38 +14,13 @@
 #include <vector>
 
 namespace ariane::graphql {
+class ResolverArgs;
 
 struct ValueResolver;
-
-struct ResolverArgsParams {
-    nlohmann::json args = nlohmann::json::object();
-    std::any context;
-};
-class ResolverArgs {
-public:
-    explicit ResolverArgs(const ResolverArgsParams& params = {})
-        : _args(params.args),
-          _context(params.context) {
-
-    }
-
-    const nlohmann::json& Args() const { return _args; }
-
-    template<typename T>
-    T& Context() { return std::any_cast<T&>(_context); }
-
-    template<typename T>
-    const T& Context() const { return std::any_cast<const T&>(_context); }
-
-private:
-    nlohmann::json _args;
-    std::any _context;
-};
 
 using Resolver = std::unordered_map<std::string, ValueResolver>;
 using FunctionResolver = std::function<ValueResolver(const ResolverArgs&)>;
 using AsyncFunctionResolver = std::function<std::future<ValueResolver>(const ResolverArgs&)>;
-using CoroutineResolver = std::function<Task<ValueResolver>(const ResolverArgs&)>;
 using CallbackResolver = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
 using OptionalFunctionResolver = std::function<std::optional<ValueResolver>()>;
 using TypeResolver = std::function<std::optional<std::string>(const Resolver&)>;

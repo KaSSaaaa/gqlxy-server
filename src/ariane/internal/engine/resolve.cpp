@@ -1,4 +1,5 @@
 #include "resolve.h"
+#include <ariane/ResolverArgs.h>
 #include <ariane/internal/ast/Fragments.h>
 #include <ariane/internal/ast/Selection.h>
 #include <ariane/internal/engine/ApplyDirectives.h>

@@ -1,6 +1,6 @@
+#include <ariane/ResolverArgs.h>
 #include <ariane/resolvers.h>
 #include <gtest/gtest.h>
-
 #include <list>
 #include <optional>
 

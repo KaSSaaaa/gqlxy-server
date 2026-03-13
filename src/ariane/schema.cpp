@@ -1,13 +1,14 @@
 #include <ariane/schema.h>
 
+#include <ariane/ResolverArgs.h>
 #include <ariane/internal/MergeResolvers.h>
+#include <ariane/internal/ast/BuildInScalars.h>
 #include <ariane/internal/engine/federation.h>
 #include <ariane/internal/engine/resolve.h>
 #include <ariane/internal/engine/subscribe.h>
 #include <ariane/internal/introspection/introspection.h>
 #include <ariane/internal/introspection/types/SchemaDefinition.h>
 #include <ariane/internal/peg/parser/schema_parser.h>
-#include <ariane/internal/ast/BuildInScalars.h>
 #include <ariane/internal/utils/expect.h>
 #include <format>
 

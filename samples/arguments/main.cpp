@@ -1,11 +1,11 @@
+#include <ariane/ResolverArgs.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
 #include <ariane/task.h>
-#include <nlohmann/json.hpp>
-
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
 

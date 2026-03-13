@@ -13,7 +13,7 @@
 
 namespace ariane::graphql {
 struct ValueResolver;
-struct ResolverArgs;
+class ResolverArgs;
 }
 
 namespace ariane::graphql::internal {

@@ -1,5 +1,5 @@
 #include "federation.h"
-
+#include <ariane/ResolverArgs.h>
 #include <ariane/internal/MergeResolvers.h>
 #include <ariane/internal/introspection/types/DirectiveDefinition.h>
 #include <ariane/internal/introspection/types/FieldDefinition.h>

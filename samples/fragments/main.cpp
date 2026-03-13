@@ -1,8 +1,8 @@
+#include <ariane/ResolverArgs.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
-#include <nlohmann/json.hpp>
-
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 
 using namespace std;

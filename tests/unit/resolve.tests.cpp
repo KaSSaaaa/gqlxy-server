@@ -1,9 +1,10 @@
+#include <ariane/ResolverArgs.h>
 #include <ariane/internal/utils/ranges.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
 #include <ariane/task.h>
-#include <gtest/gtest.h>
 #include <future>
+#include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <optional>
 

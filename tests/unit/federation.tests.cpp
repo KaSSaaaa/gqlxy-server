@@ -1,3 +1,4 @@
+#include <ariane/ResolverArgs.h>
 #include <ariane/schema.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>

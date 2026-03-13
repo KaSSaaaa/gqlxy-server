@@ -1,6 +1,6 @@
+#include <ariane/ResolverArgs.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
-
 #include <iostream>
 #include <string>
 

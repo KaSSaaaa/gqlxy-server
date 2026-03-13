@@ -2,6 +2,7 @@
 
 #include <ariane/internal/ast/Directive.h>
 #include <ariane/internal/engine/ResolveArguments.h>
+#include <ariane/ResolverArgs.h>
 
 using namespace std;
 

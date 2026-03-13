@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include <ariane/internal/utils/expect.h>
+#include <format>
 #include <fstream>
 #include <sstream>
 
