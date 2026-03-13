@@ -31,12 +31,6 @@ jobs:
           - os: macos-14
             preset: arm64-osx-release
             triplet: arm64-osx
-          - os: macos-13
-            preset: x64-osx-debug
-            triplet: x64-osx
-          - os: macos-13
-            preset: x64-osx-release
-            triplet: x64-osx
 
     steps:
       - uses: actions/checkout@v4
@@ -48,14 +42,9 @@ jobs:
           echo "CC=gcc-13" >> $GITHUB_ENV
           echo "CXX=g++-13" >> $GITHUB_ENV
 
-      - name: Set VCPKG_ROOT (Linux / macOS)
-        if: runner.os != 'Windows'
-        run: echo "VCPKG_ROOT=/usr/local/share/vcpkg" >> $GITHUB_ENV
-
-      - name: Set VCPKG_ROOT (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+      - name: Set VCPKG_ROOT
+        shell: bash
+        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4

@@ -2,6 +2,7 @@
 
 #include <nlohmann/json_fwd.hpp>
 #include <string>
+#include <optional>
 
 namespace ariane::graphql::internal {
 
