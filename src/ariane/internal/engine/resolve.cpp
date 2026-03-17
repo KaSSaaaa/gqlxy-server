@@ -257,7 +257,7 @@ Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
         }
 
         co_return ResolveResult {
-            .data = data.dump(),
+            .data = data,
             .errors = fieldErrors.empty() ? optional<FieldErrors>{} : fieldErrors
         };
     } catch (const exception& e) {

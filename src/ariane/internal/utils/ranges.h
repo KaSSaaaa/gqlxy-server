@@ -49,6 +49,17 @@ auto to_string(R&& r) {
     return std::string(std::ranges::begin(r), std::ranges::end(r));
 }
 
+template <std::ranges::input_range R>
+auto trim(R&& s) {
+    static auto isSpace = [](auto c) { return std::isspace(c); };
+    auto r = s
+        | std::views::drop_while(isSpace)
+        | std::views::reverse
+        | std::views::drop_while(isSpace)
+        | std::views::reverse;
+    return std::string(r.begin(), r.end());
+}
+
 template <std::ranges::range R>
 auto to_optional(R&& r, std::ranges::iterator_t<R> it)
     -> std::optional<std::ranges::range_value_t<R>>

@@ -36,7 +36,7 @@ protected:
         }).get();
         ASSERT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value()[0].message;
 
-        _data     = json::parse(result.data.value());
+        _data     = result.data.value();
         _schema   = _data["__schema"];
         _expected = json::parse(readFile(INTROSPECTION_RESULT_PATH))["__schema"];
     }

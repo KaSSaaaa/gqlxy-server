@@ -9,7 +9,7 @@
         "BUILD_TESTING": "ON",
         "ENABLE_VCPKG_BOOTSTRAP": "ON",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_MANIFEST_FEATURES": "tests"
+        "VCPKG_MANIFEST_FEATURES": "tests;standalone-server"
       }
     },
     {

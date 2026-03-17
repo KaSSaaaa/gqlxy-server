@@ -1,8 +1,8 @@
 {
-  "name": "ariane-graphql-server",
+  "name": "ariane-graphql",
   "version": "0.1.0",
-  "description": "C++ GraphQL server engine that let's you develop your server how you want it",
-  "homepage": "https://github.com/KaSSaaaa/ariane-graphql-server",
+  "description": "A C++20 GraphQL execution engine with subscriptions, schema stitching, and Apollo Federation support",
+  "homepage": "https://github.com/pierrejacobs/ariane-graphql-server",
   "license": "MIT",
   "supports": "!uwp",
   "dependencies": [
@@ -12,10 +12,6 @@
     "better-enums"
   ],
   "features": {
-    "tests": {
-      "description": "Build and run the test suite",
-      "dependencies": ["gtest"]
-    },
     "standalone-server": {
       "description": "Standalone HTTP/WebSocket/SSE GraphQL server using oatpp",
       "dependencies": ["oatpp", "oatpp-websocket"]

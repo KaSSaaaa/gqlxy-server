@@ -75,7 +75,7 @@ TEST(ValidationTest, UndeclaredVariableReturnsError) {
 TEST(ValidationTest, DeclaredVariablePasses) {
     auto result = resolve(echoSchema, echoResolvers, "query($msg: String!) { echo(msg: $msg) }", {{"msg", "hi"}});
     EXPECT_TRUE(noErrors(result));
-    EXPECT_EQ(json::parse(*result.data)["echo"], "hi");
+    EXPECT_EQ(result.data.value()["echo"], "hi");
 }
 
 TEST(ValidationTest, UndeclaredVariableInDirectiveReturnsError) {
@@ -154,7 +154,7 @@ TEST(ValidationTest, UnknownArgumentReturnsError) {
 TEST(ValidationTest, KnownArgumentPasses) {
     auto result = resolve(echoSchema, echoResolvers, "{ echo(msg: \"hello\") }");
     EXPECT_TRUE(noErrors(result));
-    EXPECT_EQ(json::parse(*result.data)["echo"], "hello");
+    EXPECT_EQ(result.data.value()["echo"], "hello");
 }
 
 // ---------------------------------------------------------------------------

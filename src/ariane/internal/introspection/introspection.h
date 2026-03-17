@@ -20,4 +20,6 @@ Resolver CreateEnumValueResolver(const EnumValueDefinition& enumValue);
 Resolver CreateTypeRefResolver(const TypeRef& typeRef, const SchemaDefinition& schema);
 Resolver CreateDirectiveResolver(const DirectiveDefinition& directive, const SchemaDefinition& schema);
 
+std::optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schema, const std::string& name);
+
 }

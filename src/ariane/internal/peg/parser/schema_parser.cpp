@@ -107,7 +107,8 @@ InputValueDefinition ParseInputValue(const peg::ast_node& node) {
         }).value_or(""),
         .description = ParseDescription(node),
         .type = ParseTypeRefFromNode(node),
-        .defaultValue = ParseDefaultValue(node)
+        .defaultValue = ParseDefaultValue(node),
+        .deprecation = ParseDeprecation(node)
     };
 }
 

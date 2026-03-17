@@ -58,8 +58,8 @@ TEST(StitchTest, CombinesQueryFields) {
 
     ASSERT_FALSE(r1.errors.has_value());
     ASSERT_FALSE(r2.errors.has_value());
-    EXPECT_EQ(json::parse(r1.data.value())["user"]["name"], "Alice");
-    EXPECT_EQ(json::parse(r2.data.value())["post"]["title"], "Hello world");
+    EXPECT_EQ(r1.data.value()["user"]["name"], "Alice");
+    EXPECT_EQ(r2.data.value()["post"]["title"], "Hello world");
 }
 
 TEST(StitchTest, CombinesTypes) {
@@ -73,7 +73,7 @@ TEST(StitchTest, CombinesTypes) {
     )"}).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["__type"]["name"], "Post");
 }
 
@@ -83,7 +83,7 @@ TEST(StitchTest, IntrospectionReflectsMergedTypes) {
     auto result = stitched.Resolve({.query = "{ __schema { types { name } } }"}).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto types = json::parse(result.data.value())["__schema"]["types"];
+    auto types = result.data.value()["__schema"]["types"];
     auto hasType = [&](const string& name) {
         return ranges::any_of(types, [&](const auto& t) { return t["name"] == name; });
     };
@@ -105,7 +105,7 @@ TEST(StitchTest, IsChainable) {
     auto r = stitched.Resolve({.query = "{ user(id:\"1\"){name} post(id:\"1\"){title} tag }"}).get();
 
     ASSERT_FALSE(r.errors.has_value());
-    auto data = json::parse(r.data.value());
+    auto data = r.data.value();
     EXPECT_EQ(data["user"]["name"], "Alice");
     EXPECT_EQ(data["post"]["title"], "Hello world");
     EXPECT_EQ(data["tag"], "c++");

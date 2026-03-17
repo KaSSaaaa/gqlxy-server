@@ -127,10 +127,9 @@ void Schema::InjectIntrospectionResolvers() {
             return CreateSchemaResolver(*schemaDefinition);
         }},
         {"__type", [schemaDefinition = _schemaDefinition](const ResolverArgs& args) -> ValueResolver {
-            if (auto it = schemaDefinition->types.find(args.Args()["name"]); it != schemaDefinition->types.end()) {
-                return CreateTypeResolver(it->second, *schemaDefinition);
-            }
-            return nullopt;
+            auto typeDef = GetTypeDefinition(*schemaDefinition, args.Args()["name"].get<std::string>());
+            if (!typeDef) return nullopt;
+            return CreateTypeResolver(*typeDef, *schemaDefinition);
         }}
     });
 }

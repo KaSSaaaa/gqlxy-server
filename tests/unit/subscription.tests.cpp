@@ -112,7 +112,7 @@ TEST_F(SubscriptionTest, SubscribeReceivesEvents) {
 
     ASSERT_TRUE(result.has_value());
     EXPECT_FALSE(result->errors.has_value());
-    auto data = json::parse(result->data.value());
+    auto data = result->data.value();
     EXPECT_EQ(data["messageCreated"]["text"], "Hi");
     EXPECT_EQ(data["messageCreated"]["author"], "Eve");
 }
@@ -135,9 +135,9 @@ TEST_F(SubscriptionTest, SubscribeReceivesMultipleEvents) {
     ASSERT_TRUE(r1.has_value());
     ASSERT_TRUE(r2.has_value());
     ASSERT_TRUE(r3.has_value());
-    EXPECT_EQ(json::parse(r1->data.value())["counter"], 1);
-    EXPECT_EQ(json::parse(r2->data.value())["counter"], 2);
-    EXPECT_EQ(json::parse(r3->data.value())["counter"], 3);
+    EXPECT_EQ(r1->data.value()["counter"], 1);
+    EXPECT_EQ(r2->data.value()["counter"], 2);
+    EXPECT_EQ(r3->data.value()["counter"], 3);
 }
 
 // ---------------------------------------------------------------------------
@@ -192,8 +192,8 @@ TEST_F(SubscriptionTest, ResolverErrorDoesNotTerminateStream) {
 
     ASSERT_TRUE(r1.has_value());
     ASSERT_TRUE(r2.has_value());
-    EXPECT_EQ(json::parse(r1->data.value())["counter"], 1);
-    EXPECT_EQ(json::parse(r2->data.value())["counter"], 2);
+    EXPECT_EQ(r1->data.value()["counter"], 1);
+    EXPECT_EQ(r2->data.value()["counter"], 2);
 }
 
 TEST_F(SubscriptionTest, RejectsNonSubscriptionOperation) {

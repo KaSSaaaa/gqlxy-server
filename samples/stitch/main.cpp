@@ -90,7 +90,7 @@ static void run(const Schema& schema, const string& label, const string& query) 
         for (const auto& e : *result.errors)
             cerr << "Error: " << e.message << endl;
     else
-        cout << json::parse(result.data.value()).dump(2) << endl;
+        cout << result.data.value().dump(2) << endl;
     cout << endl;
 }
 

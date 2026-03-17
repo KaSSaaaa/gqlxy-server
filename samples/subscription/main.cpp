@@ -63,7 +63,7 @@ int main() {
             break;
         }
 
-        auto data = json::parse(result->data.value());
+        auto data = result->data.value();
         cout << "tick " << ++i << ": " << data["currentDatetime"] << endl;
     }
 

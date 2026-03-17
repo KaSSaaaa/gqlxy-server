@@ -105,4 +105,20 @@ Phase 6 — Subscriptions      : #20, #21, #22, #23, #24, #25 ✓
 Phase 7 — Schema stitching   : #26, #27, #28, #29, #30 ✓
 Phase 8 — SDL extend         : #37, #38, #39, #40, #41, #42 ✓
 Phase 9 — Federation         : #31, #32, #33, #34, #35, #36 ✓
+Phase 10 — Standalone Server : #43, #44, #45, #46, #47, #48 ✓
 ```
+
+---
+
+### P10 — Standalone Server (`standalone-server` vcpkg feature)
+
+An Apollo-style `StartStandaloneServer` equivalent backed by **oatpp**. Enabled as an opt-in vcpkg feature (`standalone-server`) that pulls in `oatpp` + `oatpp-websocket`.  All four GraphQL transports are served on a single port and path.
+
+| # | Feature | Notes |
+|---|---------|-------|
+| 43 | **HTTP GraphQL transport** | `POST /graphql` with `application/json` body (`query`, `variables`, `operationName`). `GET /graphql?query=...` for read-only operations. Response `Content-Type: application/graphql-response+json`. CORS preflight (`OPTIONS`) handled automatically. |
+| 44 | **`graphql-transport-ws`** | WebSocket subprotocol `graphql-transport-ws` (modern, used by Apollo Client 3+, Relay, Insomnia). Messages: `connection_init` / `connection_ack`, `subscribe`, `next`, `error`, `complete`, `ping` / `pong`. Per-subscription async threads; mutex-protected sends. |
+| 45 | **`graphql-ws`** (legacy) | WebSocket subprotocol `graphql-ws` (legacy `subscriptions-transport-ws` protocol). Messages: `connection_init` / `connection_ack`, `start`, `data`, `stop`, `complete`, `connection_terminate`. Auto-detected from the first operation message (`start` → `graphql-ws`, `subscribe` → `graphql-transport-ws`). |
+| 46 | **`graphql-sse`** | Server-Sent Events via `Accept: text/event-stream` on the same path (distinct-connections mode). Streams `connection_ack`, `next`, and `complete` events. Works without WebSocket support (firewalls, proxies). |
+| 47 | **`StandaloneServer` API** | `StandaloneServer({.schema, .host, .port, .path})`. `Start()` blocks; `StartAsync()` returns immediately; `Stop()` terminates the server; `GetUrl()` returns the base URL. oatpp `Environment` is managed internally with a ref-counted init/destroy. |
+| 48 | **Demo server** (`samples/demo-server`) | A fully wired books-and-reviews API with `Query` (books, book, reviews), `Mutation` (addBook, addReview), and `Subscription` (reviewAdded, bookAdded). Reachable out-of-the-box from Insomnia, Postman, Apollo Studio, and any GraphQL client. |
