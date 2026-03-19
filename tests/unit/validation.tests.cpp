@@ -43,7 +43,8 @@ static const string echoSchema = R"(
 )";
 
 static const Resolver echoResolvers = {
-     {"echo", [](const ResolverArgs& a) -> ValueResolver { return a.Args()["msg"].get<string>(); }}};
+     {"echo", FunctionResolver([](const ResolverArgs& a) -> ValueResolver { return a.Args()["msg"].get<string>(); })}
+};
 
 static const string userSchema = R"(
     type User { name: String }
@@ -51,15 +52,15 @@ static const string userSchema = R"(
 )";
 
 static const Resolver userResolvers = {
-     {"user", [](const ResolverArgs&) -> ValueResolver { return Resolver{{"name", "Alice"}}; }}};
+     {"user", FunctionResolver([](const ResolverArgs&) -> ValueResolver { return Resolver{{"name", "Alice"}}; })}};
 
 static const string twoFieldSchema = R"(
     type Query { a: String b: String }
 )";
 
 static const Resolver twoFieldResolvers = {
-     {"a", [](const ResolverArgs&) -> ValueResolver { return "A"; }},
-     {"b", [](const ResolverArgs&) -> ValueResolver { return "B"; }},
+     {"a", FunctionResolver([](const ResolverArgs&) -> ValueResolver { return "A"; })},
+     {"b", FunctionResolver([](const ResolverArgs&) -> ValueResolver { return "B"; })},
 };
 
 // ---------------------------------------------------------------------------
@@ -212,9 +213,11 @@ TEST(ValidationTest, InlineFragmentFieldIsValidated) {
         type Book { title: String }
         type Movie { director: String }
     )";
-    Resolver resolvers = {{"search", [](const ResolverArgs&) -> ValueResolver {
-                               return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
-                           }}};
+    Resolver resolvers = {
+        {"search", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+            return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
+        })}
+    };
 
     auto valid = resolve(schema, resolvers, "{ search { ... on Book { title } } }");
     EXPECT_TRUE(noErrors(valid));
@@ -230,9 +233,11 @@ TEST(ValidationTest, FragmentSpreadFieldIsValidated) {
         type Book { title: String }
         type Movie { director: String }
     )";
-    Resolver resolvers = {{"search", [](const ResolverArgs&) -> ValueResolver {
-                               return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
-                           }}};
+    Resolver resolvers = {
+        {"search", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+            return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
+        })}
+    };
 
     const string validQuery = R"(
         { search { ...BookInfo } }
