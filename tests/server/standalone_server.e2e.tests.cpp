@@ -6,10 +6,10 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #include <atomic>
 #include <fstream>
@@ -22,6 +22,12 @@ using namespace std;
 using namespace ariane::graphql;
 using namespace ariane::graphql::server;
 using json = nlohmann::json;
+
+namespace beast = boost::beast;
+namespace http  = beast::http;
+namespace ws    = beast::websocket;
+namespace net   = boost::asio;
+using tcp       = net::ip::tcp;
 
 // ─── Data types ───────────────────────────────────────────────────────────────
 
@@ -44,62 +50,33 @@ static string readFile(const char* path) {
     return ss.str();
 }
 
-static string decodeChunked(const string& body) {
-    string out;
-    size_t pos = 0;
-    while (pos < body.size()) {
-        auto end = body.find("\r\n", pos);
-        if (end == string::npos) break;
-        int chunkSize = stoi(body.substr(pos, end - pos), nullptr, 16);
-        if (chunkSize == 0) break;
-        pos = end + 2;
-        out += body.substr(pos, chunkSize);
-        pos += chunkSize + 2;
-    }
-    return out;
-}
-
 static json httpPost(int port, const string& path, const string& query,
                      const json& variables = json::object()) {
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    timeval tv{5, 0};
-    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port   = htons(port);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    ::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    net::io_context ioc;
+    beast::tcp_stream stream(ioc);
+    stream.expires_after(chrono::seconds(5));
+    stream.connect(tcp::resolver(ioc).resolve("127.0.0.1", to_string(port)));
 
     json payload = {{"query", query}};
     if (!variables.empty()) payload["variables"] = variables;
-    string body = payload.dump();
 
-    string req =
-        "POST " + path + " HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: " + to_string(body.size()) + "\r\n"
-        "Connection: close\r\n"
-        "\r\n" + body;
+    http::request<http::string_body> req{http::verb::post, path, 11};
+    req.set(http::field::host, "localhost");
+    req.set(http::field::content_type, "application/json");
+    req.set(http::field::connection, "close");
+    req.body() = payload.dump();
+    req.prepare_payload();
 
-    ::send(fd, req.c_str(), req.size(), 0);
+    http::write(stream, req);
 
-    string response;
-    char buf[4096];
-    int n;
-    while ((n = ::recv(fd, buf, sizeof(buf), 0)) > 0)
-        response.append(buf, n);
-    ::close(fd);
+    beast::flat_buffer buf;
+    http::response<http::string_body> res;
+    http::read(stream, buf, res);
 
-    auto sep   = response.find("\r\n\r\n");
-    string hdrs = response.substr(0, sep);
-    string rawBody = response.substr(sep + 4);
+    beast::error_code ec;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
 
-    if (hdrs.find("Transfer-Encoding: chunked") != string::npos)
-        rawBody = decodeChunked(rawBody);
-
-    return json::parse(rawBody);
+    return json::parse(res.body());
 }
 
 // ─── SSE helper ───────────────────────────────────────────────────────────────
@@ -111,41 +88,32 @@ struct SseEvent {
 
 static vector<SseEvent> httpSSE(int port, const string& path, const string& query,
                                 const json& variables = json::object()) {
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    timeval tv{10, 0};
-    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port   = htons(port);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    ::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    net::io_context ioc;
+    beast::tcp_stream stream(ioc);
+    stream.expires_after(chrono::seconds(10));
+    stream.connect(tcp::resolver(ioc).resolve("127.0.0.1", to_string(port)));
 
     json payload = {{"query", query}};
     if (!variables.empty()) payload["variables"] = variables;
-    string body = payload.dump();
 
-    string req =
-        "POST " + path + " HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Content-Type: application/json\r\n"
-        "Accept: text/event-stream\r\n"
-        "Content-Length: " + to_string(body.size()) + "\r\n"
-        "Connection: close\r\n"
-        "\r\n" + body;
+    http::request<http::string_body> req{http::verb::post, path, 11};
+    req.set(http::field::host, "localhost");
+    req.set(http::field::content_type, "application/json");
+    req.set(http::field::accept, "text/event-stream");
+    req.set(http::field::connection, "close");
+    req.body() = payload.dump();
+    req.prepare_payload();
 
-    ::send(fd, req.c_str(), req.size(), 0);
+    http::write(stream, req);
 
-    string response;
-    char buf[4096];
-    int n;
-    while ((n = ::recv(fd, buf, sizeof(buf), 0)) > 0) response.append(buf, n);
-    ::close(fd);
+    beast::flat_buffer buf;
+    http::response<http::string_body> res;
+    http::read(stream, buf, res);
 
-    auto sep    = response.find("\r\n\r\n");
-    string hdrs = response.substr(0, sep);
-    string raw  = response.substr(sep + 4);
-    if (hdrs.find("Transfer-Encoding: chunked") != string::npos) raw = decodeChunked(raw);
+    beast::error_code ec;
+    stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+
+    const string& raw = res.body();
 
     vector<SseEvent> events;
     string currentEvent, currentData;
@@ -178,100 +146,38 @@ static vector<SseEvent> httpSSE(int port, const string& path, const string& quer
 // ─── WebSocket client (graphql-transport-ws) ──────────────────────────────────
 
 class WsClient {
-    int fd;
-    string buf;
-
-    optional<json> tryParseFrame() {
-        if (buf.size() < 2) return nullopt;
-
-        uint8_t b0 = static_cast<uint8_t>(buf[0]);
-        uint8_t b1 = static_cast<uint8_t>(buf[1]);
-        bool masked  = (b1 & 0x80) != 0;
-        size_t payloadLen = b1 & 0x7F;
-        size_t headerLen  = 2;
-
-        if (payloadLen == 126) {
-            if (buf.size() < 4) return nullopt;
-            payloadLen = (static_cast<uint8_t>(buf[2]) << 8) | static_cast<uint8_t>(buf[3]);
-            headerLen = 4;
-        }
-        if (masked) headerLen += 4;
-        if (buf.size() < headerLen + payloadLen) return nullopt;
-
-        uint8_t opcode = b0 & 0x0F;
-        if (opcode == 0x8) return json{};  // close frame
-
-        string payload = buf.substr(headerLen, payloadLen);
-        buf = buf.substr(headerLen + payloadLen);
-        return json::parse(payload);
-    }
+    net::io_context              _ioc;
+    ws::stream<beast::tcp_stream> _ws;
 
 public:
-    WsClient(int port, const string& path, const string& subprotocol) {
-        fd = ::socket(AF_INET, SOCK_STREAM, 0);
-        timeval tv{5, 0};
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    WsClient(int port, const string& path, const string& subprotocol)
+        : _ioc(), _ws(_ioc)
+    {
+        _ws.next_layer().expires_after(chrono::seconds(5));
+        _ws.next_layer().connect(tcp::resolver(_ioc).resolve("127.0.0.1", to_string(port)));
+        _ws.next_layer().expires_never();
 
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_port   = htons(port);
-        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-        ::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
-
-        string req =
-            "GET " + path + " HTTP/1.1\r\n"
-            "Host: localhost\r\n"
-            "Upgrade: websocket\r\n"
-            "Connection: Upgrade\r\n"
-            "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-            "Sec-WebSocket-Version: 13\r\n"
-            "Sec-WebSocket-Protocol: " + subprotocol + "\r\n"
-            "\r\n";
-        ::send(fd, req.c_str(), req.size(), 0);
-
-        // Consume HTTP upgrade response
-        string resp;
-        char tmp[1024];
-        while (resp.find("\r\n\r\n") == string::npos) {
-            int n = ::recv(fd, tmp, sizeof(tmp), 0);
-            if (n <= 0) break;
-            resp.append(tmp, n);
-        }
-        auto pos = resp.find("\r\n\r\n");
-        if (pos != string::npos && pos + 4 < resp.size())
-            buf = resp.substr(pos + 4);
+        _ws.set_option(ws::stream_base::decorator([&](ws::request_type& req) {
+            req.set(http::field::sec_websocket_protocol, subprotocol);
+        }));
+        _ws.handshake("localhost", path);
     }
 
-    ~WsClient() { ::close(fd); }
+    ~WsClient() {
+        beast::error_code ec;
+        _ws.close(ws::close_code::normal, ec);
+    }
 
     void send(const json& msg) {
-        string text = msg.dump();
-        static constexpr uint8_t mask[4] = {0x37, 0x42, 0x8A, 0x1D};
-
-        vector<uint8_t> frame;
-        frame.push_back(0x81);
-        if (text.size() < 126) {
-            frame.push_back(0x80 | static_cast<uint8_t>(text.size()));
-        } else {
-            frame.push_back(0x80 | 126);
-            frame.push_back((text.size() >> 8) & 0xFF);
-            frame.push_back(text.size() & 0xFF);
-        }
-        frame.insert(frame.end(), mask, mask + 4);
-        for (size_t i = 0; i < text.size(); ++i)
-            frame.push_back(static_cast<uint8_t>(text[i]) ^ mask[i % 4]);
-
-        ::send(fd, frame.data(), frame.size(), 0);
+        _ws.write(net::buffer(msg.dump()));
     }
 
     json recv() {
-        while (true) {
-            if (auto frame = tryParseFrame()) return *frame;
-            char tmp[4096];
-            int n = ::recv(fd, tmp, sizeof(tmp), 0);
-            if (n <= 0) return {};
-            buf.append(tmp, n);
-        }
+        beast::flat_buffer buf;
+        beast::error_code ec;
+        _ws.read(buf, ec);
+        if (ec) return {};
+        return json::parse(beast::buffers_to_string(buf.data()));
     }
 };
 
@@ -289,24 +195,21 @@ static constexpr auto     s_path    = "/graphql";
 
 static void waitForPort(int port) {
     for (int i = 0; i < 50; ++i) {
-        int sock = ::socket(AF_INET, SOCK_STREAM, 0);
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_port   = htons(port);
-        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-        if (::connect(sock, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0) {
-            ::close(sock);
+        try {
+            net::io_context ioc;
+            beast::tcp_stream stream(ioc);
+            stream.expires_after(chrono::milliseconds(100));
+            stream.connect(tcp::resolver(ioc).resolve("127.0.0.1", to_string(port)));
             return;
+        } catch (...) {
+            this_thread::sleep_for(chrono::milliseconds(20));
         }
-        ::close(sock);
-        this_thread::sleep_for(chrono::milliseconds(20));
     }
 }
 
 class StandaloneServerE2ETest : public testing::Test {
 public:
     static void SetUpTestSuite() {
-        signal(SIGPIPE, SIG_IGN);  // prevent crash if server connection drops during send()
         s_books = {
             {"1", "The Pragmatic Programmer", "David Thomas & Andrew Hunt", 1999},
             {"2", "Clean Code", "Robert C. Martin", 2008},

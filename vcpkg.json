@@ -18,7 +18,7 @@
     },
     "standalone-server": {
       "description": "Standalone HTTP/WebSocket/SSE GraphQL server using oatpp",
-      "dependencies": ["oatpp", "oatpp-websocket"]
+      "dependencies": ["oatpp", "oatpp-websocket", "boost-beast"]
     }
   }
 }
