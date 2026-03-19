@@ -24,7 +24,7 @@ static Schema usersSchema() {
                     return Resolver{{"id", r.Args()["id"].get<string>()}, {"name", string{"Alice"}}};
                 }}}
             }},
-            {"User", Resolver{{"id", string{}}, {"name", string{}}}}
+            {"User", Resolver{{"id", ""}, {"name", ""}}}
         }
     });
 }
@@ -41,7 +41,7 @@ static Schema postsSchema() {
                     return Resolver{{"id", r.Args()["id"].get<string>()}, {"title", string{"Hello world"}}};
                 }}}
             }},
-            {"Post", Resolver{{"id", string{}}, {"title", string{}}}}
+            {"Post", Resolver{{"id", ""}, {"title", ""}}}
         }
     });
 }

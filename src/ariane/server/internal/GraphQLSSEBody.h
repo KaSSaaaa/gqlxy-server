@@ -15,14 +15,12 @@ public:
     p_char8 getKnownData() override;
     v_int64 getKnownSize() override;
 
-
 private:
     SubscriptionHandle _handle;
-    std::string _buffer;
     bool _done = false;
 
-    static nlohmann::json buildPayload(const ResolveResult& result);
-
+    std::string ReadHandle();
+    oatpp::v_io_size Send(void* buffer, v_buff_size count, const std::string& value);
 };
 
 }

@@ -1,5 +1,7 @@
 #include "GraphQLController.h"
 
+#include <ariane/internal/utils/optional.h>
+#include <ariane/internal/utils/ranges.h>
 #include <ariane/server/internal/GraphQLSSEBody.h>
 #include <oatpp-websocket/Handshaker.hpp>
 #include <oatpp/encoding/Url.hpp>
@@ -7,6 +9,7 @@
 
 using namespace std;
 using namespace ariane::graphql::server::internal;
+using namespace ariane::graphql::internal;
 using namespace oatpp;
 using namespace oatpp::web::server;
 using namespace oatpp::web::protocol::http;
@@ -17,10 +20,12 @@ using namespace oatpp::data::stream;
 using namespace oatpp::parser::json::mapping;
 using namespace nlohmann;
 
-GraphQLController::GraphQLController(shared_ptr<ObjectMapper>& objectMapper,
+GraphQLController::GraphQLController(const string& path,
+                                     shared_ptr<ObjectMapper>& objectMapper,
                                      shared_ptr<ConnectionHandler>& wsHandler,
                                      Schema& schema)
     : ApiController(objectMapper),
+      _path(path),
       _wsHandler(wsHandler),
       _schema(schema) {
 
@@ -51,10 +56,26 @@ shared_ptr<Response> GraphQLController::HandleRequest(const Headers& headers,
                                                       const String& operationName) {
     auto upgradeHeader = headers.get("Upgrade");
     if (upgradeHeader && upgradeHeader == "websocket") {
+        auto subprotocol = Subprotocol(headers.get("Sec-WebSocket-Protocol"));
+        if (!subprotocol.has_value())
+            return createResponse(Status::CODE_400, json {
+                {"errors", {
+                    {{"message", "Unsupported WebSocket subprotocol"}}
+                }}
+            }.dump());
         auto response = Handshaker::serversideHandshake(headers, _wsHandler);
-        response->putHeader("Sec-WebSocket-Protocol", "graphql-transport-ws");
-        //TODO handle ws subprotocol pick
+        response->putHeader("Sec-WebSocket-Protocol", subprotocol.value());
         return response;
+    }
+
+    if (!query || query->empty()) {
+        return createResponse(
+            Status::CODE_400,
+            String(json {
+                {"errors", {
+                    {{"message", "Missing 'query' parameter"}}
+                }
+            }}.dump()));
     }
 
     auto acceptHeader = headers.get("Accept");
@@ -62,37 +83,42 @@ shared_ptr<Response> GraphQLController::HandleRequest(const Headers& headers,
         return HandleSSE(query, variables, operationName);
     }
 
-    auto result = _schema.Resolve({
+    return createResponse(Status::CODE_200, Serialize(_schema.Resolve({
         .query = query.getValue(""),
         .variables = Convert(variables),
         .operationName = operationName.getValue("")
-    }).get();
+    }).get()).dump());
+}
 
-    json response;
-    if (result.data.has_value()) {
-        response["data"] = result.data.value();
-    }
-    if (result.errors.has_value()) {
-        auto errors = json::array();
-        for (const auto& e : result.errors.value()) {
-            errors.push_back({{"message", e.message}});
-        }
-        response["errors"] = errors;
-    }
+static const vector<string> SupportedProtocols = {"graphql-transport-ws", "graphql-ws"};
 
-    return createResponse(Status::CODE_200, response.dump());
+optional<string> GraphQLController::Subprotocol(const string& headerValue) {
+    auto offered = to_vector(headerValue
+        | views::split(',')
+        | views::transform([](const auto& subprotocol) -> string {
+              return trim(subprotocol);
+          }));
+
+    return to_optional(SupportedProtocols, ranges::find_if(SupportedProtocols, [&](const auto& candidate) {
+        return ranges::find(offered, candidate) != offered.end();
+    }));
 }
 
 shared_ptr<Response> GraphQLController::HandleSSE(const String& query,
                                                   const Any& variables,
                                                   const String& operationName) {
-    auto handle = _schema.Subscribe({
+    SchemaResolveArgs args {
         .query = query,
         .variables = Convert(variables),
         .operationName = operationName.getValue("")
-    });
+    };
 
-    auto response = Response::createShared(Status::CODE_200, make_shared<GraphQLSSEBody>(std::move(handle)));
+    auto handle = IsSubscription(query)
+        ? _schema.Subscribe(args)
+        : SubscriptionHandle::SingleShot(_schema.Resolve(args).get());
+
+    auto body = make_shared<GraphQLSSEBody>(std::move(handle));
+    auto response = Response::createShared(Status::CODE_200, body);
     response->putHeader("Access-Control-Allow-Origin", "*");
     return response;
 }

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <ariane/schema.h>
-#include <cstdint>
 #include <memory>
 #include <string>
+
+namespace oatpp::network {
+class Server;
+}
 
 namespace ariane::graphql::server {
 
@@ -16,18 +19,10 @@ struct StandaloneServerOptions {
 
 class StandaloneServer {
 public:
-    explicit StandaloneServer(StandaloneServerOptions options);
+    explicit StandaloneServer(const StandaloneServerOptions& options);
     ~StandaloneServer();
 
-    StandaloneServer(const StandaloneServer&) = delete;
-    StandaloneServer& operator=(const StandaloneServer&) = delete;
-    StandaloneServer(StandaloneServer&&) = delete;
-    StandaloneServer& operator=(StandaloneServer&&) = delete;
-
-    // Blocks the calling thread until Stop() is called from another thread.
     void Start();
-
-    // Starts the server on a background thread and returns immediately.
     void StartAsync();
 
     void Stop();
@@ -35,8 +30,10 @@ public:
     std::string GetUrl() const;
 
 private:
-    struct Impl;
-    std::unique_ptr<Impl> _impl;
+    StandaloneServerOptions _options;
+    std::shared_ptr<oatpp::network::Server> _server;
+    std::future<void> _serverThread;
+    std::atomic_bool _running;
 };
 
 }

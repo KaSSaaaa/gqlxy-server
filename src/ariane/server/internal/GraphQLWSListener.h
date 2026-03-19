@@ -31,13 +31,9 @@ public:
     void shutdownAndWait();
 
 private:
-    enum class Protocol { Unknown, TransportWS, LegacyWS };
-
     const Schema& _schema;
     oatpp::data::stream::BufferOutputStream _messageBuffer;
-    mutable std::mutex _sendMutex;
-    Protocol _protocol = Protocol::Unknown;
-    bool _initialized = false;
+    std::mutex _sendMutex;
 
     struct ActiveSubscription {
         std::shared_ptr<SubscriptionHandle> handle;
@@ -45,13 +41,13 @@ private:
     };
     std::unordered_map<std::string, ActiveSubscription> _subscriptions;
 
-    void dispatch(const WebSocket& socket, const std::string& text);
-    void handleConnectionInit(const WebSocket& socket, const nlohmann::json& msg);
-    void handleSubscribe(const WebSocket& socket, const std::string& id, const nlohmann::json& payload);
-    void handleStart(const WebSocket& socket, const std::string& id, const nlohmann::json& payload);
-    void handleComplete(const std::string& id);
+    void Handle(const WebSocket& socket, const std::string& text);
+    void HandleConnectionInit(const WebSocket& socket, const nlohmann::json& msg);
+    void HandleSubscribe(const WebSocket& socket, const std::string& id, const nlohmann::json& payload);
+    void HandleStart(const WebSocket& socket, const std::string& id, const nlohmann::json& payload);
+    void HandleComplete(const std::string& id);
 
-    void sendText(const WebSocket& socket, const nlohmann::json& msg) const;
+    void sendText(const WebSocket& socket, const nlohmann::json& msg);
 };
 
 class GraphQLWSInstanceListener : public oatpp::websocket::ConnectionHandler::SocketInstanceListener {

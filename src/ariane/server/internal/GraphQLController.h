@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RequestBody.h"
 #include <ariane/schema.h>
+#include <ariane/server/internal/RequestBody.h>
 #include <oatpp-websocket/ConnectionHandler.hpp>
 #include <oatpp/core/macro/codegen.hpp>
 #include <oatpp/core/macro/component.hpp>
@@ -16,6 +16,7 @@ namespace ariane::graphql::server::internal {
 class GraphQLController : public oatpp::web::server::api::ApiController {
 public:
     explicit GraphQLController(
+        const std::string& path,
         OATPP_COMPONENT(std::shared_ptr<ObjectMapper>, objectMapper),
         OATPP_COMPONENT(std::shared_ptr<oatpp::websocket::ConnectionHandler>, wsHandler),
         OATPP_COMPONENT(Schema, schema));
@@ -24,7 +25,7 @@ public:
         info->addConsumes<Object<RequestBody>>("application/json");
         info->addResponse<String>(Status::CODE_200, "application/json");
     }
-    ENDPOINT("GET", "/api/graphql", GQLGet, REQUEST(std::shared_ptr<IncomingRequest>, request),
+    ENDPOINT("GET", String(_path), GQLGet, REQUEST(std::shared_ptr<IncomingRequest>, request),
             QUERY(String, encodedQuery, "query", ""),
             QUERY(String, variables, "variables", ""),
             QUERY(String, operationName, "operationName", ""));
@@ -33,13 +34,13 @@ public:
         info->addConsumes<Object<RequestBody>>("application/json");
         info->addResponse<String>(Status::CODE_200, "application/json");
     }
-    ENDPOINT("POST", "/api/graphql", GQLPost, REQUEST(std::shared_ptr<IncomingRequest>, request),
+    ENDPOINT("POST", String(_path), GQLPost, REQUEST(std::shared_ptr<IncomingRequest>, request),
              BODY_DTO(Object<RequestBody>, requestBody));
 
     ENDPOINT_INFO(GQLOptions) {
         info->addResponse(Status::CODE_204);
     }
-    ENDPOINT("OPTIONS", "/api/graphql", GQLOptions) {
+    ENDPOINT("OPTIONS", String(_path), GQLOptions) {
         auto response = createResponse(Status::CODE_204);
         response->putHeader("Access-Control-Allow-Origin", "*");
         response->putHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -48,17 +49,19 @@ public:
     }
 
 private:
-    using __ControllerType = GraphQLController;
+    std::string _path;
     std::shared_ptr<oatpp::websocket::ConnectionHandler> _wsHandler;
     Schema& _schema;
 
-    nlohmann::json Convert(const oatpp::Any& variables);
+    static nlohmann::json Convert(const oatpp::Any& variables);
 
     std::shared_ptr<oatpp::web::protocol::http::outgoing::Response> HandleRequest(
         const oatpp::web::protocol::http::Headers& headers,
         const String& query,
         const oatpp::Any& variables,
         const String& operationName);
+
+    static std::optional<std::string> Subprotocol(const std::string& headerValue) ;
 
     std::shared_ptr<oatpp::web::protocol::http::outgoing::Response> HandleSSE(
         const String& query,

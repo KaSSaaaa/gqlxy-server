@@ -7,6 +7,7 @@ using namespace std;
 using namespace ariane::graphql::server::internal;
 using namespace ariane::graphql::internal;
 using namespace oatpp::websocket;
+using namespace nlohmann;
 
 GraphQLWSListener::GraphQLWSListener(const Schema& schema) : _schema(schema) {}
 
@@ -25,66 +26,50 @@ void GraphQLWSListener::readMessage(const WebSocket& socket,
                                     p_char8 data,
                                     oatpp::v_io_size size) {
     if (size == 0) {
-        auto text = _messageBuffer.toString();
+        string text = _messageBuffer.toString();
         _messageBuffer.setCurrentPosition(0);
-        if (opcode == 1 && text) {
-            dispatch(socket, text.getValue(""));
-        }
+        Handle(socket, text);
     } else {
         _messageBuffer.writeSimple(data, size);
     }
 }
 
-void GraphQLWSListener::dispatch(const WebSocket& socket, const string& text) {
-    nlohmann::json msg;
-    try {
-        msg = nlohmann::json::parse(text);
-    } catch (...) {
-        return;
-    }
+void GraphQLWSListener::Handle(const WebSocket& socket, const string& text) {
+    auto msg = json::parse(text);
 
-    auto type = msg.value("type", string{});
+    auto type = msg["type"];
 
-    if (type == "connection_init") {
-        handleConnectionInit(socket, msg);
-    } else if (type == "subscribe") {
-        _protocol = Protocol::TransportWS;
-        handleSubscribe(socket, msg.value("id", string{}),
-                        msg.value("payload", nlohmann::json::object()));
-    } else if (type == "start") {
-        _protocol = Protocol::LegacyWS;
-        handleStart(socket, msg.value("id", string{}),
-                    msg.value("payload", nlohmann::json::object()));
-    } else if (type == "complete" || type == "stop") {
-        handleComplete(msg.value("id", string{}));
-    } else if (type == "ping") {
-        sendText(socket, {{"type", "pong"}});
-    } else if (type == "connection_terminate") {
-        cancelAllSubscriptions();
-    }
+    if (type == "connection_init") HandleConnectionInit(socket, msg);
+    else if (type == "subscribe") HandleSubscribe(socket, msg["id"], msg["payload"]);
+    else if (type == "start") HandleStart(socket, msg["id"], msg["payload"]);
+    else if (type == "complete" || type == "stop") HandleComplete(msg["id"]);
+    else if (type == "ping")
+        sendText(socket, {
+            {"type", "pong"}
+        });
+    else if (type == "connection_terminate") cancelAllSubscriptions();
 }
 
-void GraphQLWSListener::handleConnectionInit(const WebSocket& socket, const nlohmann::json&) {
-    if (_initialized) {
-        sendText(socket, {{"type", "connection_error"},
-                          {"payload", {{"message", "Too many initialisation requests"}}}});
-        return;
-    }
-    _initialized = true;
-    sendText(socket, {{"type", "connection_ack"}});
+void GraphQLWSListener::HandleConnectionInit(const WebSocket& socket, const json&) {
+    sendText(socket, {
+        {"type", "connection_ack"}
+    });
 }
 
-void GraphQLWSListener::handleSubscribe(const WebSocket& socket,
+void GraphQLWSListener::HandleSubscribe(const WebSocket& socket,
                                          const string& id,
-                                         const nlohmann::json& payload) {
+                                         const json& payload) {
     if (id.empty()) return;
 
-    auto query = payload.value("query", string{});
-    auto variables = payload.contains("variables") ? payload["variables"] : nlohmann::json::object();
-    auto operationName = payload.value("operationName", string{});
+    auto query = payload.value("query", "");
+    auto variables = payload.contains("variables") ? payload["variables"] : json::object();
+    auto operationName = payload.value("operationName", "");
 
-    auto handle = make_shared<SubscriptionHandle>(
-        _schema.Subscribe({.query = query, .variables = variables, .operationName = operationName}));
+    auto handle = make_shared<SubscriptionHandle>(_schema.Subscribe({
+        .query = query,
+        .variables = variables,
+        .operationName = operationName
+    }));
 
     auto future = async(launch::async, [this, id, handle, &socket]() mutable {
         while (auto result = handle->Next()) {
@@ -101,20 +86,25 @@ void GraphQLWSListener::handleSubscribe(const WebSocket& socket,
         });
     });
 
-    _subscriptions[id] = {std::move(handle), std::move(future)};
+    _subscriptions[id] = ActiveSubscription {
+        std::move(handle), std::move(future)
+    };
 }
 
-void GraphQLWSListener::handleStart(const WebSocket& socket,
+void GraphQLWSListener::HandleStart(const WebSocket& socket,
                                      const string& id,
-                                     const nlohmann::json& payload) {
+                                     const json& payload) {
     if (id.empty()) return;
 
-    auto query = payload.value("query", string{});
-    auto variables = payload.contains("variables") ? payload["variables"] : nlohmann::json::object();
-    auto operationName = payload.value("operationName", string{});
+    auto query = payload.value("query", "");
+    auto variables = payload.contains("variables") ? payload["variables"] : json::object();
+    auto operationName = payload.value("operationName", "");
 
-    auto handle = make_shared<SubscriptionHandle>(
-        _schema.Subscribe({.query = query, .variables = variables, .operationName = operationName}));
+    auto handle = make_shared<SubscriptionHandle>(_schema.Subscribe({
+        .query = query,
+        .variables = variables,
+        .operationName = operationName
+    }));
 
     auto future = async(launch::async, [this, id, handle, &socket]() mutable {
         while (auto result = handle->Next()) {
@@ -131,20 +121,23 @@ void GraphQLWSListener::handleStart(const WebSocket& socket,
         });
     });
 
-    _subscriptions[id] = {std::move(handle), std::move(future)};
+    _subscriptions[id] = ActiveSubscription {
+        std::move(handle),
+        std::move(future)
+    };
 }
 
-void GraphQLWSListener::handleComplete(const string& id) {
+void GraphQLWSListener::HandleComplete(const string& id) {
     auto it = _subscriptions.find(id);
-    if (it == _subscriptions.end()) return;
+    if (it == _subscriptions.end())
+        return;
     it->second.handle->Cancel();
     _subscriptions.erase(it);
 }
 
 void GraphQLWSListener::cancelAllSubscriptions() {
-    for (auto& sub : _subscriptions | views::values) {
-        sub.handle->Cancel();
-    }
+    for (const auto& [handle, _] : _subscriptions | views::values)
+        handle->Cancel();
     _subscriptions.clear();
 }
 
@@ -152,8 +145,8 @@ void GraphQLWSListener::shutdownAndWait() {
     cancelAllSubscriptions();
 }
 
-void GraphQLWSListener::sendText(const WebSocket& socket, const nlohmann::json& msg) const {
-    lock_guard<mutex> lock(_sendMutex);
+void GraphQLWSListener::sendText(const WebSocket& socket, const json& msg) {
+    unique_lock lock(_sendMutex);
     socket.sendOneFrameText(msg.dump());
 }
 
@@ -167,6 +160,6 @@ void GraphQLWSInstanceListener::onAfterCreate(const WebSocket& socket, const sha
 }
 
 void GraphQLWSInstanceListener::onBeforeDestroy(const WebSocket& socket) {
-    auto listener = std::dynamic_pointer_cast<GraphQLWSListener>(socket.getListener());
-    if (listener) listener->shutdownAndWait();
+    if (auto listener = dynamic_pointer_cast<GraphQLWSListener>(socket.getListener()))
+        listener->shutdownAndWait();
 }
