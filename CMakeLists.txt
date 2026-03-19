@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 option(ENABLE_VCPKG_BOOTSTRAP "Bootstrap vcpkg in the build dir and install manifest deps" OFF)
+option(BUILD_STANDALONE_SERVER "Build the standalone HTTP/WebSocket/SSE GraphQL server (requires oatpp)" OFF)
 
 # Prefer an existing vcpkg in PATH; otherwise clone+bootstrap into the preset build dir.
 find_program(SYSTEM_VCPKG_EXECUTABLE NAMES vcpkg vcpkg.exe)

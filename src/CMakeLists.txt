@@ -25,7 +25,10 @@ target_link_libraries(
 
 add_library(ariane::graphql ALIAS ariane_graphql)
 
-add_subdirectory(ariane/server)
+if(BUILD_STANDALONE_SERVER)
+    add_subdirectory(ariane/server)
+endif()
+
 install(TARGETS ariane_graphql
 	EXPORT ariane_graphqlTargets
 )

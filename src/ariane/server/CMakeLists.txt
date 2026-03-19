@@ -1,10 +1,3 @@
-find_package(oatpp CONFIG)
-find_package(oatpp-websocket CONFIG)
-
-if(NOT oatpp_FOUND OR NOT oatpp-websocket_FOUND)
-    return()
-endif()
-
 message(STATUS "Ariane: standalone server enabled (oatpp ${oatpp_VERSION})")
 file(GLOB_RECURSE SERVER_SOURCES *.cpp)
 
