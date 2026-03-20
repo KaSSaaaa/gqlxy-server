@@ -1,3 +1,8 @@
 find_package(pegtl CONFIG REQUIRED)
 find_package(cppgraphqlgen CONFIG COMPONENTS graphqlpeg REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+
+if(BUILD_STANDALONE_SERVER)
+    find_package(oatpp CONFIG REQUIRED)
+    find_package(oatpp-websocket CONFIG REQUIRED)
+endif()

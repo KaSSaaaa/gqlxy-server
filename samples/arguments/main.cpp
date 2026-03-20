@@ -85,10 +85,10 @@ int main() {
     }
 
     try {
-        cout << json::parse(result.data.value()).dump(2) << endl;
+        cout << result.data.value().dump(2) << endl;
     } catch (const json::parse_error& e) {
         cerr << "JSON parse error: " << e.what() << endl;
-        cerr << "Raw: " << result.data.value() << endl;
+        cerr << "Raw: " << result.data.value().dump() << endl;
         return 1;
     }
 

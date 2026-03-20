@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 option(ENABLE_VCPKG_BOOTSTRAP "Bootstrap vcpkg in the build dir and install manifest deps" OFF)
+option(BUILD_STANDALONE_SERVER "Build the standalone HTTP/WebSocket/SSE GraphQL server (requires oatpp)" OFF)
 
 # Prefer an existing vcpkg in PATH; otherwise clone+bootstrap into the preset build dir.
 find_program(SYSTEM_VCPKG_EXECUTABLE NAMES vcpkg vcpkg.exe)
@@ -17,7 +18,15 @@ if(ENABLE_VCPKG_BOOTSTRAP)
 		get_filename_component(SYSTEM_VCPKG_DIR "${SYSTEM_VCPKG_EXECUTABLE}" DIRECTORY)
 		set(VCPKG_ROOT "${SYSTEM_VCPKG_DIR}")
 		message(STATUS "Found system vcpkg: ${SYSTEM_VCPKG_EXECUTABLE}; using system vcpkg root ${VCPKG_ROOT}")
-		execute_process(COMMAND "${SYSTEM_VCPKG_EXECUTABLE}" "install" "--triplet" "${VCPKG_TRIPLET}" "--x-install-root" "${CMAKE_BINARY_DIR}/vcpkg_installed"
+
+		set(_vcpkg_feature_args "")
+		if(VCPKG_MANIFEST_FEATURES)
+			foreach(_feature ${VCPKG_MANIFEST_FEATURES})
+				list(APPEND _vcpkg_feature_args "--x-feature" "${_feature}")
+			endforeach()
+		endif()
+
+		execute_process(COMMAND "${SYSTEM_VCPKG_EXECUTABLE}" "install" "--triplet" "${VCPKG_TRIPLET}" "--x-install-root" "${CMAKE_BINARY_DIR}/vcpkg_installed" ${_vcpkg_feature_args}
 			RESULT_VARIABLE _vcpkg_install_rc
 			WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 	else()

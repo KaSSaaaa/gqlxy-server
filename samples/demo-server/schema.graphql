@@ -1,0 +1,34 @@
+type Book {
+    id: ID!
+    title: String!
+    author: String!
+    year: Int!
+    rating: Float
+}
+
+type Review {
+    id: ID!
+    bookId: ID!
+    author: String!
+    content: String!
+    stars: Int!
+}
+
+type Query {
+    books: [Book!]!
+    book(id: ID!): Book
+    reviews(bookId: ID!): [Review!]!
+}
+
+type Mutation {
+    addBook(title: String!, author: String!, year: Int!): Book!
+    addReview(bookId: ID!, author: String!, content: String!, stars: Int!): Review!
+}
+
+type Subscription {
+    reviewAdded(bookId: ID): Review!
+    bookAdded: Book!
+    timeChanged: DateTime!
+}
+
+scalar DateTime

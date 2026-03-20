@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -20,8 +21,10 @@ struct FieldError {
 using FieldErrors = std::vector<FieldError>;
 
 struct ResolveResult {
-    std::optional<std::string> data;
+    std::optional<nlohmann::json> data;
     std::optional<FieldErrors> errors;
 };
+
+nlohmann::json Serialize(const ResolveResult& result);
 
 }

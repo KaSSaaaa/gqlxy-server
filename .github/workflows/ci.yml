@@ -25,10 +25,10 @@ jobs:
           - os: windows-latest
             preset: x64-windows-release
             triplet: x64-windows
-          - os: macos-14
+          - os: macos-latest
             preset: arm64-osx-debug
             triplet: arm64-osx
-          - os: macos-14
+          - os: macos-latest
             preset: arm64-osx-release
             triplet: arm64-osx
 

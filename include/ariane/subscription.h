@@ -34,9 +34,13 @@ public:
     std::optional<ResolveResult> Next();
     void Cancel();
 
+    static SubscriptionHandle SingleShot(const ResolveResult& result);
+
 private:
     std::function<std::optional<ResolveResult>()> _next;
     std::function<void()> _cancel;
 };
+
+bool IsSubscription(const std::string& query);
 
 }

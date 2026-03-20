@@ -496,7 +496,9 @@ Resolver CreateInputValueResolver(const InputValueDefinition& input, const Schem
         {"name", input.name},
         {"description", input.description},
         {"type", [input, &schemaDefinition](const auto&) { return CreateTypeRefResolver(input.type, schemaDefinition); }},
-        {"defaultValue", input.defaultValue}
+        {"defaultValue", input.defaultValue},
+        {"isDeprecated", IsDeprecated(input.deprecation)},
+        {"deprecationReason", DeprecationReason(input.deprecation)}
     };
 }
 
@@ -547,6 +549,7 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& 
         {"kind", string(type.kind._to_string())},
         {"name", type.name},
         {"description", type.description},
+        {"specifiedByURL", nullopt}, //TODO
         {"fields", [type, &schemaDefinition](const auto&) -> ValueResolver {
             switch (type.kind._value) {
                 case TypeKind::OBJECT:
@@ -605,7 +608,7 @@ Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& 
     };
 }
 
-static optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schemaDefinition, const string& name) {
+optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schemaDefinition, const string& name) {
     if (schemaDefinition.types.contains(name)) return schemaDefinition.types.at(name);
     if (BuiltinScalarsMap.contains(name)) return BuiltinScalarsMap.at(name);
     if (introspectionTypeMap.contains(name)) return introspectionTypeMap.at(name);
@@ -622,24 +625,21 @@ Resolver CreateSchemaResolver(const SchemaDefinition& schemaDefinition) {
 
     auto allDirectives = concat(schemaDefinition.directives, builtInDirectives);
 
+    //TODO Move in method
+    auto effectiveTypeName = [&](const optional<string>& explicitName, const string& defaultName) -> optional<string> {
+        const auto& name = explicitName.value_or(defaultName);
+        return schemaDefinition.types.contains(name) ? make_optional(name) : nullopt;
+    };
+
     return Resolver {
-        {"queryType", and_then(schemaDefinition.queryTypeName, [](const auto& name) {
-            return Resolver{
-                {"name", name},
-                {"kind", "OBJECT"}
-            };
+        {"queryType", and_then(effectiveTypeName(schemaDefinition.queryTypeName, "Query"), [](const auto& name) -> ValueResolver {
+            return Resolver{{"name", name}, {"kind", "OBJECT"}};
         })},
-        {"mutationType", and_then(schemaDefinition.mutationTypeName, [](const auto& name) {
-            return Resolver{
-                {"name", name},
-                {"kind", "OBJECT"}
-            };
+        {"mutationType", and_then(effectiveTypeName(schemaDefinition.mutationTypeName, "Mutation"), [](const auto& name) -> ValueResolver {
+            return Resolver{{"name", name}, {"kind", "OBJECT"}};
         })},
-        {"subscriptionType", and_then(schemaDefinition.subscriptionTypeName, [](const auto& name) {
-            return Resolver{
-                {"name", name},
-                {"kind", "OBJECT"}
-            };
+        {"subscriptionType", and_then(effectiveTypeName(schemaDefinition.subscriptionTypeName, "Subscription"), [](const auto& name) -> ValueResolver {
+            return Resolver{{"name", name}, {"kind", "OBJECT"}};
         })},
         {"directives", [allDirectives, &schemaDefinition](const auto&) {
             return to_vector(allDirectives | views::transform([&schemaDefinition](const auto& d) -> ValueResolver {

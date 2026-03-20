@@ -75,13 +75,13 @@ int main() {
     }
 
     try {
-        auto jsonData = json::parse(result.data.value()).dump(2);
+        auto jsonData = result.data.value().dump(2);
         auto jsonResult = json::parse(readFile(RESULT_PATH)).dump(2);
         writeFile(OUTPUT_PATH, jsonData.data());
         cout << jsonData << endl;
         cout << "========" << endl;
         cout << "Are results equal : " << boolalpha << (jsonData == jsonResult) << endl;
-        cout << json::parse(__type.data.value()).dump(2) << endl;
+        cout << __type.data.value().dump(2) << endl;
     } catch (const json::parse_error& e) {
         cerr << "JSON parse error: " << e.what() << endl;
         cerr << "Raw: " << result.data.value() << endl;

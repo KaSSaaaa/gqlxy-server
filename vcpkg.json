@@ -15,6 +15,10 @@
     "tests": {
       "description": "Build and run the test suite",
       "dependencies": ["gtest"]
+    },
+    "standalone-server": {
+      "description": "Standalone HTTP/WebSocket/SSE GraphQL server using oatpp",
+      "dependencies": ["oatpp", "oatpp-websocket", "boost-beast"]
     }
   }
 }

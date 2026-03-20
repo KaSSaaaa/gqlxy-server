@@ -65,5 +65,5 @@ TEST_F(SubscriptionIntegrationTest, AsyncPublishFromAnotherThread) {
 
     ASSERT_TRUE(result.has_value());
     EXPECT_FALSE(result->errors.has_value());
-    EXPECT_EQ(json::parse(result->data.value())["counter"], 99);
+    EXPECT_EQ(result->data.value()["counter"], 99);
 }

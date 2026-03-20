@@ -13,17 +13,11 @@ using namespace std;
 namespace ariane::graphql::internal {
 
 static SubscriptionHandle CreateErrorHandle(const string& message) {
-    auto fired = make_shared<bool>(false);
-    return {
-        [fired, message]() -> optional<ResolveResult> {
-            if (*fired) return nullopt;
-            *fired = true;
-            return ResolveResult {
-                .errors = FieldErrors{{.message = message}}
-            };
-        },
-        []() {}
-    };
+    return SubscriptionHandle::SingleShot(ResolveResult {
+        .errors = FieldErrors{
+            {.message = message}
+        }
+    });
 }
 
 struct SubscribeState {
@@ -53,14 +47,13 @@ static optional<ResolveResult> ResolveEvent(SubscribeState& s) {
             {outputKey}).get();
 
         return ResolveResult{
-            .data = nlohmann::json{
+            .data = nlohmann::json {
                 {outputKey, resolvedJson}
-            }.dump(),
+            },
             .errors = fieldErrors.empty() ? optional<FieldErrors>{} : fieldErrors
         };
     } catch (const exception& e) {
         return ResolveResult{
-            .data = "null",
             .errors = FieldErrors{
                 {.message = e.what(), .path = {outputKey}}
             }
@@ -68,7 +61,7 @@ static optional<ResolveResult> ResolveEvent(SubscribeState& s) {
     }
 }
 
-//TODO strealk
+//TODO simplify
 SubscriptionHandle Subscribe(const ResolveQueryArgs& args) {
     auto document = ParseDocument(args.query);
     if (document.operations.empty())

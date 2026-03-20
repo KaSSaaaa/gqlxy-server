@@ -60,7 +60,7 @@ TEST(Federation, ServiceQueryReturnsSdl) {
         .query = "{ _service { sdl } }"
     }).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["_service"]["sdl"], UserTypeDefs);
 }
 
@@ -94,7 +94,7 @@ TEST(Federation, EntitiesQueryDispatchesToEntityResolver) {
     }).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     ASSERT_EQ(data["_entities"].size(), 1);
     EXPECT_EQ(data["_entities"][0]["id"], "42");
     EXPECT_EQ(data["_entities"][0]["name"], "Alice");
@@ -125,7 +125,7 @@ TEST(Federation, EntitiesQueryReturnsNullForUnknownType) {
     }).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_TRUE(data["_entities"][0].is_null());
 }
 
@@ -163,7 +163,7 @@ TEST(Federation, EntitiesQueryHandlesMultipleRepresentations) {
     }).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     ASSERT_EQ(data["_entities"].size(), 2);
     EXPECT_EQ(data["_entities"][0]["id"], "1");
     EXPECT_EQ(data["_entities"][1]["id"], "2");
@@ -187,7 +187,7 @@ TEST(Federation, EntityUnionContainsAllEntities) {
     }).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["__type"]["possibleTypes"].size(), 2);
 }
 
@@ -205,7 +205,7 @@ TEST(Federation, ServiceTypeExistsInIntrospection) {
     }).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["__type"]["name"], "_Service");
     EXPECT_EQ(data["__type"]["fields"][0]["name"], "sdl");
 }
@@ -223,7 +223,7 @@ TEST(Federation, KeyDirectiveAppearsInIntrospection) {
     }).get();
 
     ASSERT_FALSE(result.errors.has_value());
-    auto directives = json::parse(result.data.value())["__schema"]["directives"];
+    auto directives = result.data.value()["__schema"]["directives"];
     bool hasKey = false;
     for (const auto& d : directives)
         if (d["name"] == "key") { hasKey = true; break; }

@@ -16,7 +16,7 @@ static void printResult(const string& label, const ResolveResult& result) {
             cerr << "Error: " << e.message << endl;
         return;
     }
-    cout << json::parse(result.data.value()).dump(2) << endl << endl;
+    cout << result.data.value().dump(2) << endl << endl;
 }
 
 int main() {

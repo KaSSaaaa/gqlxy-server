@@ -43,7 +43,8 @@ static const string echoSchema = R"(
 )";
 
 static const Resolver echoResolvers = {
-     {"echo", [](const ResolverArgs& a) -> ValueResolver { return a.Args()["msg"].get<string>(); }}};
+     {"echo", FunctionResolver([](const ResolverArgs& a) -> ValueResolver { return a.Args()["msg"].get<string>(); })}
+};
 
 static const string userSchema = R"(
     type User { name: String }
@@ -51,15 +52,15 @@ static const string userSchema = R"(
 )";
 
 static const Resolver userResolvers = {
-     {"user", [](const ResolverArgs&) -> ValueResolver { return Resolver{{"name", "Alice"}}; }}};
+     {"user", FunctionResolver([](const ResolverArgs&) -> ValueResolver { return Resolver{{"name", "Alice"}}; })}};
 
 static const string twoFieldSchema = R"(
     type Query { a: String b: String }
 )";
 
 static const Resolver twoFieldResolvers = {
-     {"a", [](const ResolverArgs&) -> ValueResolver { return "A"; }},
-     {"b", [](const ResolverArgs&) -> ValueResolver { return "B"; }},
+     {"a", FunctionResolver([](const ResolverArgs&) -> ValueResolver { return "A"; })},
+     {"b", FunctionResolver([](const ResolverArgs&) -> ValueResolver { return "B"; })},
 };
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,7 @@ TEST(ValidationTest, UndeclaredVariableReturnsError) {
 TEST(ValidationTest, DeclaredVariablePasses) {
     auto result = resolve(echoSchema, echoResolvers, "query($msg: String!) { echo(msg: $msg) }", {{"msg", "hi"}});
     EXPECT_TRUE(noErrors(result));
-    EXPECT_EQ(json::parse(*result.data)["echo"], "hi");
+    EXPECT_EQ(result.data.value()["echo"], "hi");
 }
 
 TEST(ValidationTest, UndeclaredVariableInDirectiveReturnsError) {
@@ -154,7 +155,7 @@ TEST(ValidationTest, UnknownArgumentReturnsError) {
 TEST(ValidationTest, KnownArgumentPasses) {
     auto result = resolve(echoSchema, echoResolvers, "{ echo(msg: \"hello\") }");
     EXPECT_TRUE(noErrors(result));
-    EXPECT_EQ(json::parse(*result.data)["echo"], "hello");
+    EXPECT_EQ(result.data.value()["echo"], "hello");
 }
 
 // ---------------------------------------------------------------------------
@@ -212,9 +213,11 @@ TEST(ValidationTest, InlineFragmentFieldIsValidated) {
         type Book { title: String }
         type Movie { director: String }
     )";
-    Resolver resolvers = {{"search", [](const ResolverArgs&) -> ValueResolver {
-                               return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
-                           }}};
+    Resolver resolvers = {
+        {"search", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+            return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
+        })}
+    };
 
     auto valid = resolve(schema, resolvers, "{ search { ... on Book { title } } }");
     EXPECT_TRUE(noErrors(valid));
@@ -230,9 +233,11 @@ TEST(ValidationTest, FragmentSpreadFieldIsValidated) {
         type Book { title: String }
         type Movie { director: String }
     )";
-    Resolver resolvers = {{"search", [](const ResolverArgs&) -> ValueResolver {
-                               return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
-                           }}};
+    Resolver resolvers = {
+        {"search", FunctionResolver([](const ResolverArgs&) -> ValueResolver {
+            return Resolver{{"__resolveType", "Book"}, {"title", "GraphQL in Action"}};
+        })}
+    };
 
     const string validQuery = R"(
         { search { ...BookInfo } }

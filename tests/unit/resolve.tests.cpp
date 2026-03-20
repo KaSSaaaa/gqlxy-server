@@ -54,7 +54,7 @@ protected:
             .query = query
         }).get();
         EXPECT_FALSE(result.errors.has_value()) << "Unexpected errors: " << result.errors.value()[0].message;
-        return json::parse(result.data.value());
+        return result.data.value();
     }
 };
 
@@ -386,7 +386,7 @@ TEST_F(ResolveTest, SubstitutesVariableInArgument) {
         .variables = {{"msg", "hello variables"}}
     }).get();
     ASSERT_FALSE(result.errors.has_value()) << result.errors.value()[0].message;
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["echo"], "hello variables");
 }
 
@@ -407,7 +407,7 @@ TEST_F(ResolveTest, SubstitutesIntVariable) {
         .variables = {{"n", 6}}
     }).get();
     ASSERT_FALSE(result.errors.has_value()) << result.errors.value()[0].message;
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["double"], 12);
 }
 
@@ -448,7 +448,7 @@ TEST_F(ResolveTest, FieldErrorSetsNullAndRecordsError) {
     auto result = schema.Resolve({.query = "query { boom }"}).get();
     ASSERT_TRUE(result.data.has_value());
     ASSERT_TRUE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["boom"], nullptr);
+    EXPECT_EQ(result.data.value()["boom"], nullptr);
     const auto& errors = result.errors.value();
     EXPECT_EQ(errors[0].message, "resolver exploded");
     EXPECT_EQ(errors[0].path[0], "boom");
@@ -467,7 +467,7 @@ TEST_F(ResolveTest, OtherFieldsResolveAfterFieldError) {
     auto result = schema.Resolve({.query = "query { boom ok }"}).get();
     ASSERT_TRUE(result.data.has_value());
     ASSERT_TRUE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["boom"], nullptr);
     EXPECT_EQ(data["ok"], "fine");
 }
@@ -529,7 +529,7 @@ TEST_F(ResolveTest, TypeResolverDeterminesConcreteType) {
         })"
     }).get();
     EXPECT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["search"]["title"], "The Hobbit");
     EXPECT_FALSE(data["search"].contains("director"));
 }
@@ -561,7 +561,7 @@ TEST_F(ResolveTest, TypeResolverFiltersMismatchedInlineFragment) {
         })"
     }).get();
     EXPECT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["search"]["director"], "Spielberg");
     EXPECT_FALSE(data["search"].contains("title"));
 }
@@ -580,13 +580,13 @@ TEST_F(ResolveTest, TypeNameReturnsConcreteTypeFromTypeResolver) {
             }}
         }
     });
-    auto data = json::parse(schema.Resolve({
+    auto data = schema.Resolve({
         .query = R"({
             search {
                 __typename
             }
         })"
-    }).get().data.value());
+    }).get().data.value();
     EXPECT_EQ(data["search"]["__typename"], "Book");
 }
 
@@ -623,7 +623,7 @@ TEST_F(ResolveTest, NamedFragmentFilteredByTypeCondition) {
         )"
     }).get();
     EXPECT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["search"]["title"], "1984");
     EXPECT_FALSE(data["search"].contains("director"));
 }
@@ -666,7 +666,7 @@ TEST_F(ResolveTest, SkipDirectiveWithVariable) {
         .variables = {{"s", true}}
     }).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_FALSE(data.contains("a"));
     EXPECT_EQ(data["b"], "beta");
 }
@@ -681,7 +681,7 @@ TEST_F(ResolveTest, IncludeDirectiveWithVariable) {
         .variables = {{"show", false}}
     }).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_FALSE(data.contains("a"));
     EXPECT_EQ(data["b"], "beta");
 }
@@ -718,7 +718,7 @@ TEST_F(ResolveTest, SkipDirectiveOnNamedFragment) {
         )"
     }).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["user"]["id"], 2);
     EXPECT_FALSE(data["user"].contains("name"));
 }
@@ -735,7 +735,7 @@ TEST_F(ResolveTest, CustomDirectiveIsEvaluated) {
     });
     auto result = schema.Resolve({.query = "{ a @secret(redact: true) b }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_FALSE(data.contains("a"));
     EXPECT_EQ(data["b"], "beta");
 }
@@ -754,7 +754,7 @@ TEST_F(ResolveTest, CustomDirectiveCanBeOverridden) {
     });
     auto result = schema.Resolve({.query = "{ a @skip(if: true) b }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["a"], "alpha");
 }
 
@@ -770,7 +770,7 @@ TEST_F(ResolveTest, DirectiveCanTransformFieldValue) {
     });
     auto result = schema.Resolve({.query = "{ greeting @uppercase }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["greeting"], "HELLO");
 }
 
@@ -790,7 +790,7 @@ TEST_F(ResolveTest, DirectiveTransformCanAccessArgs) {
     });
     auto result = schema.Resolve({.query = R"({ value @prefix(with: ">>> ") })"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["value"], ">>> hello world");
+    EXPECT_EQ(result.data.value()["value"], ">>> hello world");
 }
 
 // ---------------------------------------------------------------------------
@@ -820,7 +820,7 @@ TEST_F(ResolveTest, CustomScalarTransformsValue) {
     });
     auto result = schema.Resolve({.query = "{ data }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["data"], json({{"key", "value"}}).dump());
+    EXPECT_EQ(result.data.value()["data"], json({{"key", "value"}}).dump());
 }
 
 class UnixTime : public ScalarType {
@@ -850,7 +850,7 @@ TEST_F(ResolveTest, CustomScalarOnNestedField) {
     });
     auto result = schema.Resolve({.query = "{ user { createdAt } }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["user"]["createdAt"]["unix"], 1704067200);
+    EXPECT_EQ(result.data.value()["user"]["createdAt"]["unix"], 1704067200);
 }
 
 TEST_F(ResolveTest, UnregisteredCustomScalarPassesThroughAsIs) {
@@ -860,7 +860,7 @@ TEST_F(ResolveTest, UnregisteredCustomScalarPassesThroughAsIs) {
     });
     auto result = schema.Resolve({.query = "{ ts }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["ts"], "2024-01-01");
+    EXPECT_EQ(result.data.value()["ts"], "2024-01-01");
 }
 
 class DateScalar : public ScalarType {
@@ -893,7 +893,7 @@ TEST_F(ResolveTest, CustomScalarParsesVariableInput) {
         .variables = {{"d", "2024-06-01"}}
     }).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["event"], "2024-06-01");
+    EXPECT_EQ(result.data.value()["event"], "2024-06-01");
 }
 
 TEST_F(ResolveTest, CustomScalarParsesLiteralInput) {
@@ -912,7 +912,7 @@ TEST_F(ResolveTest, CustomScalarParsesLiteralInput) {
     });
     auto result = schema.Resolve({.query = R"({ event(on: "2024-06-01") })"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["event"], "2024-06-01");
+    EXPECT_EQ(result.data.value()["event"], "2024-06-01");
 }
 
 TEST_F(ResolveTest, CustomScalarReturnedDirectlyFromResolver) {
@@ -928,7 +928,7 @@ TEST_F(ResolveTest, CustomScalarReturnedDirectlyFromResolver) {
     });
     auto result = schema.Resolve({.query = "{ data }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["data"], json({{"key", "value"}}).dump());
+    EXPECT_EQ(result.data.value()["data"], json({{"key", "value"}}).dump());
 }
 
 TEST_F(ResolveTest, CustomScalarReturnedDirectlyWithTransform) {
@@ -942,7 +942,7 @@ TEST_F(ResolveTest, CustomScalarReturnedDirectlyWithTransform) {
     });
     auto result = schema.Resolve({.query = "{ ts }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["ts"]["unix"], 1704067200);
+    EXPECT_EQ(result.data.value()["ts"]["unix"], 1704067200);
 }
 
 // ---------------------------------------------------------------------------
@@ -965,7 +965,7 @@ TEST_F(ResolveTest, ContextIsThreadedToResolver) {
     auto ctx = make_shared<RequestContext>(RequestContext{"user-42"});
     auto result = schema.Resolve<shared_ptr<RequestContext>>({.query = "{ me }", .context = ctx}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["me"], "user-42");
+    EXPECT_EQ(result.data.value()["me"], "user-42");
 }
 
 TEST_F(ResolveTest, ContextIsThreadedToNestedResolver) {
@@ -984,7 +984,7 @@ TEST_F(ResolveTest, ContextIsThreadedToNestedResolver) {
     auto ctx = make_shared<RequestContext>(RequestContext{"alice"});
     auto result = schema.Resolve<shared_ptr<RequestContext>>({.query = "{ user { name } }", .context = ctx}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["user"]["name"], "Hello alice");
+    EXPECT_EQ(result.data.value()["user"]["name"], "Hello alice");
 }
 
 TEST_F(ResolveTest, EmptyContextDoesNotCrash) {
@@ -994,7 +994,7 @@ TEST_F(ResolveTest, EmptyContextDoesNotCrash) {
     });
     auto result = schema.Resolve({.query = "{ ping }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["ping"], "pong");
+    EXPECT_EQ(result.data.value()["ping"], "pong");
 }
 
 // ---------------------------------------------------------------------------
@@ -1014,7 +1014,7 @@ TEST_F(OperationNameTest, SelectsNamedOperation) {
         .operationName = "GetA"
     }).get();
     ASSERT_FALSE(result.errors.has_value());
-    auto data = json::parse(result.data.value());
+    auto data = result.data.value();
     EXPECT_EQ(data["a"], "alpha");
     EXPECT_FALSE(data.contains("b"));
 }
@@ -1042,7 +1042,7 @@ TEST_F(OperationNameTest, SingleOperationWithoutNameStillWorks) {
     Schema schema({.typeDefs = typeDefs, .resolvers = {{"Query", queryResolvers}}});
     auto result = schema.Resolve({.query = "query GetA { a }"}).get();
     ASSERT_FALSE(result.errors.has_value());
-    EXPECT_EQ(json::parse(result.data.value())["a"], "alpha");
+    EXPECT_EQ(result.data.value()["a"], "alpha");
 }
 
 // ---------------------------------------------------------------------------

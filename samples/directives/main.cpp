@@ -21,7 +21,7 @@ static void run(const string& label, Schema& schema, const string& query,
         for (const auto& e : result.errors.value())
             cerr << "Error: " << e.message << endl;
     else
-        cout << json::parse(result.data.value()).dump(2) << endl;
+        cout << result.data.value().dump(2) << endl;
     cout << endl;
 }
 

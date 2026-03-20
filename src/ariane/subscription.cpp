@@ -1,4 +1,7 @@
 #include <ariane/subscription.h>
+
+#include <ariane/internal/peg/parser/query/ParseDocument.h>
+#include <ariane/internal/ast/Selection.h>
 #include <ariane/resolvers.h>
 
 using namespace std;
@@ -33,4 +36,25 @@ optional<ResolveResult> SubscriptionHandle::Next() {
 
 void SubscriptionHandle::Cancel() {
     _cancel();
+}
+
+SubscriptionHandle SubscriptionHandle::SingleShot(const ResolveResult& result) {
+    auto fired = make_shared<bool>(false);
+    return SubscriptionHandle {
+        [fired, result]() -> optional<ResolveResult> {
+            if (*fired) return nullopt;
+            *fired = true;
+            return result;
+        },
+        [] {}};
+}
+
+namespace ariane::graphql {
+
+bool IsSubscription(const string& query) {
+    return ranges::any_of(internal::ParseDocument(query).operations, [](const internal::OperationDefinition& operation) {
+        return operation.type._value == internal::OperationType::SUBSCRIPTION;
+    });
+}
+
 }

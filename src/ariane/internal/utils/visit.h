@@ -2,7 +2,7 @@
 
 namespace ariane::graphql::internal {
 
-template <class... Ts>
+template <typename ... Ts>
 struct overloaded : Ts... {
     using Ts::operator()...;
 };
