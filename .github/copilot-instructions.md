@@ -25,9 +25,6 @@ ctest --test-dir out/build/arm64-debug --output-on-failure
 ```
 
 **Format code:**
-```sh
-make format
-```
 
 Dependencies are managed via vcpkg (bootstrapped automatically by the `arm64-debug` preset). Key deps: `cppgraphqlgen` (graphqlpeg), `nlohmann-json`, `pegtl`, `gtest`, `better-enums`.
 
