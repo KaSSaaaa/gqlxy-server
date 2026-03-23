@@ -114,8 +114,8 @@ static bool IsVariableProvided(const json& variables, const string& variable) {
 }
 
 static bool HasDefaultValue(const vector<VariableDefinition>& variableDefinitions, const string& variable) {
-    return and_then(find_optional(variableDefinitions, [&](const auto& v) { return v.name == variable; }),
-                                       [](const auto& var) { return make_optional(var.defaultValue.has_value()); }).value_or(false);
+    auto var = find_optional(variableDefinitions, [&](const auto& v) { return v.name == variable; });
+    return var && var->defaultValue.has_value();
 }
 
 static FieldErrors ValidateRequiredFieldArguments(const Field& field,
