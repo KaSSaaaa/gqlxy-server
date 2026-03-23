@@ -15,25 +15,19 @@ using namespace tao;
 
 namespace ariane::graphql::internal {
 
-static optional<string> ParseDescription(const peg::ast_node& node) {
-    return and_then(first_node<peg::description>(node), [](const auto& desc) {
-        return or_else(and_then(first_node<peg::string_quote_character>(*desc), [](const auto& quoted) {
-            return make_optional(quoted->string());
-        }), [&desc]() {
-            return and_then(first_node<peg::block_quote_content_lines>(*desc), [](const auto& blockQuoted) {
-                return make_optional<string>(blockQuoted->unescaped_view());
-            });
-        });
-    });
-}
-
-static optional<string> ParseDeprecationReason(const peg::ast_node& node) {
+static optional<string> ParseQuotedString(const peg::ast_node& node) {
     return or_else(and_then(first_node<peg::string_quote_character>(node), [](const auto& q) {
         return make_optional(q->string());
     }), [&node]() {
         return and_then(first_node<peg::block_quote_content_lines>(node), [](const auto& q) {
             return make_optional<string>(q->unescaped_view());
         });
+    });
+}
+
+static optional<string> ParseDescription(const peg::ast_node& node) {
+    return and_then(first_node<peg::description>(node), [](const auto& desc) {
+        return ParseQuotedString(*desc);
     });
 }
 
@@ -87,10 +81,10 @@ static DeprecationInfo ParseDeprecation(const peg::ast_node& node) {
                         return name.has_value() && (*name)->string() == "reason";
                     }), [](const auto* reason) {
                         return or_else(and_then(first_node<peg::string_value>(*reason), [](const auto* sv) {
-                            return ParseDeprecationReason(*sv);
+                            return ParseQuotedString(*sv);
                         }), [reason]() {
                             return and_then(first_node<peg::input_value>(*reason), [](const auto* iv) {
-                                return ParseDeprecationReason(*iv);
+                                return ParseQuotedString(*iv);
                             });
                         });
                     });
@@ -128,15 +122,7 @@ FieldDefinition ParseField(const peg::ast_node& node) {
             return node->string();
         }),
         .description = ParseDescription(node),
-        .type = or_else(and_then(or_else(first_node<peg::nonnull_type>(node), [&node]() {
-            return or_else(first_node<peg::list_type>(node), [&node]() {
-                return first_node<peg::named_type>(node);
-            });
-        }), [](const auto* typeNode) {
-            return make_optional(ParseTypeRef(*typeNode));
-        }), []() {
-            return TypeRef::Named("Unknown");
-        }).value(),
+        .type = ParseTypeRefFromNode(node),
         .args = and_then(first_node<peg::arguments_definition>(node), [](const auto& argsNode) {
             return to_vector(argsNode->children
                 | views::filter(is_type<peg::input_field_definition>())
@@ -289,9 +275,9 @@ static void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefi
                                   const peg::ast_node& node) {
     peg::for_each_child<peg::root_operation_definition>(node, [schemaDefinition](const auto& operationDefinition) {
         auto operationType = and_then(first_node<peg::operation_type>(operationDefinition),
-            [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
+            [](const auto* operation) { return operation->string(); });
         auto operationTypeName = and_then(first_node<peg::named_type>(operationDefinition),
-            [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
+            [](const auto* operation) { return operation->string(); });
 
         if (operationType == "query") schemaDefinition->queryTypeName = operationTypeName;
         else if (operationType == "mutation") schemaDefinition->mutationTypeName = operationTypeName;

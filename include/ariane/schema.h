@@ -12,6 +12,7 @@ namespace ariane::graphql {
 
 namespace internal {
 struct SchemaDefinition;
+struct ResolveQueryArgs;
 }
 
 struct SchemaOptions {
@@ -67,6 +68,11 @@ private:
                                          const nlohmann::json& variables,
                                          const std::string& operationName,
                                          std::any context) const;
+
+    internal::ResolveQueryArgs BuildResolveQueryArgs(const std::string& query,
+                                                     const nlohmann::json& variables,
+                                                     const std::string& operationName,
+                                                     std::any context) const;
 
     void InjectIntrospectionResolvers();
     void AddToResolver(const std::string& resolverName, const Resolver& resolver);

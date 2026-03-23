@@ -67,13 +67,14 @@ Schema::Schema(const shared_ptr<SchemaDefinition>& schemaDefinition,
     InjectIntrospectionResolvers();
 }
 
+static bool IsRootType(const string& name, const SchemaDefinition& schema) {
+    return name == schema.queryTypeName.value_or("Query") ||
+           name == schema.mutationTypeName.value_or("Mutation") ||
+           name == schema.subscriptionTypeName.value_or("Subscription");
+}
+
 static bool IsRootType(const string& name, const SchemaDefinition& other, const SchemaDefinition& merged) {
-    return name == merged.queryTypeName.value_or("Query") ||
-           name == merged.mutationTypeName.value_or("Mutation") ||
-           name == merged.subscriptionTypeName.value_or("Subscription") ||
-           name == other.queryTypeName.value_or("Query") ||
-           name == other.mutationTypeName.value_or("Mutation") ||
-           name == other.subscriptionTypeName.value_or("Subscription");
+    return IsRootType(name, merged) || IsRootType(name, other);
 }
 
 static void MergeTypes(SchemaDefinition& merged, const SchemaDefinition& other) {
@@ -147,23 +148,21 @@ Task<ResolveResult> Schema::ResolveInternal(const string& query,
                                             const nlohmann::json& variables,
                                             const string& operationName,
                                             any context) const {
-    return ResolveOperations(ResolveQueryArgs {
-        .query = query,
-        .variables = variables,
-        .schemaDefinition = *_schemaDefinition,
-        .resolvers = _resolvers,
-        .directives = _directives,
-        .scalars = _scalars,
-        .operationName = operationName,
-        .context = std::move(context),
-    });
+    return ResolveOperations(BuildResolveQueryArgs(query, variables, operationName, std::move(context)));
 }
 
 SubscriptionHandle Schema::SubscribeInternal(const string& query,
                                              const nlohmann::json& variables,
                                              const string& operationName,
                                              any context) const {
-    return internal::Subscribe(ResolveQueryArgs {
+    return internal::Subscribe(BuildResolveQueryArgs(query, variables, operationName, std::move(context)));
+}
+
+ResolveQueryArgs Schema::BuildResolveQueryArgs(const string& query,
+                                                const nlohmann::json& variables,
+                                                const string& operationName,
+                                                any context) const {
+    return ResolveQueryArgs {
         .query = query,
         .variables = variables,
         .schemaDefinition = *_schemaDefinition,
@@ -172,5 +171,5 @@ SubscriptionHandle Schema::SubscribeInternal(const string& query,
         .scalars = _scalars,
         .operationName = operationName,
         .context = std::move(context),
-    });
+    };
 }

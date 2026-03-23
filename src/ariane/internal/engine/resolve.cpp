@@ -10,6 +10,7 @@
 #include <ariane/internal/peg/parser/query/ParseDocument.h>
 #include <ariane/internal/utils/expect.h>
 #include <ariane/internal/utils/optional.h>
+#include <ariane/internal/utils/ranges.h>
 #include <ariane/internal/utils/visit.h>
 #include <ariane/resolvers.h>
 #include <ariane/schema.h>
@@ -24,19 +25,19 @@ namespace ariane::graphql::internal {
 using Path = vector<string>;
 
 static optional<string> ResolveType(const Resolver& rootResolver, const Resolver& current, const optional<string>& typeName) {
-    if (!typeName.has_value() || !rootResolver.contains(typeName.value()))
-        return nullopt;
+    return and_then(typeName, [&](const string& name) -> optional<string> {
+        if (!rootResolver.contains(name))
+            return nullopt;
 
-    auto typeEntry = rootResolver.at(typeName.value()).AsIf<Resolver>();
-    if (!typeEntry.has_value() || !typeEntry->contains("__resolveType"))
-        return nullopt;
+        auto typeEntry = rootResolver.at(name).AsIf<Resolver>();
+        if (!typeEntry || !typeEntry->contains("__resolveType"))
+            return nullopt;
 
-    auto& resolveType = typeEntry->at("__resolveType");
-    return or_else(and_then(resolveType.AsIf<string>(), [](const auto& resolveType) {
-        return make_optional(resolveType);
-    }), [&]() {
-        return and_then(resolveType.AsIf<TypeResolver>(), [&](const auto& t) {
-            return t(current);
+        auto& resolveType = typeEntry->at("__resolveType");
+        return or_else(resolveType.AsIf<string>(), [&]() {
+            return and_then(resolveType.AsIf<TypeResolver>(), [&](const auto& t) {
+                return t(current);
+            });
         });
     });
 }
@@ -47,9 +48,10 @@ optional<string> FieldTypeName(const optional<string>& typeName, const string& f
         if (!schemaDefinition.types.contains(t))
             return nullopt;
 
-        auto& fields = schemaDefinition.types.at(typeName.value()).fields;
-        auto it = ranges::find_if(fields, [fieldName](const auto& field) { return field.name == fieldName; });
-        return it != fields.end() ? make_optional(it->type.TypeName()) : nullopt;
+        return and_then(
+            find_optional(schemaDefinition.types.at(t).fields, [&](const auto& f) { return f.name == fieldName; }),
+            [](const auto& field) { return make_optional(field.type.TypeName()); }
+        );
     });
 }
 
@@ -162,113 +164,98 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
          resolver);
 }
 
+static optional<string> OperationTypeName(int type) {
+	static const unordered_map<int, string> names = {
+		{OperationType::QUERY, "Query"},
+		{OperationType::MUTATION, "Mutation"},
+		{OperationType::SUBSCRIPTION, "Subscription"},
+	};
+	return and_then(
+		to_optional(names, names.find(type)),
+		[](const auto& entry) { return make_optional(entry.second); }
+	);
+}
+
 Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
-    try {
-        auto document = ParseDocument(args.query);
+	try {
+		auto document = ParseDocument(args.query);
 
-        if (document.operations.empty() && args.query.find_first_not_of(" \t\n\r") != string::npos) {
-            co_return ResolveResult {
-                .errors = FieldErrors{{.message = "Failed to parse query"}}
-            };
-        }
+		if (document.operations.empty() && args.query.find_first_not_of(" \t\n\r") != string::npos)
+			co_return ResolveResult{.errors = FieldErrors{{.message = "Failed to parse query"}}};
 
-        if (!args.operationName.empty()) {
-            auto it = ranges::find_if(document.operations, [&](const auto& op) {
-                return op.name.has_value() && op.name.value() == args.operationName;
-            });
-            if (it == document.operations.end()) {
-                co_return ResolveResult {
-                    .errors = FieldErrors{{.message = "Unknown operation: " + args.operationName}}
-                };
-            }
-            document.operations = {*it};
-        } else if (document.operations.size() > 1) {
-            co_return ResolveResult {
-                .errors = FieldErrors{{.message = "Must provide operationName when document contains multiple operations"}}
-            };
-        }
+		if (!args.operationName.empty()) {
+			auto op = find_optional(document.operations, [&](const auto& op) {
+				return op.name.has_value() && *op.name == args.operationName;
+			});
+			if (!op)
+				co_return ResolveResult{.errors = FieldErrors{{.message = "Unknown operation: " + args.operationName}}};
+			document.operations = {*op};
+		} else if (document.operations.size() > 1) {
+			co_return ResolveResult{.errors = FieldErrors{{.message = "Must provide operationName when document contains multiple operations"}}};
+		}
 
-        if (auto errs = ValidateDocument(document, args.schemaDefinition, args.variables); !errs.empty())
-            co_return ResolveResult{.errors = errs};
+		if (auto errs = ValidateDocument(document, args.schemaDefinition, args.variables); !errs.empty())
+			co_return ResolveResult{.errors = errs};
 
-        nlohmann::json data = nlohmann::json::object();
-        FieldErrors fieldErrors;
+		nlohmann::json data = nlohmann::json::object();
+		FieldErrors fieldErrors;
 
-        for (const auto& op : document.operations) {
-            string resolverType;
-            if (op.type._value == OperationType::QUERY)
-                resolverType = "Query";
-            else if (op.type._value == OperationType::MUTATION)
-                resolverType = "Mutation";
-            else if (op.type._value == OperationType::SUBSCRIPTION)
-                resolverType = "Subscription";
+		for (const auto& [op, resolverType] : document.operations | views::transform([](const auto& op) {
+		    return make_pair(op, OperationTypeName(op.type._value));
+		}) | views::filter([&](const pair<OperationDefinition, optional<string>>& kvp) -> bool {
+		    return kvp.second && args.resolvers.contains(*kvp.second) && args.resolvers.at(*kvp.second).Is<Resolver>();
+		})) {
+			auto& fieldResolvers = args.resolvers.at(*resolverType).As<Resolver>();
+			auto fields = FlattenSelections(op.selectionSet, document.fragments, args.directives, args.variables);
+			for (const auto& field : fields | views::filter([&](const auto& f) { return fieldResolvers.contains(f.name); })) {
+				const auto& outputKey = field.alias.value_or(field.name);
+				try {
+					auto resolvedJson = co_await Resolve(
+						 args,
+						 fieldResolvers.at(field.name),
+						 ResolverArgs({
+							 .args = ResolveArguments(field, args, *resolverType),
+							 .context = args.context,
+						 }),
+						 field.selectionSet,
+						 FieldTypeName(resolverType, field.name, args.schemaDefinition).value_or(*resolverType),
+						 document.fragments,
+						 fieldErrors,
+						 {outputKey});
 
-            if (!args.resolvers.contains(resolverType))
-                continue;
+					if (field.directives.empty()) {
+						data[outputKey] = resolvedJson;
+					} else if (auto afterDirectives = ApplyDirectives(field.directives,
+						                                              args.directives,
+						                                              args.variables,
+						                                              JsonToValueResolver(resolvedJson));
+						       afterDirectives.has_value()) {
+						data[outputKey] = !(afterDirectives->IsNull())
+							? co_await Resolve(args, *afterDirectives, ResolverArgs(), nullopt, "",
+							                   document.fragments, fieldErrors, {outputKey})
+							: resolvedJson;
+					}
+				} catch (const exception& e) {
+					data[outputKey] = nullptr;
+					fieldErrors.push_back(FieldError{
+					    .message = e.what(),
+					    .path = {outputKey}
+					});
+				}
+			}
+		}
 
-            auto& typeResolver = args.resolvers.at(resolverType);
-            if (!typeResolver.Is<Resolver>())
-                continue;
-
-            auto& fieldResolvers = typeResolver.As<Resolver>();
-            for (const auto& field : FlattenSelections(op.selectionSet, document.fragments, args.directives, args.variables)) {
-                const auto& outputKey = field.alias.value_or(field.name);
-                if (!fieldResolvers.contains(field.name))
-                    continue;
-                auto fieldTypeName = FieldTypeName(resolverType, field.name, args.schemaDefinition);
-                try {
-                    auto resolvedJson = co_await Resolve(
-                         args,
-                         fieldResolvers.at(field.name),
-                         ResolverArgs({
-                             .args = ResolveArguments(field, args, resolverType),
-                             .context = args.context,
-                         }),
-                         field.selectionSet,
-                         fieldTypeName.value_or(resolverType),
-                         document.fragments,
-                         fieldErrors,
-                         {outputKey});
-
-                    if (field.directives.empty()) {
-                        data[outputKey] = resolvedJson;
-                    } else if (auto afterDirectives = ApplyDirectives(field.directives,
-                                                                      args.directives,
-                                                                      args.variables,
-                                                                      JsonToValueResolver(resolvedJson));
-                               afterDirectives.has_value()) {
-                        data[outputKey] = afterDirectives->IsNull()
-                            ? resolvedJson
-                            : co_await Resolve(args,
-                                               *afterDirectives,
-                                               ResolverArgs(), nullopt, "",
-                                               document.fragments,
-                                               fieldErrors,
-                                               {outputKey});
-                    }
-                } catch (const exception& e) {
-                    data[outputKey] = nullptr;
-                    fieldErrors.push_back(FieldError {
-                        .message = e.what(),
-                        .path = {outputKey}
-                    });
-                }
-            }
-        }
-
+		co_return ResolveResult{
+			.data = data,
+			.errors = fieldErrors.empty() ? optional<FieldErrors>{} : fieldErrors
+		};
+	} catch (const exception& e) {
         co_return ResolveResult {
-            .data = data,
-            .errors = fieldErrors.empty() ? optional<FieldErrors>{} : fieldErrors
-        };
-    } catch (const exception& e) {
-        co_return ResolveResult {
-            .errors = FieldErrors{
-                FieldError {
-                    .message = e.what()
-                }
+            .errors = FieldErrors {
+                { .message = e.what()}
             }
         };
-    }
+	}
 }
 
 }

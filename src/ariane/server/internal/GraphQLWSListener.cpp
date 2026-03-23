@@ -56,27 +56,24 @@ void GraphQLWSListener::HandleConnectionInit(const WebSocket& socket, const json
     });
 }
 
-void GraphQLWSListener::HandleSubscribe(const WebSocket& socket,
-                                         const string& id,
-                                         const json& payload) {
+void GraphQLWSListener::StartSubscription(const WebSocket& socket,
+                                          const string& id,
+                                          const json& payload,
+                                          const string& type) {
     if (id.empty()) return;
 
-    auto query = payload.value("query", "");
-    auto variables = payload.contains("variables") ? payload["variables"] : json::object();
-    auto operationName = payload.value("operationName", "");
-
     auto handle = make_shared<SubscriptionHandle>(_schema.Subscribe({
-        .query = query,
-        .variables = variables,
-        .operationName = operationName
+        .query = payload.value("query", ""),
+        .variables = payload.contains("variables") ? payload["variables"] : json::object(),
+        .operationName = payload.value("operationName", "")
     }));
 
-    auto future = async(launch::async, [this, id, handle, &socket]() mutable {
+    auto future = async(launch::async, [this, id, handle, &socket, type]() mutable {
         while (auto result = handle->Next()) {
             if (!result.has_value()) break;
             sendText(socket, {
                 {"id", id},
-                {"type", "next"},
+                {"type", type},
                 {"payload", Serialize(result.value())}
             });
         }
@@ -91,40 +88,12 @@ void GraphQLWSListener::HandleSubscribe(const WebSocket& socket,
     };
 }
 
-void GraphQLWSListener::HandleStart(const WebSocket& socket,
-                                     const string& id,
-                                     const json& payload) {
-    if (id.empty()) return;
+void GraphQLWSListener::HandleSubscribe(const WebSocket& socket, const string& id, const json& payload) {
+    StartSubscription(socket, id, payload, "next");
+}
 
-    auto query = payload.value("query", "");
-    auto variables = payload.contains("variables") ? payload["variables"] : json::object();
-    auto operationName = payload.value("operationName", "");
-
-    auto handle = make_shared<SubscriptionHandle>(_schema.Subscribe({
-        .query = query,
-        .variables = variables,
-        .operationName = operationName
-    }));
-
-    auto future = async(launch::async, [this, id, handle, &socket]() mutable {
-        while (auto result = handle->Next()) {
-            if (!result.has_value()) break;
-            sendText(socket, {
-                {"id", id},
-                {"type", "data"},
-                {"payload", Serialize(result.value())}
-            });
-        }
-        sendText(socket, {
-            {"id", id},
-            {"type", "complete"}
-        });
-    });
-
-    _subscriptions[id] = ActiveSubscription {
-        std::move(handle),
-        std::move(future)
-    };
+void GraphQLWSListener::HandleStart(const WebSocket& socket, const string& id, const json& payload) {
+    StartSubscription(socket, id, payload, "data");
 }
 
 void GraphQLWSListener::HandleComplete(const string& id) {

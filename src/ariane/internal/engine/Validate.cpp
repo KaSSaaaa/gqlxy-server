@@ -114,7 +114,7 @@ static bool IsVariableProvided(const json& variables, const string& variable) {
 }
 
 static bool HasDefaultValue(const vector<VariableDefinition>& variableDefinitions, const string& variable) {
-    return and_then(to_optional(variableDefinitions, ranges::find_if(variableDefinitions, [&](const auto& v) { return v.name == variable; })),
+    return and_then(find_optional(variableDefinitions, [&](const auto& v) { return v.name == variable; }),
                                        [](const auto& var) { return make_optional(var.defaultValue.has_value()); }).value_or(false);
 }
 
@@ -128,7 +128,7 @@ static FieldErrors ValidateRequiredFieldArguments(const Field& field,
         return arg.type.kind._value == TypeRefKind::NON_NULL && !arg.defaultValue.has_value();
     });
     return flat_map(requiredArgs, [&](const auto& arg) -> FieldErrors {
-        auto fieldArg = to_optional(field.arguments, ranges::find_if(field.arguments, [&](const auto& a) { return a.name == arg.name; }));
+        auto fieldArg = find_optional(field.arguments, [&](const auto& a) { return a.name == arg.name; });
         if (!fieldArg.has_value())
             return {
                 FieldError {
@@ -167,7 +167,7 @@ static FieldErrors ValidateField(const Field& field,
     if (typeDef.kind._value != TypeKind::OBJECT && typeDef.kind._value != TypeKind::INTERFACE)
         return {};
 
-    auto fieldDefinition = to_optional(typeDef.fields, ranges::find_if(typeDef.fields, [&](const auto& f) { return f.name == field.name; }));
+    auto fieldDefinition = find_optional(typeDef.fields, [&](const auto& f) { return f.name == field.name; });
     if (!fieldDefinition.has_value())
         return {
             FieldError {

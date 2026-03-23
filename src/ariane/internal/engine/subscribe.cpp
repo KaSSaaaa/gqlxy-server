@@ -63,9 +63,9 @@ static optional<ResolveResult> ResolveEvent(SubscribeState& s) {
 }
 
 static variant<string, Field> GetSubscriptionRootField(const Document& document, const ResolveQueryArgs& args) {
-    auto operation = to_optional(document.operations, ranges::find_if(document.operations, [](const auto& op) {
+    auto operation = find_optional(document.operations, [](const auto& op) {
         return op.type._value == OperationType::SUBSCRIPTION;
-    }));
+    });
     if (!operation.has_value())
         return "No subscription operation found";
 
