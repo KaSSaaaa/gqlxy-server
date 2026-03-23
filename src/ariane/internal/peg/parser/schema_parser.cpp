@@ -285,21 +285,17 @@ static void ApplyExtension(SchemaDefinition& schema, const TypeDefinition& ext) 
     ranges::copy(ext.inputFields, back_inserter(type.inputFields));
 }
 
-// TODO Cleanup
-void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefinition,
-                           const unique_ptr<peg::ast_node>& node) {
-    peg::for_each_child<peg::root_operation_definition>(*node, [schemaDefinition](const auto& operationDefinition) {
+static void ParseSchemaDefinition(const shared_ptr<SchemaDefinition>& schemaDefinition,
+                                  const peg::ast_node& node) {
+    peg::for_each_child<peg::root_operation_definition>(node, [schemaDefinition](const auto& operationDefinition) {
         auto operationType = and_then(first_node<peg::operation_type>(operationDefinition),
             [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
         auto operationTypeName = and_then(first_node<peg::named_type>(operationDefinition),
             [](const auto* operation) { return make_optional(operation->string()); }).value_or("");
 
-        if (operationType == "query")
-            schemaDefinition->queryTypeName = operationTypeName;
-        else if (operationType == "mutation")
-            schemaDefinition->mutationTypeName = operationTypeName;
-        else if (operationType == "subscription")
-            schemaDefinition->subscriptionTypeName = operationTypeName;
+        if (operationType == "query") schemaDefinition->queryTypeName = operationTypeName;
+        else if (operationType == "mutation") schemaDefinition->mutationTypeName = operationTypeName;
+        else if (operationType == "subscription") schemaDefinition->subscriptionTypeName = operationTypeName;
     });
 }
 
@@ -315,7 +311,7 @@ shared_ptr<SchemaDefinition> ParseSchemaDefinition(const string& typeDefs) {
 
         for (const auto& node : ast.root->children) {
             if (node->is_type<peg::schema_definition>()) {
-                ParseSchemaDefinition(schemaDefinition, node);
+                ParseSchemaDefinition(schemaDefinition, *node);
             } else if (node->is_type<peg::directive_definition>()) {
                 schemaDefinition->directives.push_back(ParseDirective(*node));
             } else {

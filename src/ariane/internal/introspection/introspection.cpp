@@ -9,6 +9,7 @@
 using namespace std;
 using namespace ariane::graphql::internal;
 using namespace ariane::graphql;
+using namespace nlohmann;
 
 namespace ariane::graphql::internal {
 
@@ -544,12 +545,28 @@ Resolver CreateDirectiveResolver(const DirectiveDefinition& directive, const Sch
     };
 }
 
+static optional<string> SpecifiedByURL(const TypeDefinition& type) {
+    if (type.kind._value != TypeKind::SCALAR)
+        return nullopt;
+
+    return and_then(
+        to_optional(type.directives, ranges::find_if(type.directives, [](const Directive& d) { return d.name == "specifiedBy"; })),
+        [](const Directive& specifiedBy) -> optional<string> {
+            return and_then(to_optional(specifiedBy.args, ranges::find_if(specifiedBy.args, [](const Argument& a) { return a.name == "url"; })), [](const auto& url) {
+                return and_then(url.TryValue({}), [](const json& value) {
+                    return value.is_string() ? make_optional(value.get<string>()) : nullopt;
+                });
+            });
+        }
+    );
+}
+
 Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& schemaDefinition) {
     return Resolver {
         {"kind", string(type.kind._to_string())},
         {"name", type.name},
         {"description", type.description},
-        {"specifiedByURL", nullopt}, //TODO
+        {"specifiedByURL", SpecifiedByURL(type)},
         {"fields", [type, &schemaDefinition](const auto&) -> ValueResolver {
             switch (type.kind._value) {
                 case TypeKind::OBJECT:
@@ -615,6 +632,11 @@ optional<TypeDefinition> GetTypeDefinition(const SchemaDefinition& schemaDefinit
     return nullopt;
 }
 
+static optional<string> EffectiveTypeName(const SchemaDefinition& schemaDefinition,
+                                          const string& name) {
+    return schemaDefinition.types.contains(name) ? make_optional(name) : nullopt;
+}
+
 Resolver CreateSchemaResolver(const SchemaDefinition& schemaDefinition) {
     auto orderedTypes = to_vector(
         concat(to_set(schemaDefinition.types | views::keys),
@@ -625,21 +647,24 @@ Resolver CreateSchemaResolver(const SchemaDefinition& schemaDefinition) {
 
     auto allDirectives = concat(schemaDefinition.directives, builtInDirectives);
 
-    //TODO Move in method
-    auto effectiveTypeName = [&](const optional<string>& explicitName, const string& defaultName) -> optional<string> {
-        const auto& name = explicitName.value_or(defaultName);
-        return schemaDefinition.types.contains(name) ? make_optional(name) : nullopt;
-    };
-
     return Resolver {
-        {"queryType", and_then(effectiveTypeName(schemaDefinition.queryTypeName, "Query"), [](const auto& name) -> ValueResolver {
-            return Resolver{{"name", name}, {"kind", "OBJECT"}};
+        {"queryType", and_then(EffectiveTypeName(schemaDefinition, schemaDefinition.queryTypeName.value_or("Query")), [](const auto& name) {
+            return Resolver{
+                {"name", name},
+                {"kind", "OBJECT"}
+            };
         })},
-        {"mutationType", and_then(effectiveTypeName(schemaDefinition.mutationTypeName, "Mutation"), [](const auto& name) -> ValueResolver {
-            return Resolver{{"name", name}, {"kind", "OBJECT"}};
+        {"mutationType", and_then(EffectiveTypeName(schemaDefinition, schemaDefinition.mutationTypeName.value_or("Mutation")), [](const auto& name) {
+            return Resolver{
+                {"name", name},
+                {"kind", "OBJECT"}
+            };
         })},
-        {"subscriptionType", and_then(effectiveTypeName(schemaDefinition.subscriptionTypeName, "Subscription"), [](const auto& name) -> ValueResolver {
-            return Resolver{{"name", name}, {"kind", "OBJECT"}};
+        {"subscriptionType", and_then(EffectiveTypeName(schemaDefinition, schemaDefinition.subscriptionTypeName.value_or("Subscription")), [](const auto& name) {
+            return Resolver{
+                {"name", name},
+                {"kind", "OBJECT"}
+            };
         })},
         {"directives", [allDirectives, &schemaDefinition](const auto&) {
             return to_vector(allDirectives | views::transform([&schemaDefinition](const auto& d) -> ValueResolver {
