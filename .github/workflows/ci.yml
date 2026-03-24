@@ -43,6 +43,10 @@ jobs:
           echo "CC=gcc-14" >> $GITHUB_ENV
           echo "CXX=g++-14" >> $GITHUB_ENV
 
+      - name: Install gcovr
+        if: matrix.preset == 'x64-linux-debug'
+        run: pip install gcovr
+
       - name: Set VCPKG_ROOT
         if: runner.os != 'Windows'
         shell: bash
@@ -83,10 +87,6 @@ jobs:
 
       - name: Test
         run: ctest --test-dir out/build/${{ matrix.preset }} --output-on-failure
-
-      - name: Install gcovr
-        if: matrix.preset == 'x64-linux-debug'
-        run: pip install gcovr
 
       - name: Generate coverage report
         if: matrix.preset == 'x64-linux-debug'
