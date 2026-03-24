@@ -83,3 +83,19 @@ jobs:
 
       - name: Test
         run: ctest --test-dir out/build/${{ matrix.preset }} --output-on-failure
+
+      - name: Install gcovr
+        if: matrix.preset == 'x64-linux-debug'
+        run: pip install gcovr
+
+      - name: Generate coverage report
+        if: matrix.preset == 'x64-linux-debug'
+        run: cmake --build out/build/${{ matrix.preset }} --target coverage
+
+      - name: Upload coverage report
+        if: matrix.preset == 'x64-linux-debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30

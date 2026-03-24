@@ -42,5 +42,6 @@
 
 out
 build
+coverage
 .vscode
 .idea

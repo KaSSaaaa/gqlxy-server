@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.10.0)
 option(ENABLE_VCPKG_BOOTSTRAP "Bootstrap vcpkg in the build dir and install manifest deps" OFF)
 option(BUILD_STANDALONE_SERVER "Build the standalone HTTP/WebSocket/SSE GraphQL server (requires oatpp)" OFF)
+option(ENABLE_COVERAGE "Instrument binaries for gcov/lcov code coverage" OFF)
+
+if(ENABLE_COVERAGE)
+    add_compile_options(--coverage)
+    add_link_options(--coverage)
+endif()
 
 # Prefer an existing vcpkg in PATH; otherwise clone+bootstrap into the preset build dir.
 find_program(SYSTEM_VCPKG_EXECUTABLE NAMES vcpkg vcpkg.exe)
@@ -51,6 +57,10 @@ add_subdirectory(src)
 
 if(BUILD_TESTING AND PROJECT_IS_TOP_LEVEL)
     add_subdirectory(tests)
+endif()
+
+if(ENABLE_COVERAGE)
+    include(cmake/coverage.cmake)
 endif()
 
 if(PROJECT_IS_TOP_LEVEL)
