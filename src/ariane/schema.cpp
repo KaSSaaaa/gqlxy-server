@@ -67,58 +67,63 @@ Schema::Schema(const shared_ptr<SchemaDefinition>& schemaDefinition,
     InjectIntrospectionResolvers();
 }
 
-static bool IsRootType(const string& name, const SchemaDefinition& other, const SchemaDefinition& merged) {
-    return name == merged.queryTypeName.value_or("Query") ||
-           name == merged.mutationTypeName.value_or("Mutation") ||
-           name == merged.subscriptionTypeName.value_or("Subscription") ||
-           name == other.queryTypeName.value_or("Query") ||
-           name == other.mutationTypeName.value_or("Mutation") ||
-           name == other.subscriptionTypeName.value_or("Subscription");
+static bool IsRootType(const string& name, const SchemaDefinition& schema) {
+    return name == schema.queryTypeName.value_or("Query") ||
+           name == schema.mutationTypeName.value_or("Mutation") ||
+           name == schema.subscriptionTypeName.value_or("Subscription");
 }
 
-//TODO simplify
-Schema Schema::Stitch(const Schema& other) const {
-    auto merged = make_shared<SchemaDefinition>(*_schemaDefinition);
+static bool IsRootType(const string& name, const SchemaDefinition& other, const SchemaDefinition& merged) {
+    return IsRootType(name, merged) || IsRootType(name, other);
+}
 
-    for (const auto& [name, type] : other._schemaDefinition->types | views::filter([](const auto& kvp) {
+static void MergeTypes(SchemaDefinition& merged, const SchemaDefinition& other) {
+    for (const auto& [name, type] : other.types | views::filter([](const auto& kvp) {
         return !kvp.first.starts_with("__") && !BuiltinScalarsMap.contains(kvp.first);
     })) {
-        if (IsRootType(name, *other._schemaDefinition, *merged)) {
-            auto& existing = merged->types[name];
+        if (IsRootType(name, other, merged)) {
+            auto& existing = merged.types[name];
             for (const auto& field : type.fields) {
                 auto conflict = ranges::find_if(existing.fields, [&](const auto& f) { return f.name == field.name; });
                 expect(conflict == existing.fields.end(), format("Conflicting field '{}' in stitched type '{}'", field.name, name));
                 existing.fields.push_back(field);
             }
         } else {
-            expect(!merged->types.contains(name), format("Duplicate type '{}' in stitched schema", name));
-            merged->types[name] = type;
+            expect(!merged.types.contains(name), format("Duplicate type '{}' in stitched schema", name));
+            merged.types[name] = type;
         }
     }
 
-    for (auto& type : merged->types | views::values)
+    for (auto& type : merged.types | views::values)
         type.possibleTypes.clear();
-    for (const auto& [name, interface] : merged->InterfacesPerType())
-        merged->types[interface].possibleTypes.push_back(name);
 
-    ranges::copy(other._schemaDefinition->directives | views::filter([&](const auto& dir) {
-        return ranges::find_if(merged->directives, [&](const auto& d) { return d.name == dir.name; }) != merged->directives.end();
-    }), back_inserter(merged->directives));
+    for (const auto& [name, interface] : merged.InterfacesPerType())
+        merged.types[interface].possibleTypes.push_back(name);
+}
 
-    if (!merged->queryTypeName) merged->queryTypeName = other._schemaDefinition->queryTypeName;
-    if (!merged->mutationTypeName) merged->mutationTypeName = other._schemaDefinition->mutationTypeName;
-    if (!merged->subscriptionTypeName) merged->subscriptionTypeName = other._schemaDefinition->subscriptionTypeName;
+static void MergeSchemaDirectives(SchemaDefinition& merged, const SchemaDefinition& other) {
+    ranges::copy(other.directives | views::filter([&](const auto& dir) {
+        return ranges::find_if(merged.directives, [&](const auto& d) { return d.name == dir.name; }) == merged.directives.end();
+    }), back_inserter(merged.directives));
+}
 
-    Resolver mergedResolvers = _resolvers;
-    for (const auto& [typeName, typeResolver] : other._resolvers) {
-        if (!mergedResolvers.contains(typeName)) {
-            mergedResolvers[typeName] = typeResolver;
-        } else {
-            MergeResolvers(mergedResolvers[typeName].As<Resolver>(), typeResolver.As<Resolver>(), typeName);
-        }
-    }
+static void MergeSchemaNames(SchemaDefinition& merged, const SchemaDefinition& other) {
+    if (!merged.queryTypeName) merged.queryTypeName = other.queryTypeName;
+    if (!merged.mutationTypeName) merged.mutationTypeName = other.mutationTypeName;
+    if (!merged.subscriptionTypeName) merged.subscriptionTypeName = other.subscriptionTypeName;
+}
 
-    return Schema(merged, mergedResolvers, concat(_directives, other._directives), concat(_scalars, other._scalars));
+Schema Schema::Stitch(const Schema& other) const {
+    auto merged = make_shared<SchemaDefinition>(*_schemaDefinition);
+    MergeTypes(*merged, *other._schemaDefinition);
+    MergeSchemaDirectives(*merged, *other._schemaDefinition);
+    MergeSchemaNames(*merged, *other._schemaDefinition);
+    return {
+        merged,
+        MergeResolvers(_resolvers, other._resolvers),
+        concat(_directives, other._directives),
+        concat(_scalars, other._scalars)
+    };
 }
 
 void Schema::InjectIntrospectionResolvers() {
@@ -143,23 +148,21 @@ Task<ResolveResult> Schema::ResolveInternal(const string& query,
                                             const nlohmann::json& variables,
                                             const string& operationName,
                                             any context) const {
-    return ResolveOperations(ResolveQueryArgs {
-        .query = query,
-        .variables = variables,
-        .schemaDefinition = *_schemaDefinition,
-        .resolvers = _resolvers,
-        .directives = _directives,
-        .scalars = _scalars,
-        .operationName = operationName,
-        .context = std::move(context),
-    });
+    return ResolveOperations(BuildResolveQueryArgs(query, variables, operationName, std::move(context)));
 }
 
 SubscriptionHandle Schema::SubscribeInternal(const string& query,
                                              const nlohmann::json& variables,
                                              const string& operationName,
                                              any context) const {
-    return internal::Subscribe(ResolveQueryArgs {
+    return internal::Subscribe(BuildResolveQueryArgs(query, variables, operationName, std::move(context)));
+}
+
+ResolveQueryArgs Schema::BuildResolveQueryArgs(const string& query,
+                                                const nlohmann::json& variables,
+                                                const string& operationName,
+                                                any context) const {
+    return ResolveQueryArgs {
         .query = query,
         .variables = variables,
         .schemaDefinition = *_schemaDefinition,
@@ -168,5 +171,5 @@ SubscriptionHandle Schema::SubscribeInternal(const string& query,
         .scalars = _scalars,
         .operationName = operationName,
         .context = std::move(context),
-    });
+    };
 }

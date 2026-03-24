@@ -39,9 +39,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y g++-14 ninja-build cmake
+          sudo apt-get install -y g++-14 gcc-14 ninja-build cmake
           echo "CC=gcc-14" >> $GITHUB_ENV
           echo "CXX=g++-14" >> $GITHUB_ENV
+
+      - name: Install gcovr
+        if: matrix.preset == 'x64-linux-debug'
+        run: pip install gcovr
 
       - name: Set VCPKG_ROOT
         if: runner.os != 'Windows'
@@ -83,3 +87,15 @@ jobs:
 
       - name: Test
         run: ctest --test-dir out/build/${{ matrix.preset }} --output-on-failure
+
+      - name: Generate coverage report
+        if: matrix.preset == 'x64-linux-debug'
+        run: cmake --build out/build/${{ matrix.preset }} --target coverage
+
+      - name: Upload coverage report
+        if: matrix.preset == 'x64-linux-debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30

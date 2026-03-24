@@ -33,9 +33,10 @@ json ResolveArguments(const Field& field,
     return accumulate(field.arguments.begin(), field.arguments.end(), json::object(), [&](auto obj, const auto& arg) {
         auto value = arg.Value(variables);
 
-        auto it = ranges::find_if(argDefs, [&](const auto& d) { return d.name == arg.name; });
-        if (it != argDefs.end() && scalars.contains(it->type.TypeName()))
-            value = scalars.at(it->type.TypeName())(value);
+        if (auto argDef = find_optional(argDefs, [&](const auto& d) { return d.name == arg.name; })) {
+            if (scalars.contains(argDef->type.TypeName()))
+                value = scalars.at(argDef->type.TypeName())(value);
+        }
 
         obj[arg.name] = value;
         return obj;

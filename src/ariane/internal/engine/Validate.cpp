@@ -109,41 +109,47 @@ static FieldErrors ValidateFieldArgumentsExist(const Field& field,
     }));
 }
 
-// TODO Cleanup
+static bool IsVariableProvided(const json& variables, const string& variable) {
+    return variables.contains(variable) && !variables[variable].is_null();
+}
+
+static bool HasDefaultValue(const vector<VariableDefinition>& variableDefinitions, const string& variable) {
+    auto var = find_optional(variableDefinitions, [&](const auto& v) { return v.name == variable; });
+    return var && var->defaultValue.has_value();
+}
+
 static FieldErrors ValidateRequiredFieldArguments(const Field& field,
                                                   const FieldDefinition& fieldDefinition,
                                                   const vector<VariableDefinition>& variableDefinitions,
                                                   const json& variables,
                                                   const string& typeName,
                                                   const vector<string>& fieldPath) {
-    return to_vector(fieldDefinition.args | views::filter([](const auto& arg) {
+    auto requiredArgs = fieldDefinition.args | views::filter([](const auto& arg) {
         return arg.type.kind._value == TypeRefKind::NON_NULL && !arg.defaultValue.has_value();
-    }) | views::transform([&](const auto& arg) -> optional<FieldError> {
-        auto argIt = ranges::find_if(field.arguments, [&](const auto& a) { return a.name == arg.name; });
-        if (argIt == field.arguments.end()) {
-            return make_optional(FieldError {
-                .message = format(R"(Argument "{}" of field "{}.{}" is required)", arg.name, typeName, field.name),
-                .path = fieldPath
-            });
-        }
-        if (argIt->IsVariable()) {
-            const auto varName = argIt->Reference();
-            auto varIt = ranges::find_if(variableDefinitions, [&](const auto& v) { return v.name == varName; });
-            const bool varHasDefault = varIt != variableDefinitions.end() && varIt->defaultValue.has_value();
-            const bool varProvided = variables.contains(varName) && !variables[varName].is_null();
-            if (!varProvided && !varHasDefault)
-                return make_optional(FieldError {
-                    .message = format(R"(Argument "{}" of field "{}.{}" is required, but variable "{}" was not provided)", arg.name, typeName, field.name, argIt->value),
+    });
+    return flat_map(requiredArgs, [&](const auto& arg) -> FieldErrors {
+        auto fieldArg = find_optional(field.arguments, [&](const auto& a) { return a.name == arg.name; });
+        if (!fieldArg.has_value())
+            return {
+                FieldError {
+                    .message = format(R"(Argument "{}" of field "{}.{}" is required)", arg.name, typeName, field.name),
                     .path = fieldPath
-                });
+                }
+            };
+        if (fieldArg->IsVariable()) {
+            auto variable = fieldArg->Reference();
+            if (!IsVariableProvided(variables, variable) && !HasDefaultValue(variableDefinitions, variable))
+                return {
+                    FieldError {
+                        .message = format(R"(Argument "{}" of field "{}.{}" is required, but variable "{}" was not provided)", arg.name, typeName, field.name, fieldArg->value),
+                        .path = fieldPath
+                    }
+                };
         }
-        return nullopt;
-    })
-    | views::filter([](const auto& err) { return err.has_value(); })
-    | views::transform([](const auto& err) { return err.value(); }));
+        return {};
+    });
 }
 
-// TODO Cleanup
 static FieldErrors ValidateField(const Field& field,
                                  const string& typeName,
                                  const SchemaDefinition& schema,
@@ -161,26 +167,23 @@ static FieldErrors ValidateField(const Field& field,
     if (typeDef.kind._value != TypeKind::OBJECT && typeDef.kind._value != TypeKind::INTERFACE)
         return {};
 
-    auto fieldIt = ranges::find_if(typeDef.fields, [&](const auto& f) { return f.name == field.name; });
-    if (fieldIt == typeDef.fields.end()) {
-        return {{
-            .message = format(R"(Cannot query field "{}" on type "{}")", field.name, typeName),
-            .path = fieldPath
-        }};
-    }
+    auto fieldDefinition = find_optional(typeDef.fields, [&](const auto& f) { return f.name == field.name; });
+    if (!fieldDefinition.has_value())
+        return {
+            FieldError {
+                .message = format(R"(Cannot query field "{}" on type "{}")", field.name, typeName),
+                .path = fieldPath
+            }
+        };
 
     return concat(
-        ValidateFieldArgumentsExist(field, *fieldIt, typeName, fieldPath),
-        ValidateRequiredFieldArguments(field, *fieldIt, varDefs, variables, typeName, fieldPath),
-        ValidateSelections(or_else(and_then(field.selectionSet, [](const auto& ss) {
-            return make_optional(ss.selections);
-        }), []() {
-            return vector<Selection>{};
-        }).value(), fieldIt->type.TypeName(), schema, varDefs, variables, frags, fieldPath)
+        ValidateFieldArgumentsExist(field, *fieldDefinition, typeName, fieldPath),
+        ValidateRequiredFieldArguments(field, *fieldDefinition, varDefs, variables, typeName, fieldPath),
+        ValidateSelections(field.selectionSet ? field.selectionSet->selections : vector<Selection>{},
+                           fieldDefinition->type.TypeName(), schema, varDefs, variables, frags, fieldPath)
     );
 }
 
-// TODO Cleanup
 static FieldErrors ValidateSelections(const vector<Selection>& selections,
                                       const string& typeName,
                                       const SchemaDefinition& schema,
@@ -202,14 +205,8 @@ static FieldErrors ValidateSelections(const vector<Selection>& selections,
                        return ValidateSelections(frag.selectionSet.selections, frag.typeCondition, schema, varDefs, variables, frags, path);
                    },
                    [&](const InlineFragment& i) -> FieldErrors {
-                       const auto fragType = i.typeCondition.value_or(typeName);
-                       if (i.selectionSet)
-                           return ValidateSelections(or_else(and_then(i.selectionSet, [](const auto& ss) {
-                               return make_optional(ss.selections);
-                           }), []() {
-                               return vector<Selection>{};
-                           }).value(), fragType, schema, varDefs, variables, frags, path);
-                       return FieldErrors{};
+                       if (!i.selectionSet) return {};
+                       return ValidateSelections(i.selectionSet->selections, i.typeCondition.value_or(typeName), schema, varDefs, variables, frags, path);
                    },
               }, sel);
     });

@@ -43,10 +43,8 @@ static vector FederationScalarsAndTypes = {
 };
 
 static void AddFederationScalarsAndTypes(SchemaDefinition& schema) {
-    ranges::copy(
-        to_map(FederationScalarsAndTypes | views::transform([](const auto& type) { return make_pair(type.name, type); })),
-        inserter(schema.types, schema.types.end())
-    );
+    for (const auto& type : FederationScalarsAndTypes)
+        schema.types.emplace(type.name, type);
 }
 
 static void AddEntityUnion(SchemaDefinition& schema, const vector<string>& entities) {
@@ -161,10 +159,10 @@ static void AddFederationQueryFields(SchemaDefinition& schema, bool hasEntities)
 
 static void ValidateEntityResolvers(const vector<string>& entities, const Resolver& resolvers) {
     for (const auto& typeName : entities) {
-        expect(and_then(to_optional(resolvers, resolvers.find(typeName)), [](const pair<string, ValueResolver>& type) {
-            auto resolver = type.second.AsIf<Resolver>();
-            return make_optional(resolver.has_value() && resolver.value().contains("__resolveReference"));
-        }).value_or(false), format(R"(Federation: no __resolveReference resolver found for @key type "{}")", typeName));
+        auto it = resolvers.find(typeName);
+        auto resolver = it != resolvers.end() ? it->second.AsIf<Resolver>() : nullopt;
+        expect(resolver && resolver->contains("__resolveReference"),
+               format(R"(Federation: no __resolveReference resolver found for @key type "{}")", typeName));
     }
 }
 

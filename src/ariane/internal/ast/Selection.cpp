@@ -18,7 +18,7 @@ vector<Field> FragmentFields(const SelectionSet& selectionSet,
                              const optional<string>& concreteType) {
     if (!ApplyDirectives(fieldDirectives, directives, variables, monostate{}).has_value())
         return {};
-    if (concreteType && typeCondition.has_value() && typeCondition.value() != *concreteType)
+    if (concreteType && typeCondition && *typeCondition != *concreteType)
         return {};
     return FlattenSelections(selectionSet, frags, directives, variables, concreteType);
 }

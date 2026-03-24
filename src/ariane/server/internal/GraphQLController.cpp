@@ -99,9 +99,9 @@ optional<string> GraphQLController::Subprotocol(const string& headerValue) {
               return trim(subprotocol);
           }));
 
-    return to_optional(SupportedProtocols, ranges::find_if(SupportedProtocols, [&](const auto& candidate) {
+    return find_optional(SupportedProtocols, [&](const auto& candidate) {
         return ranges::find(offered, candidate) != offered.end();
-    }));
+    });
 }
 
 shared_ptr<Response> GraphQLController::HandleSSE(const String& query,

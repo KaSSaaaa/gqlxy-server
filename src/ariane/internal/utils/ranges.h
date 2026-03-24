@@ -68,6 +68,13 @@ auto to_optional(R&& r, std::ranges::iterator_t<R> it)
     return *it;
 }
 
+template <std::ranges::range R, typename Pred>
+auto find_optional(R&& r, Pred&& pred)
+    -> std::optional<std::ranges::range_value_t<R>>
+{
+    return to_optional(r, std::ranges::find_if(r, std::forward<Pred>(pred)));
+}
+
 template <typename T>
 concept associative_range = std::ranges::input_range<T>
     && requires { typename std::remove_cvref_t<T>::mapped_type; };
