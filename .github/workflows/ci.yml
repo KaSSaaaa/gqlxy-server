@@ -39,7 +39,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y g++-14 ninja-build cmake
+          sudo apt-get install -y g++-14 gcc-14 ninja-build cmake
           echo "CC=gcc-14" >> $GITHUB_ENV
           echo "CXX=g++-14" >> $GITHUB_ENV
 
