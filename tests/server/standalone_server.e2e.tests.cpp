@@ -1,8 +1,8 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/pubsub.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
-#include <ariane/server/standalone_server.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/pubsub.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/server/standalone_server.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
@@ -19,8 +19,8 @@
 #include <vector>
 
 using namespace std;
-using namespace ariane::graphql;
-using namespace ariane::graphql::server;
+using namespace gqlxy;
+using namespace gqlxy::server;
 using json = nlohmann::json;
 
 namespace beast = boost::beast;

@@ -1,14 +1,14 @@
-# Contributing to Ariane
+# Contributing to GQLXY
 
-Thank you for your interest in contributing to Ariane! This document explains how to get involved.
+Thank you for your interest in contributing to GQLXY! This document explains how to get involved.
 
 ## Getting Started
 
 1. **Fork** the repository on GitHub.
 2. **Clone** your fork locally:
    ```sh
-   git clone https://github.com/<your-username>/ariane-graphql-server.git
-   cd ariane-graphql-server
+   git clone https://github.com/<your-username>/gqlxy.git
+   cd gqlxy
    ```
 3. **Create a branch** from `main` for your work:
    ```sh
@@ -26,7 +26,7 @@ Thank you for your interest in contributing to Ariane! This document explains ho
 ### Coding Conventions
 
 - **C++20** — the project requires `cxx_std_20`.
-- **Header-only public API** — all public headers live in `include/ariane/`.
+- **Header-only public API** — all public headers live in `include/gqlxy/`.
 - **Functions ≤ 20 lines** — keep functions concise and focused.
 - **Prefer structs over multiple parameters** for better readability and extensibility.
 - **`const&` by default** — pass arguments by const reference unless there is a reason not to.
@@ -77,7 +77,7 @@ test(introspection): cover __type with interfaces
 
 ## Reporting Bugs & Requesting Features
 
-Use the [issue templates](https://github.com/KaSSaaaa/ariane-graphql-server/issues/new/choose) — there are separate forms for bug reports and feature requests.
+Use the [issue templates](https://github.com/KaSSaaaa/gqlxy/issues/new/choose) — there are separate forms for bug reports and feature requests.
 
 ## License
 

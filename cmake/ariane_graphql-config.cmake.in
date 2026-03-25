@@ -1,7 +1,0 @@
-@PACKAGE_INIT@
-
-include(CMakeFindDependencyMacro)
-find_dependency(cppgraphqlgen CONFIG COMPONENTS graphqlpeg)
-find_dependency(nlohmann_json CONFIG)
-
-include("${CMAKE_CURRENT_LIST_DIR}/ariane_graphqlTargets.cmake")

@@ -1,12 +1,12 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static void printResult(const string& label, const ResolveResult& result) {
@@ -20,7 +20,7 @@ static void printResult(const string& label, const ResolveResult& result) {
 }
 
 int main() {
-    cout << "=== Ariane — Fragments sample ===" << endl << endl;
+    cout << "=== GQLXY — Fragments sample ===" << endl << endl;
 
     // clang-format off
     Schema schema({

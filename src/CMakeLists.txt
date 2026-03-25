@@ -7,9 +7,9 @@ list(GET _ver_list 0 PROJECT_VERSION_MAJOR)
 
 file(GLOB_RECURSE SOURCES_FILES *.cpp)
 list(FILTER SOURCES_FILES EXCLUDE REGEX ".*/server/.*")
-add_library(ariane_graphql ${SOURCES_FILES})
-target_compile_features(ariane_graphql PUBLIC cxx_std_20)
-target_include_directories(ariane_graphql
+add_library(gqlxy ${SOURCES_FILES})
+target_compile_features(gqlxy PUBLIC cxx_std_20)
+target_include_directories(gqlxy
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>
@@ -17,26 +17,26 @@ target_include_directories(ariane_graphql
 		${CMAKE_SOURCE_DIR}/src
 )
 target_link_libraries(
-		ariane_graphql
+		gqlxy
 		PUBLIC
 		cppgraphqlgen::graphqlpeg
 		nlohmann_json::nlohmann_json
 )
 
-add_library(ariane::graphql ALIAS ariane_graphql)
+add_library(gqlxy::gqlxy ALIAS gqlxy)
 
 if(BUILD_STANDALONE_SERVER)
-    add_subdirectory(ariane/server)
+    add_subdirectory(gqlxy/server)
 endif()
 
-install(TARGETS ariane_graphql
-	EXPORT ariane_graphqlTargets
+install(TARGETS gqlxy
+	EXPORT gqlxyTargets
 )
 
-install(EXPORT ariane_graphqlTargets
-	FILE ariane_graphqlTargets.cmake
-	NAMESPACE ariane::
-	DESTINATION lib/cmake/ariane_graphql
+install(EXPORT gqlxyTargets
+	FILE gqlxyTargets.cmake
+	NAMESPACE gqlxy::
+	DESTINATION lib/cmake/gqlxy
 )
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/include)

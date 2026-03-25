@@ -1,10 +1,10 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/schema.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/schema.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static Schema makeUsersSchema() {
@@ -61,14 +61,14 @@ static Schema makePostsSchema() {
                     auto id = r.Args()["id"].get<string>();
                     return Resolver{
                         {"id", id},
-                        {"title", "Hello Ariane"},
+                        {"title", "Hello GQLXY"},
                         {"authorId", "1"}
                     };
                 }}},
                 {"posts", vector<ValueResolver>{
                     Resolver{
                         {"id", "1"},
-                        {"title", "Hello Ariane"},
+                        {"title", "Hello GQLXY"},
                         {"authorId", "1"}
                     },
                     Resolver{
@@ -95,7 +95,7 @@ static void run(const Schema& schema, const string& label, const string& query) 
 }
 
 int main() {
-    cout << "=== Ariane — schema stitching sample ===" << endl << endl;
+    cout << "=== GQLXY — schema stitching sample ===" << endl << endl;
 
     auto stitched = makeUsersSchema().Stitch(makePostsSchema());
 

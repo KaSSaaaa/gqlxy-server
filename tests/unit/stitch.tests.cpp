@@ -1,11 +1,11 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/schema.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/schema.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 // ---------------------------------------------------------------------------

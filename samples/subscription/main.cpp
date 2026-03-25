@@ -1,7 +1,7 @@
-#include <ariane/pubsub.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
-#include <ariane/subscription.h>
+#include <gqlxy/pubsub.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/subscription.h>
 #include <nlohmann/json.hpp>
 
 #include <chrono>
@@ -12,7 +12,7 @@
 #include <thread>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static string currentDatetime() {
@@ -24,7 +24,7 @@ static string currentDatetime() {
 }
 
 int main() {
-    cout << "=== Ariane — datetime subscription sample ===" << endl << endl;
+    cout << "=== GQLXY — datetime subscription sample ===" << endl << endl;
 
     PubSub pubsub;
     Schema schema({

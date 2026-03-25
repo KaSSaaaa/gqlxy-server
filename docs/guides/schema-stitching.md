@@ -7,9 +7,9 @@ Schema stitching lets you merge multiple independent `Schema` instances into a s
 Create separate schemas and stitch them together:
 
 ```cpp
-#include <ariane/schema.h>
+#include <gqlxy/schema.h>
 
-using namespace ariane::graphql;
+using namespace gqlxy;
 
 Schema usersSchema({
     .typeDefs = R"(
@@ -39,7 +39,7 @@ Schema postsSchema({
             {"post", FunctionResolver{[](const ResolverArgs& r) -> ValueResolver {
                 return Resolver{
                     {"id", r.Args()["id"].get<std::string>()},
-                    {"title", "Hello Ariane"},
+                    {"title", "Hello GQLXY"},
                     {"authorId", "1"}
                 };
             }}}
@@ -70,7 +70,7 @@ auto result = stitched.Resolve({
     "email": "alice@example.com"
   },
   "post": {
-    "title": "Hello Ariane"
+    "title": "Hello GQLXY"
   }
 }
 ```

@@ -1,14 +1,14 @@
 # API Reference
 
-Complete reference for all public types and functions in `include/ariane/`.
+Complete reference for all public types and functions in `include/gqlxy/`.
 
-All types live in the `ariane::graphql` namespace. Server types are in `ariane::graphql::server`.
+All types live in the `gqlxy` namespace. Server types are in `gqlxy::server`.
 
 ---
 
 ## Schema
 
-**Header:** `<ariane/schema.h>`
+**Header:** `<gqlxy/schema.h>`
 
 ### SchemaOptions
 
@@ -62,7 +62,7 @@ public:
 
 ## Resolvers
 
-**Header:** `<ariane/resolvers.h>`
+**Header:** `<gqlxy/resolvers.h>`
 
 ### Type aliases
 
@@ -123,7 +123,7 @@ struct ValueResolver : std::variant<
 
 ## ResolverArgs
 
-**Header:** `<ariane/ResolverArgs.h>`
+**Header:** `<gqlxy/ResolverArgs.h>`
 
 ```cpp
 class ResolverArgs {
@@ -139,7 +139,7 @@ public:
 
 ## Results
 
-**Header:** `<ariane/results.h>`
+**Header:** `<gqlxy/results.h>`
 
 ```cpp
 struct ErrorLocation {
@@ -169,7 +169,7 @@ nlohmann::json Serialize(const ResolveResult& result);
 
 ## Subscriptions
 
-**Header:** `<ariane/subscription.h>`
+**Header:** `<gqlxy/subscription.h>`
 
 ### SubscriptionEventStream
 
@@ -215,7 +215,7 @@ Returns `true` if the query string is a subscription operation.
 
 ## PubSub
 
-**Header:** `<ariane/pubsub.h>`
+**Header:** `<gqlxy/pubsub.h>`
 
 Thread-safe publish-subscribe system for subscriptions:
 
@@ -238,7 +238,7 @@ public:
 
 ## Custom Scalars
 
-**Header:** `<ariane/scalars.h>`
+**Header:** `<gqlxy/scalars.h>`
 
 ```cpp
 class ScalarType {
@@ -255,7 +255,7 @@ Subclass `ScalarType` to implement custom output serialization. Register a `Scal
 
 ## Task (Coroutines)
 
-**Header:** `<ariane/task.h>`
+**Header:** `<gqlxy/task.h>`
 
 ```cpp
 template <typename T>
@@ -270,7 +270,7 @@ struct Task {
 
 ## CoroutineResolver
 
-**Header:** `<ariane/resolvers/CoroutineResolver.h>`
+**Header:** `<gqlxy/resolvers/CoroutineResolver.h>`
 
 ```cpp
 class CoroutineResolver {
@@ -288,8 +288,8 @@ Type-erased callable wrapping a function that returns `Task<ValueResolver>`. GCC
 
 ## Standalone Server
 
-**Header:** `<ariane/server/standalone_server.h>`  
-**Namespace:** `ariane::graphql::server`
+**Header:** `<gqlxy/server/standalone_server.h>`  
+**Namespace:** `gqlxy::server`
 
 ```cpp
 struct StandaloneServerOptions {

@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through installing Ariane, building your first GraphQL schema, and executing queries.
+This guide walks you through installing GQLXY, building your first GraphQL schema, and executing queries.
 
 ## Prerequisites
 
@@ -15,13 +15,13 @@ Dependencies are managed automatically via [vcpkg](https://vcpkg.io/) — no man
 ### Clone the repository
 
 ```bash
-git clone https://github.com/KaSSaaaa/ariane-graphql-server.git
-cd ariane-graphql-server
+git clone https://github.com/KaSSaaaa/gqlxy.git
+cd gqlxy
 ```
 
 ### Build
 
-Ariane ships CMake presets for every major platform. Pick the one that matches your system:
+GQLXY ships CMake presets for every major platform. Pick the one that matches your system:
 
 | Platform | Preset |
 |---|---|
@@ -46,13 +46,13 @@ ctest --test-dir out/build/arm64-osx-debug --output-on-failure
 
 ## Your first schema
 
-A minimal Ariane schema needs two things: an **SDL type definition** and a **resolver map**.
+A minimal GQLXY schema needs two things: an **SDL type definition** and a **resolver map**.
 
 ```cpp
-#include <ariane/schema.h>
+#include <gqlxy/schema.h>
 #include <iostream>
 
-using namespace ariane::graphql;
+using namespace gqlxy;
 
 int main() {
     Schema schema({
@@ -108,7 +108,7 @@ The returned `ResolveResult` contains:
 Use `Serialize(result)` to get the standard GraphQL JSON response (with both `data` and `errors` keys):
 
 ```cpp
-#include <ariane/results.h>
+#include <gqlxy/results.h>
 
 nlohmann::json response = Serialize(result);
 std::cout << response.dump(2) << std::endl;
@@ -116,7 +116,7 @@ std::cout << response.dump(2) << std::endl;
 
 ## Resolver types
 
-Ariane's `ValueResolver` is a variant that accepts many value types directly:
+GQLXY's `ValueResolver` is a variant that accepts many value types directly:
 
 ```cpp
 // Static values
@@ -133,7 +133,7 @@ Ariane's `ValueResolver` is a variant that accepts many value types directly:
 }}
 
 // Lists
-{"tags", std::vector<ValueResolver>{"graphql", "cpp", "ariane"}}
+{"tags", std::vector<ValueResolver>{"graphql", "cpp", "gqlxy"}}
 ```
 
 For dynamic resolution, use one of the four function resolver types:
@@ -196,9 +196,9 @@ Schema schema({
 });
 
 auto result = schema.Resolve({
-    .query = R"({ greet(name: "Ariane") })"
+    .query = R"({ greet(name: "GQLXY") })"
 }).get();
-// result.data → { "greet": "Hello, Ariane!" }
+// result.data → { "greet": "Hello, GQLXY!" }
 ```
 
 ## Variables
@@ -228,7 +228,7 @@ return std::monostate{};
 
 ## Error handling
 
-If a resolver throws, Ariane catches the exception, sets the field to `null`, and appends a structured error with `message` and `path` to the `errors` array. Other fields continue resolving normally.
+If a resolver throws, GQLXY catches the exception, sets the field to `null`, and appends a structured error with `message` and `path` to the `errors` array. Other fields continue resolving normally.
 
 ```cpp
 {"user", FunctionResolver{[](const ResolverArgs&) -> ValueResolver {

@@ -1,10 +1,10 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/schema.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/schema.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 // A minimal federated subgraph exposing User and Product entities.
@@ -73,7 +73,7 @@ static void run(const Schema& schema, const string& label, const string& query,
 }
 
 int main() {
-    cout << "=== Ariane — Apollo Federation subgraph sample ===" << endl << endl;
+    cout << "=== GQLXY — Apollo Federation subgraph sample ===" << endl << endl;
 
     // clang-format off
     auto schema = Schema{SchemaOptions{

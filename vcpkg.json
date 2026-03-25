@@ -1,8 +1,8 @@
 {
-  "name": "ariane-graphql-server",
+  "name": "gqlxy",
   "version": "0.1.0",
   "description": "C++ GraphQL server engine that let's you develop your server how you want it",
-  "homepage": "https://github.com/KaSSaaaa/ariane-graphql-server",
+  "homepage": "https://github.com/KaSSaaaa/gqlxy",
   "license": "MIT",
   "supports": "!uwp",
   "dependencies": [

@@ -1,11 +1,11 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
 #include <iostream>
 #include <string>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 template <ranges::input_range R>

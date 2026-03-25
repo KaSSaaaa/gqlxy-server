@@ -1,11 +1,11 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/resolvers.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/resolvers.h>
 #include <gtest/gtest.h>
 #include <list>
 #include <optional>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 
 TEST(Resolvers, SupportsBasicTypes) {
     ValueResolver intResolver(42);

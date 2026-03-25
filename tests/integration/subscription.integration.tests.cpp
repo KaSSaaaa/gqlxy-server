@@ -1,13 +1,13 @@
-#include <ariane/pubsub.h>
-#include <ariane/schema.h>
-#include <ariane/subscription.h>
+#include <gqlxy/pubsub.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/subscription.h>
 #include <gtest/gtest.h>
 #include <future>
 #include <nlohmann/json.hpp>
 #include <thread>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 class SubscriptionIntegrationTest : public testing::Test {

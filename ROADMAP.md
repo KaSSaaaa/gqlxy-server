@@ -1,4 +1,4 @@
-# Ariane — Engine Roadmap
+# GQLXY — Engine Roadmap
 
 This document tracks what is already working and what remains to be built for a fully spec-compliant GraphQL execution engine (transport layer excluded).
 
@@ -80,7 +80,7 @@ Support the GraphQL `extend type` SDL keyword (and the equivalent for interfaces
 
 ### P6 — Federation
 
-Implement the Apollo Federation subgraph specification so that an Ariane schema can act as a subgraph inside a federated supergraph (Apollo Router, Apollo Gateway).
+Implement the Apollo Federation subgraph specification so that an GQLXY schema can act as a subgraph inside a federated supergraph (Apollo Router, Apollo Gateway).
 
 | # | Feature | Notes |
 |---|---------|-------|

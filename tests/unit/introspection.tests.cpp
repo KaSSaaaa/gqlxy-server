@@ -1,12 +1,12 @@
-#include <ariane/internal/introspection/introspection.h>
-#include <ariane/internal/introspection/types/SchemaDefinition.h>
-#include <ariane/internal/peg/parser/schema_parser.h>
-#include <ariane/schema.h>
+#include <gqlxy/internal/introspection/introspection.h>
+#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
+#include <gqlxy/internal/peg/parser/schema_parser.h>
+#include <gqlxy/schema.h>
 #include <gtest/gtest.h>
 
 using namespace std;
-using namespace ariane::graphql;
-using namespace ariane::graphql::internal;
+using namespace gqlxy;
+using namespace gqlxy::internal;
 
 class IntrospectionTests : public testing::Test {
 protected:

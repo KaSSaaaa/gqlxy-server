@@ -1,6 +1,6 @@
 # Resolvers
 
-Resolvers are the core of Ariane. They map your GraphQL schema fields to C++ values and functions.
+Resolvers are the core of GQLXY. They map your GraphQL schema fields to C++ values and functions.
 
 ## Static values
 

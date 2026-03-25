@@ -43,7 +43,7 @@ if(ENABLE_VCPKG_BOOTSTRAP)
 	set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE PATH "vcpkg toolchain file" FORCE)
 endif()
 
-project(ariane-graphql-server VERSION 0.1.0 LANGUAGES C CXX)
+project(gqlxy VERSION 0.1.0 LANGUAGES C CXX)
 include(CTest)
 enable_testing()
 
@@ -70,18 +70,18 @@ endif()
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-	${CMAKE_SOURCE_DIR}/cmake/ariane_graphql-config.cmake.in
-	${CMAKE_CURRENT_BINARY_DIR}/ariane_graphqlConfig.cmake
-	INSTALL_DESTINATION lib/cmake/ariane_graphql
+	${CMAKE_SOURCE_DIR}/cmake/gqlxy-config.cmake.in
+	${CMAKE_CURRENT_BINARY_DIR}/gqlxyConfig.cmake
+	INSTALL_DESTINATION lib/cmake/gqlxy
 )
 
 write_basic_package_version_file(
-	${CMAKE_CURRENT_BINARY_DIR}/ariane_graphqlConfigVersion.cmake
+	${CMAKE_CURRENT_BINARY_DIR}/gqlxyConfigVersion.cmake
 	VERSION ${PROJECT_VERSION}
 	COMPATIBILITY AnyNewerVersion
 )
 
 install(FILES
-	${CMAKE_CURRENT_BINARY_DIR}/ariane_graphqlConfig.cmake
-	${CMAKE_CURRENT_BINARY_DIR}/ariane_graphqlConfigVersion.cmake
-	DESTINATION lib/cmake/ariane_graphql)
+	${CMAKE_CURRENT_BINARY_DIR}/gqlxyConfig.cmake
+	${CMAKE_CURRENT_BINARY_DIR}/gqlxyConfigVersion.cmake
+	DESTINATION lib/cmake/gqlxy)

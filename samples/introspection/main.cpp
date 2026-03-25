@@ -1,4 +1,4 @@
-#include <ariane/schema.h>
+#include <gqlxy/schema.h>
 #include <nlohmann/json.hpp>
 
 #include <fstream>
@@ -7,7 +7,7 @@
 #include <string>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static string readFile(const char* path) {
@@ -29,7 +29,7 @@ static void writeFile(const char* path, const char* data) {
 }
 
 int main() {
-    cout << "=== Ariane — schema.today.graphql introspection ===" << endl << endl;
+    cout << "=== GQLXY — schema.today.graphql introspection ===" << endl << endl;
 
     Schema schema({
         .typeDefs  = readFile(SCHEMA_TODAY_PATH),

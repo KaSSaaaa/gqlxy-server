@@ -1,15 +1,15 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/internal/utils/ranges.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
-#include <ariane/task.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/internal/utils/ranges.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/task.h>
 #include <future>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <optional>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 // ---------------------------------------------------------------------------

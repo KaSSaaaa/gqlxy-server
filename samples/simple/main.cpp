@@ -1,6 +1,6 @@
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
-#include <ariane/task.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/task.h>
 #include <nlohmann/json.hpp>
 
 #include <fstream>
@@ -10,7 +10,7 @@
 #include <string>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static string readFile(const char* path) {
@@ -24,7 +24,7 @@ static string readFile(const char* path) {
 }
 
 int main() {
-    cout << "=== Ariane — schema.today.graphql sample ===" << endl << endl;
+    cout << "=== GQLXY — schema.today.graphql sample ===" << endl << endl;
 
     // clang-format off
     Schema schema({

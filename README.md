@@ -1,4 +1,4 @@
-# Ariane
+# GQLXY
 
 An unopinionated C++20 GraphQL server engine.
 
@@ -40,7 +40,7 @@ So, like a normal C++ dev, I wrote it myself.
 
 ## What it is
 
-Ariane is a minimalist, unopinionated GraphQL execution engine for C++20. It handles SDL parsing, query execution, introspection, subscriptions, schema stitching, and Apollo Federation — without dictating how your application is structured.
+GQLXY is a minimalist, unopinionated GraphQL execution engine for C++20. It handles SDL parsing, query execution, introspection, subscriptions, schema stitching, and Apollo Federation — without dictating how your application is structured.
 
 It doesn't care how your server works underneath. Want sync lambdas? `std::future`? C++20 coroutines? Callbacks? Use whatever fits your codebase.
 

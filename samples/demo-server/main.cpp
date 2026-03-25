@@ -1,8 +1,8 @@
-#include <ariane/pubsub.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
-#include <ariane/server/standalone_server.h>
-#include <ariane/ResolverArgs.h>
+#include <gqlxy/pubsub.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/server/standalone_server.h>
+#include <gqlxy/ResolverArgs.h>
 #include <nlohmann/json.hpp>
 
 #include <atomic>
@@ -15,8 +15,8 @@
 #include <vector>
 
 using namespace std;
-using namespace ariane::graphql;
-using namespace ariane::graphql::server;
+using namespace gqlxy;
+using namespace gqlxy::server;
 using json = nlohmann::json;
 
 // ─── In-memory data store ────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ int main() {
 
     StandaloneServer server({.schema = schema, .port = 4000});
 
-    cout << "🚀 Ariane demo server ready at " << server.GetUrl() << "\n";
+    cout << "🚀 GQLXY demo server ready at " << server.GetUrl() << "\n";
     cout << "   Protocols: HTTP POST/GET · graphql-transport-ws · graphql-ws · graphql-sse\n";
     cout << "   Press Ctrl+C to stop.\n\n";
 

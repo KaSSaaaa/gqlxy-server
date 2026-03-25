@@ -1,14 +1,14 @@
-#include <ariane/schema.h>
+#include <gqlxy/schema.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
-#include <ariane/internal/utils/expect.h>
+#include <gqlxy/internal/utils/expect.h>
 #include <format>
 #include <fstream>
 #include <sstream>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static string readFile(const char* path) {

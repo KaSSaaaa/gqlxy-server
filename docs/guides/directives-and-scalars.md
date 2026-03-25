@@ -2,7 +2,7 @@
 
 ## Built-in directives
 
-Ariane supports the standard `@skip` and `@include` directives out of the box. They work on fields, inline fragments, and named fragment spreads:
+GQLXY supports the standard `@skip` and `@include` directives out of the box. They work on fields, inline fragments, and named fragment spreads:
 
 ```graphql
 query ($hideEmail: Boolean!) {
@@ -76,14 +76,14 @@ Schema schema({
 
 ## Custom scalars
 
-Ariane supports custom scalars for both output serialization and input coercion.
+GQLXY supports custom scalars for both output serialization and input coercion.
 
 ### Output: ScalarType
 
 Subclass `ScalarType` to control how a custom scalar is serialized in responses:
 
 ```cpp
-#include <ariane/scalars.h>
+#include <gqlxy/scalars.h>
 
 class DateScalar : public ScalarType {
 public:

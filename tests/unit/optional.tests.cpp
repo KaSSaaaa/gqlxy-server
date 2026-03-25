@@ -1,10 +1,10 @@
-#include <ariane/internal/utils/optional.h>
+#include <gqlxy/internal/utils/optional.h>
 #include <gtest/gtest.h>
 #include <memory>
 #include <string>
 
 using namespace std;
-using namespace ariane::graphql::internal;
+using namespace gqlxy::internal;
 
 TEST(Optional, AndThenWithValue) {
     optional opt = 42;

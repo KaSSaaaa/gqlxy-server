@@ -1,6 +1,6 @@
 # GraphQL Introspection Sample
 
-This sample demonstrates GraphQL introspection queries using the Ariane GraphQL server.
+This sample demonstrates GraphQL introspection queries using the GQLXY GraphQL server.
 
 ## Features
 

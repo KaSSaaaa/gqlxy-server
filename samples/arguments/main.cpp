@@ -1,7 +1,7 @@
-#include <ariane/ResolverArgs.h>
-#include <ariane/resolvers.h>
-#include <ariane/schema.h>
-#include <ariane/task.h>
+#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/task.h>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <string>
 
 using namespace std;
-using namespace ariane::graphql;
+using namespace gqlxy;
 using json = nlohmann::json;
 
 static string readFile(const char* path) {
@@ -22,12 +22,12 @@ static string readFile(const char* path) {
 }
 
 int main() {
-    cout << "=== Ariane — schema.today.graphql sample ===" << endl << endl;
+    cout << "=== GQLXY — schema.today.graphql sample ===" << endl << endl;
 
     unordered_map<string, Resolver> nodes = {
         {"1", Resolver {
             {"id", "1"},
-            {"title", "Ariane to the moon 🚀"},
+            {"title", "GQLXY to the moon 🚀"},
             {"isComplete", false}
         }},
         {"2", Resolver {

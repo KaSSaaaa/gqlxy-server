@@ -1,17 +1,17 @@
 # Subscriptions
 
-Ariane supports GraphQL subscriptions via a built-in `PubSub` system. Subscriptions establish a long-lived event source that maps each published event to a GraphQL response.
+GQLXY supports GraphQL subscriptions via a built-in `PubSub` system. Subscriptions establish a long-lived event source that maps each published event to a GraphQL response.
 
 ## Defining a subscription
 
 Add a `Subscription` type to your SDL and a `SubscriptionResolver` to your resolver map:
 
 ```cpp
-#include <ariane/pubsub.h>
-#include <ariane/schema.h>
-#include <ariane/subscription.h>
+#include <gqlxy/pubsub.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/subscription.h>
 
-using namespace ariane::graphql;
+using namespace gqlxy;
 
 PubSub pubsub;
 
@@ -142,7 +142,7 @@ The stream remains open and continues delivering subsequent events.
 
 ## Single root field enforcement
 
-The GraphQL spec forbids subscription documents with more than one root field (excluding `__typename`). Ariane rejects such documents with a validation error before execution.
+The GraphQL spec forbids subscription documents with more than one root field (excluding `__typename`). GQLXY rejects such documents with a validation error before execution.
 
 ## SubscriptionEventStream
 
@@ -162,7 +162,7 @@ SubscriptionEventStream stream(
 Use `IsSubscription()` to check if a query string is a subscription operation without parsing the full document:
 
 ```cpp
-#include <ariane/subscription.h>
+#include <gqlxy/subscription.h>
 
 if (IsSubscription(query)) {
     auto handle = schema.Subscribe({.query = query});

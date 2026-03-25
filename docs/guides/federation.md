@@ -1,6 +1,6 @@
 # Apollo Federation
 
-Ariane can act as an Apollo Federation subgraph, allowing your schema to participate in a federated supergraph managed by Apollo Router or Apollo Gateway.
+GQLXY can act as an Apollo Federation subgraph, allowing your schema to participate in a federated supergraph managed by Apollo Router or Apollo Gateway.
 
 ## Enabling federation
 
@@ -75,7 +75,7 @@ The `__resolveReference` resolver receives the key fields as `args.Args()` — m
 
 ## Federation protocol queries
 
-With `federation = true`, Ariane automatically handles these queries:
+With `federation = true`, GQLXY automatically handles these queries:
 
 ### `_service { sdl }`
 
@@ -91,7 +91,7 @@ Returns the full annotated SDL string of your subgraph. The gateway uses this fo
 
 ### `_entities(representations: [_Any!]!)`
 
-Resolves entity references. The gateway sends a list of `{ __typename, ...keyFields }` representations, and Ariane dispatches each to the matching `__resolveReference` resolver:
+Resolves entity references. The gateway sends a list of `{ __typename, ...keyFields }` representations, and GQLXY dispatches each to the matching `__resolveReference` resolver:
 
 ```graphql
 query ($reps: [_Any!]!) {
@@ -121,11 +121,11 @@ With variables:
 
 ## Federation v2
 
-Ariane supports the `@link` directive and `@federation` import syntax introduced in Federation v2, allowing the subgraph to declare which federation spec version it targets.
+GQLXY supports the `@link` directive and `@federation` import syntax introduced in Federation v2, allowing the subgraph to declare which federation spec version it targets.
 
 ## Composition validation
 
-At `Schema` construction time, Ariane validates that every type annotated with `@key` has a corresponding `__resolveReference` entity resolver registered. If not, a structured error is emitted.
+At `Schema` construction time, GQLXY validates that every type annotated with `@key` has a corresponding `__resolveReference` entity resolver registered. If not, a structured error is emitted.
 
 ## Supported directives
 

@@ -1,6 +1,6 @@
 # Standalone Server
 
-Ariane includes an opt-in standalone HTTP/WebSocket/SSE server backed by [oatpp](https://oatpp.io/). It serves all four GraphQL transports on a single port and path — similar to Apollo Server's `startStandaloneServer`.
+GQLXY includes an opt-in standalone HTTP/WebSocket/SSE server backed by [oatpp](https://oatpp.io/). It serves all four GraphQL transports on a single port and path — similar to Apollo Server's `startStandaloneServer`.
 
 ## Prerequisites
 
@@ -13,11 +13,11 @@ cmake -DBUILD_STANDALONE_SERVER=ON -DVCPKG_MANIFEST_FEATURES="standalone-server"
 ## Quick start
 
 ```cpp
-#include <ariane/schema.h>
-#include <ariane/server/standalone_server.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/server/standalone_server.h>
 
-using namespace ariane::graphql;
-using namespace ariane::graphql::server;
+using namespace gqlxy;
+using namespace gqlxy::server;
 
 int main() {
     Schema schema({
@@ -104,12 +104,12 @@ Works without WebSocket support (firewalls, proxies).
 The `samples/demo-server/` directory contains a fully wired application with queries, mutations, and subscriptions:
 
 ```cpp
-#include <ariane/pubsub.h>
-#include <ariane/schema.h>
-#include <ariane/server/standalone_server.h>
+#include <gqlxy/pubsub.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/server/standalone_server.h>
 
-using namespace ariane::graphql;
-using namespace ariane::graphql::server;
+using namespace gqlxy;
+using namespace gqlxy::server;
 
 int main() {
     PubSub pubsub;

@@ -1,4 +1,0 @@
-ariane-graphql provides CMake targets:
-
-    find_package(ariane_graphql CONFIG REQUIRED)
-    target_link_libraries(main PRIVATE ariane::graphql)

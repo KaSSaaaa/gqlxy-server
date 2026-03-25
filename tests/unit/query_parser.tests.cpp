@@ -1,9 +1,9 @@
-#include <ariane/internal/ast/OperationDefinition.h>
-#include <ariane/internal/ast/Selection.h>
-#include <ariane/internal/peg/parser/query/ParseOperations.h>
+#include <gqlxy/internal/ast/OperationDefinition.h>
+#include <gqlxy/internal/ast/Selection.h>
+#include <gqlxy/internal/peg/parser/query/ParseOperations.h>
 #include <gtest/gtest.h>
 
-using namespace ariane::graphql::internal;
+using namespace gqlxy::internal;
 
 // ---------------------------------------------------------------------------
 // Helpers
