@@ -1,5 +1,5 @@
-<div style="text-align: center;">
-  <img src="docs/assets/logo/gqlxy.png" style="width:200px" alt="GQLXY" />
+<div align="center">
+  <img src="docs/assets/logo/gqlxy.png" width="200" alt="GQLXY" />
 </div>
 
 An unopinionated C++20 GraphQL server engine.
