@@ -2,7 +2,7 @@ add_executable(introspection main.cpp)
 target_link_libraries(
     introspection
         PRIVATE
-            gqlxy
+            gqlxy::server
             nlohmann_json::nlohmann_json
 )
 target_compile_definitions(introspection PRIVATE

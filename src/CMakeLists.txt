@@ -7,9 +7,9 @@ list(GET _ver_list 0 PROJECT_VERSION_MAJOR)
 
 file(GLOB_RECURSE SOURCES_FILES *.cpp)
 list(FILTER SOURCES_FILES EXCLUDE REGEX ".*/server/.*")
-add_library(gqlxy ${SOURCES_FILES})
-target_compile_features(gqlxy PUBLIC cxx_std_20)
-target_include_directories(gqlxy
+add_library(gqlxy_server ${SOURCES_FILES})
+target_compile_features(gqlxy_server PUBLIC cxx_std_20)
+target_include_directories(gqlxy_server
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>
@@ -17,26 +17,26 @@ target_include_directories(gqlxy
 		${CMAKE_SOURCE_DIR}/src
 )
 target_link_libraries(
-		gqlxy
+		gqlxy_server
 		PUBLIC
 		cppgraphqlgen::graphqlpeg
 		nlohmann_json::nlohmann_json
 )
 
-add_library(gqlxy::gqlxy ALIAS gqlxy)
+add_library(gqlxy::server ALIAS gqlxy_server)
 
 if(BUILD_STANDALONE_SERVER)
     add_subdirectory(gqlxy/server)
 endif()
 
-install(TARGETS gqlxy
-	EXPORT gqlxyTargets
+install(TARGETS gqlxy_server
+	EXPORT gqlxy-serverTargets
 )
 
-install(EXPORT gqlxyTargets
-	FILE gqlxyTargets.cmake
+install(EXPORT gqlxy-serverTargets
+	FILE gqlxy-serverTargets.cmake
 	NAMESPACE gqlxy::
-	DESTINATION lib/cmake/gqlxy
+	DESTINATION lib/cmake/gqlxy-server
 )
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/include)

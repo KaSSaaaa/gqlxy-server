@@ -1,5 +1,5 @@
 {
-  "name": "gqlxy",
+  "name": "gqlxy-server",
   "version": "0.1.0",
   "description": "A C++20 GraphQL execution engine with subscriptions, schema stitching, and Apollo Federation support",
   "homepage": "https://github.com/pierrejacobs/gqlxy",
