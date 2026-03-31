@@ -1,5 +1,7 @@
+#include <better-enums/enum.h>
 #include <gqlxy/ResolverArgs.h>
 #include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
 #include <gtest/gtest.h>
 #include <list>
 #include <optional>
@@ -195,4 +197,66 @@ TEST(Resolvers, SupportsCStringLiteral) {
     ValueResolver resolver2(cstr);
     EXPECT_TRUE(resolver2.Is<string>());
     EXPECT_EQ(resolver2.As<string>(), "World");
+}
+
+BETTER_ENUM(Color, int, Red, Green, Blue)
+
+TEST(Resolvers, BetterEnumIsStoredAsString) {
+    ValueResolver resolver(Color::Red);
+    EXPECT_TRUE(resolver.Is<string>());
+    EXPECT_EQ(resolver.As<string>(), "Red");
+}
+
+TEST(Resolvers, BetterEnumImplicitConversion) {
+    ValueResolver resolver = Color::Green;
+    EXPECT_TRUE(resolver.Is<string>());
+    EXPECT_EQ(resolver.As<string>(), "Green");
+}
+
+TEST(Resolvers, BetterEnumInResolverMap) {
+    Resolver r = {
+        {"color", Color::Blue}
+    };
+    EXPECT_TRUE(r.at("color").Is<string>());
+    EXPECT_EQ(r.at("color").As<string>(), "Blue");
+}
+
+TEST(Resolvers, BetterEnumInOptional) {
+    optional<Color> present = Color::Red;
+    ValueResolver resolver(present);
+    EXPECT_TRUE(resolver.Is<string>());
+    EXPECT_EQ(resolver.As<string>(), "Red");
+
+    optional<Color> absent;
+    ValueResolver nullResolver(absent);
+    EXPECT_TRUE(nullResolver.IsNull());
+}
+
+TEST(Resolvers, BetterEnumInVector) {
+    vector<Color> colors = {
+        Color::Red,
+        Color::Green,
+        Color::Blue
+    };
+    ValueResolver resolver(colors);
+    EXPECT_TRUE(resolver.Is<vector<ValueResolver>>());
+    auto& vec = resolver.As<vector<ValueResolver>>();
+    EXPECT_EQ(vec.size(), 3);
+    EXPECT_EQ(vec[0].As<string>(), "Red");
+    EXPECT_EQ(vec[1].As<string>(), "Green");
+    EXPECT_EQ(vec[2].As<string>(), "Blue");
+}
+
+TEST(Resolvers, BetterEnumSchemaIntegration) {
+    Schema schema({
+        .typeDefs  = "type Query { status: String }",
+        .resolvers = {
+            {"Query", Resolver{
+                {"status", Color::Green}
+            }}
+        },
+    });
+    auto result = schema.Resolve({.query = "{ status }"}).get();
+    ASSERT_TRUE(result.data.has_value());
+    EXPECT_EQ(result.data->at("status"), "Green");
 }
