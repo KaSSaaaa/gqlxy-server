@@ -2,6 +2,11 @@
 title: Directives
 ---
 
+Directives allow you to replicate certain behaviors and modify some parts of your GraphQL schema. There are 2 types of directives : **type system directives** and **executional directives**.
+
+- Type System Directive : allow you to annotate your schema with informations exposed by the server to the user.
+- Executional Directive : allow you to alter the result of the query, by either modifying or erasing the data.
+
 ## Built-in directives
 
 GQLXY supports the standard `@skip` and `@include` directives out of the box. They work on fields, inline fragments, and named fragment spreads:
@@ -20,11 +25,10 @@ Variable substitution is supported in directive arguments.
 
 You can register custom directives in the `SchemaOptions::directives` with a `DirectiveResolver`. It receives the resolver args (with the directive's arguments) and the resolved field value, and returns:
 
-- `std::nullopt` — keep the original value unchanged
-- `std::optional<ValueResolver>(value)` — replace with a new value
-- `std::optional<ValueResolver>(std::monostate{})` — set the field to `null` (redact)
+- `std::nullopt` — omit the field from the response entirely
+- `std::optional<ValueResolver>(value)` — replace with a new value (return `make_optional(v)` to pass through unchanged)
 
-### Transform
+### Example
 
 Given the following schema :
 
@@ -101,11 +105,11 @@ query {
 
 ```cpp
 .directives = {
-    {"redact", [](const ResolverArgs& args, const ValueResolver&) -> std::optional<ValueResolver> {
-        // If redact(if: true), return monostate (null); otherwise keep original
-        return !args.Args().value("if", false)
-            ? std::optional<ValueResolver>(std::monostate{})  // redact to null
-            : std::nullopt;                                   // keep original
+    {"redact", [](const ResolverArgs& args, const ValueResolver& v) -> std::optional<ValueResolver> {
+        // Omit the field when if: true, keep original value when if: false
+        return args.Args().value("if", true)
+            ? std::make_optional(v)      // keep original
+            : std::nullopt;              // omit field
     }}
 }
 ```

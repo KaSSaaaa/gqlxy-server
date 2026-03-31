@@ -633,25 +633,45 @@ TEST_F(ResolveTest, NamedFragmentFilteredByTypeCondition) {
 // ---------------------------------------------------------------------------
 
 TEST_F(ResolveTest, SkipDirectiveWithTrueOmitsField) {
-    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @skip(if: true) b }");
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, R"(
+        {
+            a @skip(if: true)
+            b
+        }
+    )");
     EXPECT_FALSE(data.contains("a"));
     EXPECT_EQ(data["b"], "beta");
 }
 
 TEST_F(ResolveTest, SkipDirectiveWithFalseIncludesField) {
-    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @skip(if: false) b }");
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, R"(
+        {
+            a @skip(if: false)
+            b
+        }
+    )");
     EXPECT_EQ(data["a"], "alpha");
     EXPECT_EQ(data["b"], "beta");
 }
 
 TEST_F(ResolveTest, IncludeDirectiveWithTrueIncludesField) {
-    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @include(if: true) b }");
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, R"(
+        {
+            a @include(if: true)
+            b
+        }
+    )");
     EXPECT_EQ(data["a"], "alpha");
     EXPECT_EQ(data["b"], "beta");
 }
 
 TEST_F(ResolveTest, IncludeDirectiveWithFalseOmitsField) {
-    auto data = resolve(twoFieldSchema, twoFieldResolvers, "{ a @include(if: false) b }");
+    auto data = resolve(twoFieldSchema, twoFieldResolvers, R"(
+        {
+            a @include(if: false)
+            b
+        }
+    )");
     EXPECT_FALSE(data.contains("a"));
     EXPECT_EQ(data["b"], "beta");
 }
@@ -662,7 +682,10 @@ TEST_F(ResolveTest, SkipDirectiveWithVariable) {
         .resolvers = {{"Query", twoFieldResolvers}}
     });
     auto result = schema.Resolve({
-        .query = "query($s: Boolean!) { a @skip(if: $s) b }",
+        .query = R"(query($s: Boolean!) {
+            a @skip(if: $s)
+            b
+        })",
         .variables = {{"s", true}}
     }).get();
     ASSERT_FALSE(result.errors.has_value());
@@ -677,7 +700,10 @@ TEST_F(ResolveTest, IncludeDirectiveWithVariable) {
         .resolvers = {{"Query", twoFieldResolvers}}
     });
     auto result = schema.Resolve({
-        .query = "query($show: Boolean!) { a @include(if: $show) b }",
+        .query = R"(query($show: Boolean!) {
+            a @include(if: $show)
+            b
+        })",
         .variables = {{"show", false}}
     }).get();
     ASSERT_FALSE(result.errors.has_value());

@@ -80,7 +80,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
             [](const string& v) -> Task<nlohmann::json> { co_return v; },
             [](const TypeResolver&) -> Task<nlohmann::json> { co_return nullptr; },
             [](const SubscriptionResolver&) -> Task<nlohmann::json> { co_return nullptr; },
-            [](const ScalarType& s) -> Task<nlohmann::json> { co_return s.serialize(); },
+            [](const ScalarType& s) -> Task<nlohmann::json> { co_return s.Serialize(); },
             [](monostate) -> Task<nlohmann::json> { co_return nullptr; },
             [&](const Resolver& currentResolver) -> Task<nlohmann::json> {
                 auto resolvedType = ResolveType(args.resolvers, currentResolver, typeName);

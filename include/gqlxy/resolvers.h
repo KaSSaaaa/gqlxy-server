@@ -5,7 +5,7 @@
 #include <gqlxy/resolvers/CoroutineResolver.h>
 #include <functional>
 #include <future>
-#include <list>
+#include <ranges>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
@@ -56,7 +56,15 @@ struct ValueResolver : std::variant<int,
     ValueResolver(std::initializer_list<std::pair<const std::string, ValueResolver>>&& init)
         : variant(Resolver(init.begin(), init.end())) {}
     ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector(list)) {}
-    ValueResolver(const std::list<ValueResolver>& list) : variant(std::vector(list.begin(), list.end())) {}
+    template <std::ranges::input_range R>
+        requires std::convertible_to<std::ranges::range_value_t<R>, ValueResolver>
+              && (!std::same_as<std::remove_cvref_t<R>, std::string>)
+              && (!std::same_as<std::remove_cvref_t<R>, Resolver>)
+    ValueResolver(R&& range) : variant(std::vector<ValueResolver>(std::ranges::begin(range), std::ranges::end(range))) {}
+
+    template <typename T>
+        requires requires(T e) { { std::string(e._to_string()) } -> std::convertible_to<std::string>; }
+    ValueResolver(T e) : variant(e._to_string()) {}
 
     template <typename T>
     ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(opt.value()) : variant(std::monostate{})) {}

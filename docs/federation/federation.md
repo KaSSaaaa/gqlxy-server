@@ -1,15 +1,17 @@
-# Apollo Federation
+---
+title: Federation Subgraph
+---
 
-GQLXY can act as an Apollo Federation subgraph, allowing your schema to participate in a federated supergraph managed by Apollo Router or Apollo Gateway.
+GQLXY can act as an Apollo Federation subgraph, participating in a federated supergraph managed by Apollo Router or Apollo Gateway.
 
 ## Enabling federation
 
-Set `federation = true` in your `SchemaOptions`:
+Set `federation = true` in `SchemaOptions`:
 
 ```cpp
 Schema schema({
-    .typeDefs   = typeDefs,
-    .resolvers  = resolvers,
+    .typeDefs = typeDefs,
+    .resolvers = resolvers,
     .federation = true,
 });
 ```
@@ -43,17 +45,10 @@ static const std::string TypeDefs = R"(
 
 ## Entity resolvers
 
-For each `@key` type, provide a `__resolveReference` resolver in that type's resolver map. It receives the entity representation (the key fields) and returns the full entity:
+For each `@key` type, provide a `__resolveReference` resolver. It receives the entity's key fields via `args.Args()` and returns the full entity:
 
 ```cpp
 .resolvers = {
-    {"Query", Resolver{
-        {"user", FunctionResolver{[](const ResolverArgs& r) -> ValueResolver {
-            auto id = r.Args()["id"].get<std::string>();
-            auto it = Users.find(id);
-            return it != Users.end() ? ValueResolver(it->second) : ValueResolver(std::monostate{});
-        }}}
-    }},
     {"User", Resolver{
         {"__resolveReference", FunctionResolver{[](const ResolverArgs& r) -> ValueResolver {
             auto id = r.Args()["id"].get<std::string>();
@@ -71,27 +66,21 @@ For each `@key` type, provide a `__resolveReference` resolver in that type's res
 }
 ```
 
-The `__resolveReference` resolver receives the key fields as `args.Args()` — matching the fields declared in `@key(fields: "...")`.
-
 ## Federation protocol queries
 
-With `federation = true`, GQLXY automatically handles these queries:
+With `federation = true`, GQLXY handles these queries automatically:
 
 ### `_service { sdl }`
 
-Returns the full annotated SDL string of your subgraph. The gateway uses this for schema composition:
+Returns the annotated SDL of your subgraph for schema composition:
 
 ```graphql
-{
-    _service {
-        sdl
-    }
-}
+{ _service { sdl } }
 ```
 
 ### `_entities(representations: [_Any!]!)`
 
-Resolves entity references. The gateway sends a list of `{ __typename, ...keyFields }` representations, and GQLXY dispatches each to the matching `__resolveReference` resolver:
+Resolves entity references sent by the gateway. Each representation is a `{ __typename, ...keyFields }` object:
 
 ```graphql
 query ($reps: [_Any!]!) {
@@ -107,29 +96,15 @@ With variables:
 ```json
 {
   "reps": [
-    {
-      "__typename": "User",
-      "id": "2"
-    },
-    {
-      "__typename": "Product",
-      "sku": "widget-a"
-    }
+    { "__typename": "User", "id": "2" },
+    { "__typename": "Product", "sku": "widget-a" }
   ]
 }
 ```
 
-## Federation v2
-
-GQLXY supports the `@link` directive and `@federation` import syntax introduced in Federation v2, allowing the subgraph to declare which federation spec version it targets.
-
-## Composition validation
-
-At `Schema` construction time, GQLXY validates that every type annotated with `@key` has a corresponding `__resolveReference` entity resolver registered. If not, a structured error is emitted.
-
 ## Supported directives
 
-The following federation SDL directives are parsed and preserved:
+The following directives are supported by GQLXY:
 
 | Directive | Purpose |
 |---|---|
@@ -139,4 +114,8 @@ The following federation SDL directives are parsed and preserved:
 | `@provides(fields: "...")` | Declares fields provided to other subgraphs |
 | `@extends` | Extends a type defined in another subgraph |
 
-These directives survive round-tripping through `_service { sdl }`.
+These directives are preserved in `_service { sdl }` output for composition.
+
+## Federation v2
+
+GQLXY also supports the `@link` directive and Federation v2 import syntax, allowing your subgraph SDL to declare which federation spec version it targets.

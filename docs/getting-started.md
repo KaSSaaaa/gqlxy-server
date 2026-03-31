@@ -197,7 +197,9 @@ using namespace gqlxy::server;
 int main() {
     Schema schema({
         .typeDefs = R"(
-            type Query { hello: String }
+            type Query {
+                hello: String
+            }
         )",
         .resolvers = {
             {"Query", Resolver{
@@ -207,8 +209,7 @@ int main() {
     });
 
     StandaloneServer server({
-        .schema = schema,
-        .port = 4000
+        .schema = schema
     });
 
     std::cout << "🚀 Server ready at " << server.GetUrl() << std::endl;
@@ -216,141 +217,8 @@ int main() {
 }
 ```
 
-<!-- TODO Add a "Execute your first query" -->
+## Executing your first query
 
-[API References](./api-reference.md)
+When using the Standalone Server, GQLXY starts an HTTP server on `http://localhost:4000/graphql`. You can now run typical GraphQL operations on that address through any client you'd like: [Postman](https://www.postman.com/), [Insomnia](https://insomnia.rest/) or any other [service](https://graphql.org/community/tools-and-libraries/?tags=services) you'd like.
 
-<!-- TODO From there everything should be moved elsewhere
-
-## Executing queries
-
-Call `Schema::Resolve()` with a `SchemaResolveArgs` struct and `.get()` the coroutine result:
-
-```cpp
-auto result = schema.Resolve({
-    .query = "query GetUser($id: ID!) { user(id: $id) { name } }",
-    .variables = {{"id", "42"}},       // nlohmann::json object
-    .operationName = "GetUser"         // optional, needed if document has multiple operations
-}).get();
-```
-
-The returned `ResolveResult` contains:
-
-- `data` — `std::optional<nlohmann::json>` with the query result
-- `errors` — `std::optional<FieldErrors>` with any errors that occurred
-
-## Field arguments
-
-Arguments defined in the SDL are automatically parsed and available via `args.Args()`:
-
-```cpp
-Schema schema({
-    .typeDefs = R"(
-        type Query {
-            greet(name: String!): String
-        }
-    )",
-    .resolvers = {
-        {"Query", Resolver{
-            {"greet", FunctionResolver{[](const ResolverArgs& args) -> ValueResolver {
-                return "Hello, " + args.Args()["name"].get<std::string>() + "!";
-            }}}
-        }}
-    }
-});
-
-auto result = schema.Resolve({
-    .query = R"({ greet(name: "GQLXY") })"
-}).get();
-// result.data → { "greet": "Hello, GQLXY!" }
-```
-
-## Variables
-
-Query variables are substituted automatically from `SchemaResolveArgs::variables`:
-
-```cpp
-auto result = schema.Resolve({
-    .query = R"(
-        query GetUser($id: ID!) {
-            user(id: $id) { name email }
-        }
-    )",
-    .variables = {{"id", "42"}}
-}).get();
-```
-
-## Returning null
-
-Use any of these to represent GraphQL `null`:
-
-```cpp
-return std::nullopt;
-return nullptr;
-return std::monostate{};
-```
-
-## Error handling
-
-If a resolver throws, GQLXY catches the exception, sets the field to `null`, and appends a structured error with `message` and `path` to the `errors` array. Other fields continue resolving normally.
-
-```cpp
-{"user", FunctionResolver{[](const ResolverArgs&) -> ValueResolver {
-    throw std::runtime_error("User not found");
-}}}
-```
-
-```json
-{
-  "data": {
-    "user": null
-  },
-  "errors": [
-    {
-      "message": "User not found",
-      "path": [
-        "user"
-      ]
-    }
-  ]
-}
-```
-
-## Context
-
-Pass request-scoped state (auth tokens, DB connections, etc.) via `context`:
-
-```cpp
-struct RequestContext {
-    std::string authToken;
-    DatabaseConnection& db;
-};
-
-RequestContext ctx{.authToken = "Bearer ...", .db = db};
-
-auto result = schema.Resolve({
-    .query = "{ me { name } }",
-    .context = ctx
-}).get();
-```
-
-Access it inside resolvers:
-
-```cpp
-{"me", FunctionResolver{[](const ResolverArgs& args) -> ValueResolver {
-    auto& ctx = args.Context<RequestContext>();
-    auto user = ctx.db.findUserByToken(ctx.authToken);
-    return Resolver{{"name", user.name}};
-}}}
-```
-
-## Next steps
-
-- [Resolvers in depth](guides/resolvers.md) — interfaces, unions, type resolution, aliases, fragments
-- [Subscriptions](guides/subscriptions.md) — real-time event streaming with PubSub
-- [Directives & Custom Scalars](guides/directives-and-scalars.md) — `@skip`, `@include`, custom directives, scalar types
-- [Schema Stitching](guides/schema-stitching.md) — merge multiple schemas
-- [Apollo Federation](guides/federation.md) — act as a federated subgraph
-- [Standalone Server](guides/standalone-server.md) — HTTP, WebSocket, and SSE transport
-- [API Reference](api-reference.md) — full type and function reference
- -->
+For more information, see [API References](./api-reference.md)

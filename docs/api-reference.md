@@ -67,7 +67,7 @@ public:
 ### Type aliases
 
 ```cpp
-using Resolver              = std::unordered_map<std::string, ValueResolver>;
+using Resolver               = std::unordered_map<std::string, ValueResolver>;
 using FunctionResolver       = std::function<ValueResolver(const ResolverArgs&)>;
 using AsyncFunctionResolver  = std::function<std::future<ValueResolver>(const ResolverArgs&)>;
 using CallbackResolver       = std::function<void(const ResolverArgs&, const std::function<void(const ValueResolver&)>&)>;
@@ -128,7 +128,7 @@ struct ValueResolver : std::variant<
 ```cpp
 class ResolverArgs {
 public:
-    const nlohmann::json& Args() const;    // Field arguments
+    const nlohmann::json& Args() const;            // Field arguments
 
     template<typename T> T& Context();             // Mutable context
     template<typename T> const T& Context() const; // Const context
@@ -245,7 +245,7 @@ class ScalarType {
 public:
     ScalarType(const std::function<nlohmann::json()>& serialize);
 
-    nlohmann::json serialize() const;
+    nlohmann::json Serialize() const;
 };
 ```
 

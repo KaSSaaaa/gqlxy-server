@@ -12,7 +12,7 @@ public:
 
     }
 
-    nlohmann::json serialize() const {
+    nlohmann::json Serialize() const {
         return _serialize();
     }
 
