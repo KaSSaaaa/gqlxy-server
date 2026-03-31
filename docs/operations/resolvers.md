@@ -83,7 +83,10 @@ For dynamic data, you can use function resolver types. All receive a `const Reso
 ```cpp
 {"user", CallbackResolver{[](const ResolverArgs& args, const std::function<void(const ValueResolver&)>& cb) {
     fetchUserWithCallback(args.Args()["id"].get<std::string>(), [cb](const User& u) {
-        cb(Resolver{{"id", u.id}, {"name", u.name}});
+        cb(Resolver{
+            {"id", u.id},
+            {"name", u.name}
+        });
     });
 }}}
 ```
@@ -94,8 +97,11 @@ For dynamic data, you can use function resolver types. All receive a `const Reso
 {"users", FunctionResolver{[](const ResolverArgs&) -> ValueResolver {
     auto users = allUsers();
     return users | std::views::transform([](const auto& u) -> ValueResolver {
-        return Resolver{{"id", u.id}, {"name", u.name}};
-    }) | std::ranges::to<std::vector>();
+        return Resolver{
+            {"id", u.id},
+            {"name", u.name}
+        };
+    });
 }}}
 ```
 

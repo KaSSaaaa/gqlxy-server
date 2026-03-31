@@ -59,7 +59,7 @@ string typeDefs = R"(
     type Query {
         hello: String
     }
-)"
+)";
 
 // from a file
 ifstream schemaFile("schema.graphql");
@@ -77,7 +77,7 @@ Resolver resolver = {
     {"Query", Resolver{
         {"hello", "Hello, world!"}
     }}
-}
+};
 ```
 This will tell the engine, when asked for **hello**, return "Hello, world!".
 

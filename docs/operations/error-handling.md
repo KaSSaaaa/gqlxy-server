@@ -117,7 +117,7 @@ Common validation errors:
 
 ## Serializing the response
 
-If you want to transform the `ResolverResult` to JSON, you can use the `Serialize` method to produce the standard GraphQL JSON envelope:
+If you want to transform the `ResolveResult` to JSON, you can use the `Serialize` method to produce the standard GraphQL JSON envelope:
 
 ```cpp
 #include <gqlxy/results.h>

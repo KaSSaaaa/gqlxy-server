@@ -4,7 +4,7 @@ title: Directives
 
 Directives allow you to replicate certain behaviors and modify some parts of your GraphQL schema. There are 2 types of directives : **type system directives** and **executional directives**.
 
-- Type System Directive : allow you to annotate your schema with informations exposed by the server to the user.
+- Type System Directive : allow you to annotate your schema with information exposed by the server to the user.
 - Executional Directive : allow you to alter the result of the query, by either modifying or erasing the data.
 
 ## Built-in directives
@@ -107,9 +107,9 @@ query {
 .directives = {
     {"redact", [](const ResolverArgs& args, const ValueResolver& v) -> std::optional<ValueResolver> {
         // Omit the field when if: true, keep original value when if: false
-        return args.Args().value("if", true)
-            ? std::make_optional(v)      // keep original
-            : std::nullopt;              // omit field
+        return args.Args().value("if", false)
+            ? std::nullopt               // omit field
+            : std::make_optional(v);     // keep original
     }}
 }
 ```
