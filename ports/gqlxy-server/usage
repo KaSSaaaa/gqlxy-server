@@ -1,4 +1,4 @@
-gqlxy provides CMake targets:
+gqlxy-server provides CMake targets:
 
-    find_package(gqlxy CONFIG REQUIRED)
-    target_link_libraries(main PRIVATE gqlxy)
+    find_package(gqlxy-server CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE gqlxy::server)

@@ -1,19 +1,25 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO pierrejacobs/gqlxy
+    REPO KaSSaaaa/gqlxy-server
     REF "v${VERSION}"
-    SHA512 0  # fill in after first release tag
+    SHA512 0
     HEAD_REF main
+)
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        standalone-server BUILD_STANDALONE_SERVER
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DBUILD_TESTING=OFF
+        ${FEATURE_OPTIONS}
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME gqlxy CONFIG_PATH lib/cmake/gqlxy)
+vcpkg_cmake_config_fixup(PACKAGE_NAME gqlxy-server CONFIG_PATH lib/cmake/gqlxy-server)
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
