@@ -44,79 +44,44 @@ cmake --build out/build/arm64-osx-debug
 ctest --test-dir out/build/arm64-osx-debug --output-on-failure
 ```
 
-## Your first schema
+## Building your first schema
 
-A minimal GQLXY schema needs two things: an **SDL type definition** and a **resolver map**.
+A minimal GQLXY schema needs two things: **type definitions** and **resolvers**.
 
-```cpp
-#include <gqlxy/schema.h>
-#include <iostream>
+### Type definitions
+Like every GraphQL server, GQLXY uses a **schema** to define the shape of the data that a client can query.
 
-using namespace gqlxy;
-
-int main() {
-    Schema schema({
-        .typeDefs = R"(
-            type Query {
-                hello: String
-            }
-        )",
-        .resolvers = {
-            {"Query", Resolver{
-                {"hello", "Hello, world!"}
-            }}
-        }
-    });
-
-    auto result = schema.Resolve({
-        .query = "{ hello }"
-    }).get();
-
-    std::cout << result.data.value().dump(2) << std::endl;
-    // Output: { "hello": "Hello, world!" }
-}
-```
-
-`Schema` is constructed with a `SchemaOptions` struct:
-
-| Field | Type | Description |
-|---|---|---|
-| `typeDefs` | `std::string` | GraphQL SDL defining your types |
-| `resolvers` | `Resolver` | Map of type name → field resolvers |
-| `directives` | `Directives` | Custom directive handlers (optional) |
-| `scalars` | `Scalars` | Custom scalar input coercion (optional) |
-| `allowIntrospection` | `bool` | Enable `__schema` / `__type` queries (default: `true`) |
-| `federation` | `bool` | Enable Apollo Federation subgraph protocol (default: `false`) |
-
-## Executing queries
-
-Call `Schema::Resolve()` with a `SchemaResolveArgs` struct and `.get()` the coroutine result:
+You can declare your schema inline in your C++ code or read it from a file.
 
 ```cpp
-auto result = schema.Resolve({
-    .query = "query GetUser($id: ID!) { user(id: $id) { name } }",
-    .variables = {{"id", "42"}},       // nlohmann::json object
-    .operationName = "GetUser"         // optional, needed if document has multiple operations
-}).get();
+// inline
+string typeDefs = R"(
+    type Query {
+        hello: String
+    }
+)";
+
+// from a file
+ifstream schemaFile("schema.graphql");
+ostringstream ss;
+ss << schemaFile.rdbuf();
+string typeDefs = ss.str();
 ```
 
-The returned `ResolveResult` contains:
+### Resolvers
+Resolvers are a way to expose your data to clients. It simply says how your data is going to be fetched, transformed, and sent to your clients. They will simply match your schema.
 
-- `data` — `std::optional<nlohmann::json>` with the query result
-- `errors` — `std::optional<FieldErrors>` with any errors that occurred
-
-Use `Serialize(result)` to get the standard GraphQL JSON response (with both `data` and `errors` keys):
-
+From the type definition above, we can have the following resolver :
 ```cpp
-#include <gqlxy/results.h>
-
-nlohmann::json response = Serialize(result);
-std::cout << response.dump(2) << std::endl;
+Resolver resolver = {
+    {"Query", Resolver{
+        {"hello", "Hello, world!"}
+    }}
+};
 ```
+This will tell the engine, when asked for **hello**, return "Hello, world!".
 
-## Resolver types
-
-GQLXY's `ValueResolver` is a variant that accepts many value types directly:
+There are also other types of resolvers :
 
 ```cpp
 // Static values
@@ -139,7 +104,7 @@ GQLXY's `ValueResolver` is a variant that accepts many value types directly:
 For dynamic resolution, use one of the four function resolver types:
 
 ```cpp
-// Sync — simplest, for CPU-bound work
+// FunctionResolver - returns data synchronously
 {"user", FunctionResolver{[](const ResolverArgs& args) -> ValueResolver {
     auto id = args.Args()["id"].get<std::string>();
     return Resolver{
@@ -148,7 +113,7 @@ For dynamic resolution, use one of the four function resolver types:
     };
 }}}
 
-// Async — returns std::future for I/O-bound work
+// AsyncFunctionResolver — returns std::future
 {"user", AsyncFunctionResolver{[](const ResolverArgs& args) -> std::future<ValueResolver> {
     return std::async(std::launch::async, [&]() -> ValueResolver {
         return Resolver{
@@ -158,7 +123,7 @@ For dynamic resolution, use one of the four function resolver types:
     });
 }}}
 
-// Coroutine — C++20 co_return
+// CoroutineResolver — Using C++20 coroutines
 {"user", CoroutineResolver{[](const ResolverArgs&) -> Task<ValueResolver> {
     co_return Resolver{
         {"id", "1"},
@@ -166,7 +131,7 @@ For dynamic resolution, use one of the four function resolver types:
     };
 }}}
 
-// Callback — for callback-based APIs
+// CallbackResolver — for callback-based APIs
 {"user", CallbackResolver{[](const ResolverArgs&, const std::function<void(const ValueResolver&)>& cb) {
     cb(Resolver{
         {"id", "1"},
@@ -175,117 +140,85 @@ For dynamic resolution, use one of the four function resolver types:
 }}}
 ```
 
-## Field arguments
-
-Arguments defined in the SDL are automatically parsed and available via `args.Args()`:
+### Complete example
 
 ```cpp
-Schema schema({
-    .typeDefs = R"(
-        type Query {
-            greet(name: String!): String
+#include <gqlxy/schema.h>
+#include <iostream>
+
+using namespace gqlxy;
+
+int main() {
+    Schema schema({
+        //Can be read from a file, or inline like this
+        .typeDefs = R"(
+            type Query {
+                hello: String
+            }
+        )",
+        //A map of how your schema is going to be resolved
+        .resolvers = {
+            {"Query", Resolver{
+                {"hello", "Hello, world!"}
+            }}
         }
-    )",
-    .resolvers = {
-        {"Query", Resolver{
-            {"greet", FunctionResolver{[](const ResolverArgs& args) -> ValueResolver {
-                return "Hello, " + args.Args()["name"].get<std::string>() + "!";
-            }}}
-        }}
-    }
-});
+    });
 
-auto result = schema.Resolve({
-    .query = R"({ greet(name: "GQLXY") })"
-}).get();
-// result.data → { "greet": "Hello, GQLXY!" }
-```
+    auto result = schema.Resolve({
+        .query = "{ hello }"
+    }).get();
 
-## Variables
-
-Query variables are substituted automatically from `SchemaResolveArgs::variables`:
-
-```cpp
-auto result = schema.Resolve({
-    .query = R"(
-        query GetUser($id: ID!) {
-            user(id: $id) { name email }
-        }
-    )",
-    .variables = {{"id", "42"}}
-}).get();
-```
-
-## Returning null
-
-Use any of these to represent GraphQL `null`:
-
-```cpp
-return std::nullopt;
-return nullptr;
-return std::monostate{};
-```
-
-## Error handling
-
-If a resolver throws, GQLXY catches the exception, sets the field to `null`, and appends a structured error with `message` and `path` to the `errors` array. Other fields continue resolving normally.
-
-```cpp
-{"user", FunctionResolver{[](const ResolverArgs&) -> ValueResolver {
-    throw std::runtime_error("User not found");
-}}}
-```
-
-```json
-{
-  "data": {
-    "user": null
-  },
-  "errors": [
-    {
-      "message": "User not found",
-      "path": [
-        "user"
-      ]
-    }
-  ]
+    std::cout << result.data.value().dump(2) << std::endl;
+    // Output: { "hello": "Hello, world!" }
 }
 ```
 
-## Context
+# Standalone server
 
-Pass request-scoped state (auth tokens, DB connections, etc.) via `context`:
+GQLXY includes an opt-in standalone HTTP/WebSocket/SSE server backed by [Oat++](https://oatpp.io/). It serves all four GraphQL transports on a single port and path — similar to Apollo Server's `startStandaloneServer`.
 
-```cpp
-struct RequestContext {
-    std::string authToken;
-    DatabaseConnection& db;
-};
+## Prerequisites
 
-RequestContext ctx{.authToken = "Bearer ...", .db = db};
+The standalone server requires the `standalone-server` vcpkg feature. This is enabled by default in the CMake presets. If building manually, add:
 
-auto result = schema.Resolve({
-    .query = "{ me { name } }",
-    .context = ctx
-}).get();
+```bash
+cmake -DBUILD_STANDALONE_SERVER=ON -DVCPKG_MANIFEST_FEATURES="standalone-server" ...
 ```
 
-Access it inside resolvers:
+## Quick start
 
 ```cpp
-{"me", FunctionResolver{[](const ResolverArgs& args) -> ValueResolver {
-    auto& ctx = args.Context<RequestContext>();
-    auto user = ctx.db.findUserByToken(ctx.authToken);
-    return Resolver{{"name", user.name}};
-}}}
+#include <gqlxy/schema.h>
+#include <gqlxy/server/standalone_server.h>
+
+using namespace gqlxy;
+using namespace gqlxy::server;
+
+int main() {
+    Schema schema({
+        .typeDefs = R"(
+            type Query {
+                hello: String
+            }
+        )",
+        .resolvers = {
+            {"Query", Resolver{
+                {"hello", "Hello, world!"}
+            }}
+        }
+    });
+
+    StandaloneServer server({
+        .schema = schema
+    });
+
+    std::cout << "🚀 Server ready at " << server.GetUrl() << std::endl;
+    server.Start(); // blocks
+}
 ```
 
-## Next steps
+## Executing your first query
 
-- [Resolvers in depth](guides/resolvers.md) — interfaces, unions, type resolution, aliases, fragments
-- [Subscriptions](guides/subscriptions.md) — real-time event streaming with PubSub
-- [Directives & Custom Scalars](guides/directives-and-scalars.md) — `@skip`, `@include`, custom directives, scalar types
-- [Schema Stitching](guides/schema-stitching.md) — merge multiple schemas
-- [Apollo Federation](guides/federation.md) — act as a federated subgraph
-- [Standalone Server](guides/standalone-server.md) — HTTP, WebSocket, and SSE transport
-- [API Reference](api-reference.md) — full type and function reference
+When using the Standalone Server, GQLXY starts an HTTP server on `http://localhost:4000/graphql`. You can now run typical GraphQL operations on that address through any client you'd like: [Postman](https://www.postman.com/), [Insomnia](https://insomnia.rest/) or any other [service](https://graphql.org/community/tools-and-libraries/?tags=services) you'd like.
+
+For more information, see [API References](./api-reference.md)

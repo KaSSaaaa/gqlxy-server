@@ -1,13 +1,14 @@
 #pragma once
 
 #include "subscription.h"
-#include <gqlxy/scalars.h>
-#include <gqlxy/resolvers/CoroutineResolver.h>
 #include <functional>
 #include <future>
-#include <list>
+#include <gqlxy/resolvers/CoroutineResolver.h>
+#include <gqlxy/scalars.h>
+#include <gqlxy/utils.h>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -48,18 +49,62 @@ struct ValueResolver : std::variant<int,
                                     SubscriptionResolver,
                                     ScalarType,
                                     std::monostate> {
-    using variant::variant;
+    ValueResolver() = default;
+    ValueResolver(const ValueResolver&) = default;
+    ValueResolver(ValueResolver&&) = default;
+    ValueResolver& operator=(const ValueResolver&) = default;
+    ValueResolver& operator=(ValueResolver&&) = default;
 
-    ValueResolver(std::nullopt_t) : variant(std::monostate{}) {}
-    ValueResolver(std::nullptr_t) : variant(std::monostate{}) {}
-    ValueResolver(const char* str) : variant(str) {}
+    ValueResolver(int v) : variant(v) {}
+    ValueResolver(uint64_t v) : variant(v) {}
+    ValueResolver(double v) : variant(v) {}
+    ValueResolver(float v) : variant(v) {}
+    template <typename T>
+        requires std::same_as<std::remove_cvref_t<T>, bool>
+    ValueResolver(T v) : variant(static_cast<bool>(v)) {}
+    ValueResolver(std::string v) : variant(std::move(v)) {}
+    ValueResolver(Resolver v) : variant(std::move(v)) {}
+    ValueResolver(std::vector<ValueResolver> v) : variant(std::move(v)) {}
+    ValueResolver(FunctionResolver v) : variant(std::move(v)) {}
+    ValueResolver(AsyncFunctionResolver v) : variant(std::move(v)) {}
+    ValueResolver(CoroutineResolver v) : variant(std::move(v)) {}
+    ValueResolver(CallbackResolver v) : variant(std::move(v)) {}
+    ValueResolver(TypeResolver v) : variant(std::move(v)) {}
+    ValueResolver(SubscriptionResolver v) : variant(std::move(v)) {}
+    ValueResolver(ScalarType v) : variant(std::move(v)) {}
+    ValueResolver(std::monostate v) : variant(v) {}
+    ValueResolver(std::nullopt_t) : variant(std::monostate {}) {}
+    ValueResolver(std::nullptr_t) : variant(std::monostate {}) {}
+    ValueResolver(const char* str) : variant(std::string(str)) {}
+
     ValueResolver(std::initializer_list<std::pair<const std::string, ValueResolver>>&& init)
         : variant(Resolver(init.begin(), init.end())) {}
     ValueResolver(std::initializer_list<ValueResolver>&& list) : variant(std::vector(list)) {}
-    ValueResolver(const std::list<ValueResolver>& list) : variant(std::vector(list.begin(), list.end())) {}
+
+    template <std::ranges::input_range R>
+        requires std::convertible_to<std::ranges::range_value_t<R>, ValueResolver> &&
+                 (!std::same_as<std::remove_cvref_t<R>, std::string>) &&
+                 (!std::same_as<std::remove_cvref_t<R>, Resolver>)
+    ValueResolver(R&& range) : variant(std::vector<ValueResolver>(std::ranges::begin(range), std::ranges::end(range))) {}
 
     template <typename T>
-    ValueResolver(const std::optional<T>& opt) : variant(opt.has_value() ? variant(opt.value()) : variant(std::monostate{})) {}
+        requires better_enum_value<T> || better_enum_entry<T>
+    ValueResolver(T e) : variant([&]() -> std::string {
+        if constexpr (better_enum_value<T>) return std::string(e._to_string());
+        else return std::string((+e)._to_string());
+    }()) {}
+
+    template <typename F>
+        requires(!better_enum_value<std::remove_cvref_t<F>>) && (!better_enum_entry<std::remove_cvref_t<F>>) &&
+                (!std::same_as<std::remove_cvref_t<F>, bool>) && (!is_optional<std::remove_cvref_t<F>>) &&
+                (!std::same_as<std::remove_cvref_t<F>, ValueResolver>) &&
+                (!std::ranges::input_range<std::remove_cvref_t<F>>) && requires { variant(std::declval<F>()); }
+    ValueResolver(F&& f) : variant(std::forward<F>(f)) {}
+
+    template <typename T>
+        requires is_optional<std::optional<T>>
+    ValueResolver(const std::optional<T>& opt)
+        : ValueResolver(opt.has_value() ? ValueResolver(opt.value()) : ValueResolver(std::monostate {})) {}
 
     template <typename T>
     bool Is() const {
@@ -84,7 +129,6 @@ struct ValueResolver : std::variant<int,
     bool IsNull() const {
         return Is<std::monostate>();
     }
-
 };
 
 }

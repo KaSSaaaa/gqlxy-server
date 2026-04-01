@@ -69,16 +69,7 @@ See [docs/getting-started.md](docs/getting-started.md).
 
 ## Documentation
 
-| Guide | Description |
-|---|---|
-| [Getting Started](docs/getting-started.md) | Installation, first schema, queries, context |
-| [Resolvers](docs/guides/resolvers.md) | All resolver types, lists, interfaces, unions, mutations |
-| [Subscriptions](docs/guides/subscriptions.md) | PubSub, event streams, cancellation |
-| [Directives & Scalars](docs/guides/directives-and-scalars.md) | Built-in and custom directives, custom scalar types |
-| [Schema Stitching](docs/guides/schema-stitching.md) | Merging multiple schemas |
-| [Apollo Federation](docs/guides/federation.md) | Federation subgraph protocol |
-| [Standalone Server](docs/guides/standalone-server.md) | HTTP, WebSocket, and SSE transport |
-| [API Reference](docs/api-reference.md) | Full type and function reference |
+Check out the full documentation on https://gqlxy.dev
 
 ## License
 
