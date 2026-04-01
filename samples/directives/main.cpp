@@ -45,8 +45,8 @@ int main() {
             }}
         },
         .directives = {
-            {"redact", [](const ResolverArgs& args, const ValueResolver&) -> optional<ValueResolver> {
-                return args.Args().value("if", false) ? nullopt : optional<ValueResolver>(monostate{});
+            {"redact", [](const ResolverArgs& args, const ValueResolver& v) -> optional<ValueResolver> {
+                return args.Args().value("if", false) ? nullopt : make_optional(v);
             }},
             {"uppercase", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
                 return to_string(v.As<string>() | views::transform(::toupper));

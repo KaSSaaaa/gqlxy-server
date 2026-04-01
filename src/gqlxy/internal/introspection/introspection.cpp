@@ -443,20 +443,20 @@ static auto introspectionTypeNames = views::transform(introspectionTypeDefinitio
     return typeDef.name;
 });
 
-static string resolveKind(const string& typeName, const SchemaDefinition& schemaDefinition) {
-    if (schemaDefinition.types.contains(typeName)) return schemaDefinition.types.at(typeName).kind._to_string();
+static TypeKind ResolveKind(const string& typeName, const SchemaDefinition& schemaDefinition) {
+    if (schemaDefinition.types.contains(typeName)) return schemaDefinition.types.at(typeName).kind;
     if (BuiltinScalarsMap.contains(typeName))
-        return "SCALAR";
+        return TypeKind::SCALAR;
 
     auto it = ranges::find_if(introspectionTypeDefinitions, [&](const auto& t) { return t.name == typeName; });
-    if (it != introspectionTypeDefinitions.end()) return it->kind._to_string();
-    return "OBJECT";
+    if (it != introspectionTypeDefinitions.end()) return it->kind;
+    return TypeKind::OBJECT;
 }
 
 Resolver CreateTypeRefResolver(const TypeRef& typeRef, const SchemaDefinition& schemaDefinition) {
     if (typeRef.kind._value == TypeRefKind::NON_NULL || typeRef.kind._value == TypeRefKind::LIST) {
         return Resolver {
-            {"kind", typeRef.kind._to_string()},
+            {"kind", typeRef.kind},
             {"name", nullopt},
             {"ofType", [ofType = typeRef.ofType, &schemaDefinition](const auto&) {
                 return ofType != nullptr ? make_optional(CreateTypeRefResolver(*ofType, schemaDefinition)) : nullopt;
@@ -465,7 +465,7 @@ Resolver CreateTypeRefResolver(const TypeRef& typeRef, const SchemaDefinition& s
     }
 
     return Resolver {
-        {"kind", resolveKind(typeRef.name, schemaDefinition)},
+        {"kind", ResolveKind(typeRef.name, schemaDefinition)},
         {"name", typeRef.name},
         {"ofType", monostate{}}
     };
@@ -519,11 +519,7 @@ Resolver CreateDirectiveResolver(const DirectiveDefinition& directive, const Sch
         {"name", directive.name},
         {"description", directive.description},
         {"isRepeatable", directive.isRepeatable},
-        {"locations", [locations = directive.locations](const auto&) {
-            return to_vector(locations | views::transform([](const auto& location) -> ValueResolver {
-                return location._to_string();
-            }));
-        }},
+        {"locations", directive.locations},
         {"args", [args = directive.args, &schemaDefinition](const auto&) {
             return to_vector(args | views::transform([&schemaDefinition](const auto& a) -> ValueResolver {
                 return CreateInputValueResolver(a, schemaDefinition);
@@ -550,7 +546,7 @@ static optional<string> SpecifiedByURL(const TypeDefinition& type) {
 
 Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& schemaDefinition) {
     return Resolver {
-        {"kind", string(type.kind._to_string())},
+        {"kind", type.kind},
         {"name", type.name},
         {"description", type.description},
         {"specifiedByURL", SpecifiedByURL(type)},

@@ -33,7 +33,7 @@ jobs:
             triplet: arm64-osx
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install GCC 14 (Linux)
         if: runner.os == 'Linux'
@@ -67,7 +67,7 @@ jobs:
         run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
 
       - name: Cache vcpkg packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/out/build/${{ matrix.preset }}/vcpkg_installed
           key: vcpkg-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}
@@ -94,7 +94,7 @@ jobs:
 
       - name: Upload coverage report
         if: matrix.preset == 'x64-linux-debug'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
