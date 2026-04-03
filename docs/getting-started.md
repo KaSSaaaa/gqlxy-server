@@ -5,23 +5,82 @@ This guide walks you through installing GQLXY, building your first GraphQL schem
 ## Prerequisites
 
 - A C++20-capable compiler (Clang 14+, GCC 12+, MSVC 19.30+)
-- [CMake](https://cmake.org/) 3.10+
+- [CMake](https://cmake.org/) 3.14+
 - [Ninja](https://ninja-build.org/) (recommended) or another CMake generator
-
-Dependencies are managed automatically via [vcpkg](https://vcpkg.io/) — no manual installation required.
 
 ## Installation
 
-### Clone the repository
+<!--
+### vcpkg (recommended)
+
+GQLXY is available as a vcpkg port.
+
+Add GQLXY to your `vcpkg.json`:
+
+```json
+{
+  "dependencies": ["gqlxy-server"]
+}
+```
+
+Then wire it up in CMake:
+
+```cmake
+find_package(gqlxy-server CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE gqlxy::server)
+```
+
+Configure with the vcpkg toolchain:
+
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build
+```
+
+#### Standalone server feature
+
+The opt-in HTTP/WebSocket/SSE server is behind the `standalone-server` feature:
+
+```json
+{
+  "dependencies": [
+    { "name": "gqlxy-server", "features": ["standalone-server"] }
+  ]
+}
+```
+-->
+
+### FetchContent
+
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(my_graphql_app)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    gqlxy
+    GIT_REPOSITORY https://github.com/KaSSaaaa/gqlxy.git
+    GIT_TAG        main
+)
+
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(gqlxy)
+
+add_executable(my_app main.cpp)
+target_link_libraries(my_app PRIVATE gqlxy::server)
+```
+
+GQLXY's dependencies (`cppgraphqlgen`, `nlohmann-json`, `pegtl`, `better-enums`) must be available on your system or via vcpkg. Configure with the vcpkg toolchain as shown above.
+
+### From source
 
 ```bash
 git clone https://github.com/KaSSaaaa/gqlxy.git
 cd gqlxy
 ```
 
-### Build
-
-GQLXY ships CMake presets for every major platform. Pick the one that matches your system:
+GQLXY ships CMake presets for every major platform:
 
 | Platform | Preset |
 |---|---|
@@ -36,9 +95,12 @@ cmake --preset arm64-osx-debug
 
 # Build
 cmake --build out/build/arm64-osx-debug
+
+# Install system-wide
+cmake --install out/build/arm64-osx-debug
 ```
 
-### Run the tests
+To run the tests:
 
 ```bash
 ctest --test-dir out/build/arm64-osx-debug --output-on-failure

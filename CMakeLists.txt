@@ -44,6 +44,9 @@ if(ENABLE_VCPKG_BOOTSTRAP)
 endif()
 
 project(gqlxy-server VERSION 0.1.0 LANGUAGES C CXX)
+
+set(GQLXY_SERVER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "gqlxy-server source root" FORCE)
+
 include(CTest)
 enable_testing()
 
@@ -70,7 +73,7 @@ endif()
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-	${CMAKE_SOURCE_DIR}/cmake/gqlxy-server-config.cmake.in
+	${GQLXY_SERVER_ROOT}/cmake/gqlxy-server-config.cmake.in
 	${CMAKE_CURRENT_BINARY_DIR}/gqlxy-serverConfig.cmake
 	INSTALL_DESTINATION lib/cmake/gqlxy-server
 )

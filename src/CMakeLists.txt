@@ -11,10 +11,10 @@ add_library(gqlxy_server ${SOURCES_FILES})
 target_compile_features(gqlxy_server PUBLIC cxx_std_20)
 target_include_directories(gqlxy_server
 	PUBLIC
-		$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+		$<BUILD_INTERFACE:${GQLXY_SERVER_ROOT}/include>
 		$<INSTALL_INTERFACE:include>
 	PRIVATE
-		${CMAKE_SOURCE_DIR}/src
+		${GQLXY_SERVER_ROOT}/src
 )
 target_link_libraries(
 		gqlxy_server
@@ -40,5 +40,5 @@ install(EXPORT gqlxy-serverTargets
 )
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/include)
-	install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/ DESTINATION include FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
+	install(DIRECTORY ${GQLXY_SERVER_ROOT}/include/ DESTINATION include FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 endif()

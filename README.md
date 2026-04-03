@@ -65,7 +65,18 @@ It doesn't care how your server works underneath. Want sync lambdas? `std::futur
 
 ## Getting started
 
-See [docs/getting-started.md](docs/getting-started.md).
+Add GQLXY to your `vcpkg.json`:
+
+```json
+{ "dependencies": ["gqlxy-server"] }
+```
+
+```cmake
+find_package(gqlxy-server CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE gqlxy::server)
+```
+
+See [docs/getting-started.md](docs/getting-started.md) for FetchContent and from-source options.
 
 ## Documentation
 
