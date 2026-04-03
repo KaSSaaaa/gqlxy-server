@@ -8,7 +8,7 @@ target_include_directories(gqlxy_standalone_server
         $<BUILD_INTERFACE:${GQLXY_SERVER_ROOT}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
+        ${GQLXY_SERVER_ROOT}/src
 )
 target_link_libraries(gqlxy_standalone_server
     PUBLIC

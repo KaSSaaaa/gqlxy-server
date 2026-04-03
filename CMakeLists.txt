@@ -34,7 +34,7 @@ if(ENABLE_VCPKG_BOOTSTRAP)
 
 		execute_process(COMMAND "${SYSTEM_VCPKG_EXECUTABLE}" "install" "--triplet" "${VCPKG_TRIPLET}" "--x-install-root" "${CMAKE_BINARY_DIR}/vcpkg_installed" ${_vcpkg_feature_args}
 			RESULT_VARIABLE _vcpkg_install_rc
-			WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+			WORKING_DIRECTORY "${GQLXY_SERVER_ROOT}")
 	else()
 		message(FATAL_ERROR "vcpkg not found in PATH. Install vcpkg and ensure it's on PATH, or run configure with ENABLE_VCPKG_BOOTSTRAP=OFF to skip bootstrap.")
 	endif()

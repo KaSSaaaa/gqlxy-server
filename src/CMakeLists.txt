@@ -39,6 +39,6 @@ install(EXPORT gqlxy-serverTargets
 	DESTINATION lib/cmake/gqlxy-server
 )
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/include)
+if(EXISTS ${GQLXY_SERVER_ROOT}/include)
 	install(DIRECTORY ${GQLXY_SERVER_ROOT}/include/ DESTINATION include FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 endif()
