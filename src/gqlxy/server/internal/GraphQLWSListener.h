@@ -46,6 +46,7 @@ private:
     void HandleSubscribe(const WebSocket& socket, const std::string& id, const nlohmann::json& payload);
     void HandleStart(const WebSocket& socket, const std::string& id, const nlohmann::json& payload);
     void StartSubscription(const WebSocket& socket, const std::string& id, const nlohmann::json& payload, const std::string& type);
+    void StartHandle(SubscriptionHandle&& h, const WebSocket& socket, const std::string& id, const std::string& type);
     void HandleComplete(const std::string& id);
 
     void sendText(const WebSocket& socket, const nlohmann::json& msg);

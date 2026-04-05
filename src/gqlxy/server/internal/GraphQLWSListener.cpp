@@ -62,11 +62,16 @@ void GraphQLWSListener::StartSubscription(const WebSocket& socket,
                                           const string& type) {
     if (id.empty()) return;
 
-    auto handle = make_shared<SubscriptionHandle>(_schema.Subscribe({
-        .query = payload.value("query", ""),
+    auto query = payload.value("query", "");
+    SchemaResolveArgs args = {
+        .query = query,
         .variables = payload.contains("variables") ? payload["variables"] : json::object(),
         .operationName = payload.value("operationName", "")
-    }));
+    };
+
+    auto handle = make_shared<SubscriptionHandle>(IsSubscription(query)
+        ? _schema.Subscribe(args)
+        : SubscriptionHandle::SingleShot(_schema.Resolve(args).get()));
 
     auto future = async(launch::async, [this, id, handle, &socket, type]() mutable {
         while (auto result = handle->Next()) {
