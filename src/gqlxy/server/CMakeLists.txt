@@ -15,6 +15,7 @@ target_link_libraries(gqlxy_standalone_server
         gqlxy_server
         oatpp::oatpp
         oatpp::oatpp-websocket
+        oatpp::oatpp-openssl
 )
 
 add_library(gqlxy::standalone_server ALIAS gqlxy_standalone_server)

@@ -73,7 +73,7 @@ void GraphQLWSListener::StartSubscription(const WebSocket& socket,
         ? _schema.Subscribe(args)
         : SubscriptionHandle::SingleShot(_schema.Resolve(args).get()));
 
-    auto future = async(launch::async, [this, id, handle, &socket, type]() mutable {
+    auto future = async(launch::async, [this, id, handle, &socket, type]() {
         while (auto result = handle->Next()) {
             if (!result.has_value()) break;
             sendText(socket, {
