@@ -1,11 +1,11 @@
 #include <gqlxy/server/standalone_server.h>
 
-#include "internal/AppComponents.h"
-
+#include <future>
 #include <gqlxy/server/internal/GraphQLController.h>
 #include <gqlxy/server/internal/GraphQLWSListener.h>
-#include <future>
 #include <mutex>
+#include <oatpp-openssl/Config.hpp>
+#include <oatpp-openssl/server/ConnectionProvider.hpp>
 #include <oatpp-websocket/ConnectionHandler.hpp>
 #include <oatpp/core/base/Environment.hpp>
 #include <oatpp/network/Server.hpp>
@@ -19,6 +19,8 @@ using namespace std;
 using namespace gqlxy::server::internal;
 using namespace oatpp::web::server;
 using namespace oatpp::base;
+using namespace oatpp::network;
+using namespace oatpp::openssl;
 
 namespace gqlxy::server {
 
@@ -33,6 +35,15 @@ static void initEnv() {
 static void destroyEnv() {
     lock_guard lock(g_envMutex);
     if (--g_envRefCount == 0) Environment::destroy();
+}
+
+static shared_ptr<ServerConnectionProvider> CreateConnectionProvider(const StandaloneServerOptions& options) {
+    Address address {options.host, options.port, Address::IP_4};
+    if (options.tls) {
+        return oatpp::openssl::server::ConnectionProvider::createShared(
+            Config::createDefaultServerConfigShared(options.tls->certPath, options.tls->keyPath), address);
+    }
+    return tcp::server::ConnectionProvider::createShared(address);
 }
 
 StandaloneServer::StandaloneServer(const StandaloneServerOptions& options) : _options(options) {
@@ -58,10 +69,9 @@ void StandaloneServer::Start() {
     router->addController(graphqlController);
 
     auto httpConnectionHandler = HttpConnectionHandler::createShared(router);
-    auto connectionProvider = oatpp::network::tcp::server::ConnectionProvider::createShared(
-        {_options.host, _options.port, oatpp::network::Address::IP_4});
+    auto connectionProvider = CreateConnectionProvider(_options);
 
-    _server = oatpp::network::Server::createShared(connectionProvider, httpConnectionHandler);
+    _server = Server::createShared(connectionProvider, httpConnectionHandler);
     _running.store(true);
     _server->run([this]() { return _running.load(); });
     connectionProvider->stop();
@@ -80,7 +90,7 @@ void StandaloneServer::Stop() {
 }
 
 string StandaloneServer::GetUrl() const {
-    return format("http://{}:{}{}", _options.host, _options.port, _options.path);
+    return format("{}://{}:{}{}", _options.tls ? "https" : "http", _options.host, _options.port, _options.path);
 }
 
 }

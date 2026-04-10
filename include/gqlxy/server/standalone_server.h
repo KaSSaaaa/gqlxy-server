@@ -2,6 +2,7 @@
 
 #include <gqlxy/schema.h>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace oatpp::network {
@@ -10,11 +11,17 @@ class Server;
 
 namespace gqlxy::server {
 
+struct TlsOptions {
+    std::string certPath;
+    std::string keyPath;
+};
+
 struct StandaloneServerOptions {
     Schema& schema;
     std::string host = "0.0.0.0";
     uint16_t port = 4000;
     std::string path = "/graphql";
+    std::optional<TlsOptions> tls;
 };
 
 class StandaloneServer {

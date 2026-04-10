@@ -57,11 +57,26 @@ server.StartAsync();
 server.Stop();
 ```
 
+## HTTPS and WSS
+
+To enable HTTPS/WSS, simply pass TlsOptions in the optional `TlsOptions`
+
+```cpp
+StandaloneServer server({
+    .schema = schema,
+    .port = 443,
+    .tls = TlsOptions{
+        .certPath = "/path/to/cert.pem",
+        .keyPath  = "/path/to/key.pem"
+    }
+});
+```
+
 ## Supported transports
 
 All transports are served on the same path (default `/graphql`).
 
-### HTTP
+### HTTP / HTTPS
 
 - `POST /graphql` — `application/json` body with `query`, `variables`, `operationName`
 - `GET /graphql?query=...` — for read-only operations
