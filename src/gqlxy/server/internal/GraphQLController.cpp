@@ -21,8 +21,8 @@ using namespace oatpp::parser::json::mapping;
 using namespace nlohmann;
 
 GraphQLController::GraphQLController(const string& path,
-                                     shared_ptr<ObjectMapper>& objectMapper,
-                                     shared_ptr<ConnectionHandler>& wsHandler,
+                                     const shared_ptr<ObjectMapper>& objectMapper,
+                                     const shared_ptr<ConnectionHandler>& wsHandler,
                                      Schema& schema)
     : ApiController(objectMapper),
       _path(path),

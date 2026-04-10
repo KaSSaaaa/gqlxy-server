@@ -1,12 +1,9 @@
 #include "ResolveArguments.h"
 
 #include <gqlxy/internal/ast/Selection.h>
+#include <gqlxy/internal/engine/resolve.h>
 #include <gqlxy/internal/introspection/types/SchemaDefinition.h>
-
-#include <algorithm>
-
-#include "gqlxy/internal/utils/ranges.h"
-#include "resolve.h"
+#include <gqlxy/internal/utils/ranges.h>
 
 using namespace std;
 using namespace nlohmann;

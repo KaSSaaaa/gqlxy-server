@@ -1,4 +1,5 @@
 #include "resolve.h"
+#include <format>
 #include <gqlxy/ResolverArgs.h>
 #include <gqlxy/internal/ast/Fragments.h>
 #include <gqlxy/internal/ast/Selection.h>
@@ -15,7 +16,6 @@
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <gqlxy/task.h>
-#include <format>
 #include <nlohmann/json.hpp>
 
 using namespace std;

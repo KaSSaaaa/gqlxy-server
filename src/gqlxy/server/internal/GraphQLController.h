@@ -4,7 +4,6 @@
 #include <gqlxy/server/internal/RequestBody.h>
 #include <oatpp-websocket/ConnectionHandler.hpp>
 #include <oatpp/core/macro/codegen.hpp>
-#include <oatpp/core/macro/component.hpp>
 #include <oatpp/web/server/api/ApiController.hpp>
 
 #include OATPP_CODEGEN_BEGIN(ApiController)
@@ -17,9 +16,9 @@ class GraphQLController : public oatpp::web::server::api::ApiController {
 public:
     explicit GraphQLController(
         const std::string& path,
-        OATPP_COMPONENT(std::shared_ptr<ObjectMapper>, objectMapper),
-        OATPP_COMPONENT(std::shared_ptr<oatpp::websocket::ConnectionHandler>, wsHandler),
-        OATPP_COMPONENT(Schema, schema));
+        const std::shared_ptr<ObjectMapper>& objectMapper,
+        const std::shared_ptr<oatpp::websocket::ConnectionHandler>& wsHandler,
+        Schema& schema);
 
     ENDPOINT_INFO(GQLGet) {
         info->addConsumes<Object<RequestBody>>("application/json");
