@@ -56,14 +56,11 @@ StandaloneServer::~StandaloneServer() {
 }
 
 void StandaloneServer::Start() {
-    OATPP_CREATE_COMPONENT(shared_ptr<oatpp::data::mapping::ObjectMapper>, objectMapper)(
-        oatpp::parser::json::mapping::ObjectMapper::createShared());
-    OATPP_CREATE_COMPONENT(shared_ptr<oatpp::websocket::ConnectionHandler>, wsHandler)(
-        oatpp::websocket::ConnectionHandler::createShared());
-    wsHandler.getObject()->setSocketInstanceListener(make_shared<GraphQLWSInstanceListener>(_options.schema));
-    OATPP_CREATE_COMPONENT(Schema, schema)(_options.schema);
+    auto objectMapper = oatpp::parser::json::mapping::ObjectMapper::createShared();
+    auto wsHandler = oatpp::websocket::ConnectionHandler::createShared();
+    wsHandler->setSocketInstanceListener(make_shared<GraphQLWSInstanceListener>(_options.schema));
 
-    auto graphqlController = make_shared<GraphQLController>(_options.path);
+    auto graphqlController = make_shared<GraphQLController>(_options.path, objectMapper, wsHandler, _options.schema);
 
     auto router = HttpRouter::createShared();
     router->addController(graphqlController);
