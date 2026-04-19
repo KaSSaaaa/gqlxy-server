@@ -123,7 +123,7 @@ struct ValueResolver : std::variant<
 
 ## ResolverArgs
 
-**Header:** `<gqlxy/ResolverArgs.h>`
+**Header:** `<gqlxy/resolver_args.h>`
 
 ```cpp
 class ResolverArgs {

@@ -1,8 +1,8 @@
 #include <gqlxy/server/standalone_server.h>
 
 #include <future>
-#include <gqlxy/server/internal/GraphQLController.h>
-#include <gqlxy/server/internal/GraphQLWSListener.h>
+#include <gqlxy/server/internal/graphql_controller.h>
+#include <gqlxy/server/internal/graphql_ws_listener.h>
 #include <mutex>
 #include <oatpp-openssl/Config.hpp>
 #include <oatpp-openssl/server/ConnectionProvider.hpp>

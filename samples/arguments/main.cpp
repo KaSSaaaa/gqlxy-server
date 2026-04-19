@@ -1,9 +1,9 @@
-#include <gqlxy/ResolverArgs.h>
+#include <fstream>
+#include <future>
+#include <gqlxy/resolver_args.h>
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <gqlxy/task.h>
-#include <fstream>
-#include <future>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <sstream>

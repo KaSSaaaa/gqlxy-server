@@ -1,9 +1,10 @@
 #include <gqlxy/results.h>
-#include <gqlxy/internal/utils/ranges.h>
+
+#include <gqlxy/utils/ranges.h>
 
 using namespace std;
 using namespace nlohmann;
-using namespace gqlxy::internal;
+using namespace gqlxy::utils;
 
 namespace gqlxy {
 

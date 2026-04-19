@@ -1,20 +1,22 @@
 #include <gqlxy/schema.h>
 
-#include <gqlxy/ResolverArgs.h>
-#include <gqlxy/internal/MergeResolvers.h>
-#include <gqlxy/internal/ast/BuildInScalars.h>
+#include <format>
+#include <gqlxy/internal/ast/build_in_scalars.h>
 #include <gqlxy/internal/engine/federation.h>
 #include <gqlxy/internal/engine/resolve.h>
 #include <gqlxy/internal/engine/subscribe.h>
 #include <gqlxy/internal/introspection/introspection.h>
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
+#include <gqlxy/internal/merge_resolvers.h>
 #include <gqlxy/internal/peg/parser/schema_parser.h>
-#include <gqlxy/internal/utils/expect.h>
-#include <format>
+#include <gqlxy/resolver_args.h>
+#include <gqlxy/utils/expect.h>
 
 using namespace std;
 using namespace gqlxy;
 using namespace gqlxy::internal;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 using namespace graphql;
 
 static const Directives builtinDirectives = {

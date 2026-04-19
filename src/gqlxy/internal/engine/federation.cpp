@@ -1,17 +1,20 @@
 #include "federation.h"
-#include <gqlxy/ResolverArgs.h>
-#include <gqlxy/internal/MergeResolvers.h>
-#include <gqlxy/internal/introspection/types/DirectiveDefinition.h>
-#include <gqlxy/internal/introspection/types/FieldDefinition.h>
-#include <gqlxy/internal/introspection/types/InputValueDefinition.h>
-#include <gqlxy/internal/introspection/types/TypeDefinition.h>
-#include <gqlxy/internal/introspection/types/TypeRef.h>
-#include <gqlxy/internal/utils/expect.h>
-#include <gqlxy/internal/utils/optional.h>
-#include <gqlxy/internal/utils/ranges.h>
+
 #include <format>
+#include <gqlxy/internal/introspection/types/directive_definition.h>
+#include <gqlxy/internal/introspection/types/field_definition.h>
+#include <gqlxy/internal/introspection/types/input_value_definition.h>
+#include <gqlxy/internal/introspection/types/type_definition.h>
+#include <gqlxy/internal/merge_resolvers.h>
+#include <gqlxy/parser/introspection/types/type_ref.h>
+#include <gqlxy/resolver_args.h>
+#include <gqlxy/utils/expect.h>
+#include <gqlxy/utils/optional.h>
+#include <gqlxy/utils/ranges.h>
 
 using namespace std;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 
 namespace gqlxy::internal {
 

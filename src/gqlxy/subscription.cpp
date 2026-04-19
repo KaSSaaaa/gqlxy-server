@@ -1,11 +1,11 @@
 #include <gqlxy/subscription.h>
 
-#include <gqlxy/internal/peg/parser/query/ParseDocument.h>
-#include <gqlxy/internal/ast/Selection.h>
+#include <gqlxy/parser/peg/parser/query/parse_document.h>
 #include <gqlxy/resolvers.h>
 
 using namespace std;
 using namespace gqlxy;
+using namespace gqlxy::parser;
 
 //SubscriptionEventStream
 
@@ -52,8 +52,8 @@ SubscriptionHandle SubscriptionHandle::SingleShot(const ResolveResult& result) {
 namespace gqlxy {
 
 bool IsSubscription(const string& query) {
-    return ranges::any_of(internal::ParseDocument(query).operations, [](const internal::OperationDefinition& operation) {
-        return operation.type._value == internal::OperationType::SUBSCRIPTION;
+    return ranges::any_of(ParseDocument(query).operations, [](const OperationDefinition& operation) {
+        return operation.type._value == OperationType::SUBSCRIPTION;
     });
 }
 

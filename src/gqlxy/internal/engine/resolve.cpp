@@ -1,24 +1,26 @@
 #include "resolve.h"
 #include <format>
-#include <gqlxy/ResolverArgs.h>
-#include <gqlxy/internal/ast/Fragments.h>
-#include <gqlxy/internal/ast/Selection.h>
-#include <gqlxy/internal/engine/ApplyDirectives.h>
-#include <gqlxy/internal/engine/ResolveArguments.h>
-#include <gqlxy/internal/engine/Validate.h>
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
-#include <gqlxy/internal/json/JsonToValueResolver.h>
-#include <gqlxy/internal/peg/parser/query/ParseDocument.h>
-#include <gqlxy/internal/utils/expect.h>
-#include <gqlxy/internal/utils/optional.h>
-#include <gqlxy/internal/utils/ranges.h>
-#include <gqlxy/internal/utils/visit.h>
+#include <gqlxy/internal/ast/selection.h>
+#include <gqlxy/internal/engine/apply_directives.h>
+#include <gqlxy/internal/engine/resolve_arguments.h>
+#include <gqlxy/internal/engine/validate.h>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
+#include <gqlxy/internal/json/json_to_value_resolver.h>
+#include <gqlxy/parser/ast/fragments.h>
+#include <gqlxy/parser/peg/parser/query/parse_document.h>
+#include <gqlxy/resolver_args.h>
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <gqlxy/task.h>
+#include <gqlxy/utils/expect.h>
+#include <gqlxy/utils/optional.h>
+#include <gqlxy/utils/ranges.h>
+#include <gqlxy/utils/visit.h>
 #include <nlohmann/json.hpp>
 
 using namespace std;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 
 namespace gqlxy::internal {
 

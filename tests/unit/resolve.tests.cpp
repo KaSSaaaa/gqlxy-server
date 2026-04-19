@@ -1,9 +1,9 @@
-#include <gqlxy/ResolverArgs.h>
-#include <gqlxy/internal/utils/ranges.h>
+#include <future>
+#include <gqlxy/resolver_args.h>
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <gqlxy/task.h>
-#include <future>
+#include <gqlxy/utils/ranges.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -790,7 +790,7 @@ TEST_F(ResolveTest, DirectiveCanTransformFieldValue) {
         .resolvers = {{"Query", Resolver{{"greeting", "hello"}}}},
         .directives = {
             {"uppercase", [](const ResolverArgs&, const ValueResolver& v) -> optional<ValueResolver> {
-                return internal::to_string(get<string>(v) | views::transform(::toupper));
+                return utils::to_string(get<string>(v) | views::transform(::toupper));
             }}
         }
     });

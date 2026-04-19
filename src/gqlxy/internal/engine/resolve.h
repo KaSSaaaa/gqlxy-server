@@ -1,11 +1,11 @@
 #pragma once
 
-#include <gqlxy/internal/ast/Fragments.h>
-#include <gqlxy/internal/ast/SelectionSet.h>
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
+#include <any>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
+#include <gqlxy/parser/ast/fragments.h>
+#include <gqlxy/parser/ast/selection_set.h>
 #include <gqlxy/schema.h>
 #include <gqlxy/task.h>
-#include <any>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
@@ -39,9 +39,9 @@ std::optional<std::string> FieldTypeName(const std::optional<std::string>& typeN
 Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                              const ValueResolver& resolver,
                              const ResolverArgs& resolverArgs,
-                             const std::optional<SelectionSet>& selectionSet,
+                             const std::optional<parser::SelectionSet>& selectionSet,
                              const std::optional<std::string>& typeName,
-                             const Fragments& fragments,
+                             const parser::Fragments& fragments,
                              FieldErrors& fieldErrors,
                              const Path& path);
 

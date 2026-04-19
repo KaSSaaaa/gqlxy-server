@@ -1,5 +1,5 @@
 #include <gqlxy/internal/introspection/introspection.h>
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
 #include <gqlxy/internal/peg/parser/schema_parser.h>
 #include <gqlxy/schema.h>
 #include <gtest/gtest.h>
@@ -7,6 +7,8 @@
 using namespace std;
 using namespace gqlxy;
 using namespace gqlxy::internal;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 
 class IntrospectionTests : public testing::Test {
 protected:

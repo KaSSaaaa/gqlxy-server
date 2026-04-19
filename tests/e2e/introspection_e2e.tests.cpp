@@ -1,10 +1,9 @@
-#include <gqlxy/schema.h>
-#include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
-
-#include <gqlxy/internal/utils/expect.h>
 #include <format>
 #include <fstream>
+#include <gqlxy/schema.h>
+#include <gqlxy/utils/expect.h>
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 using namespace std;
@@ -13,7 +12,7 @@ using json = nlohmann::json;
 
 static string readFile(const char* path) {
     ifstream f(path);
-    internal::expect(!!f, format("Cannot open file: {}", path));
+    utils::expect(!!f, format("Cannot open file: {}", path));
     ostringstream ss;
     ss << f.rdbuf();
     return ss.str();

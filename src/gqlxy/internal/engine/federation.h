@@ -1,7 +1,7 @@
 #pragma once
 
 #include <gqlxy/resolvers.h>
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
 
 #include <memory>
 #include <string>
