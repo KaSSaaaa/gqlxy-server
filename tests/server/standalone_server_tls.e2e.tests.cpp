@@ -1,20 +1,18 @@
-#include <gqlxy/ResolverArgs.h>
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/server/standalone_server.h>
-#include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
-
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <future>
+#include <gqlxy/resolver_args.h>
+#include <gqlxy/resolvers.h>
+#include <gqlxy/schema.h>
+#include <gqlxy/server/standalone_server.h>
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <thread>
 
 using namespace std;

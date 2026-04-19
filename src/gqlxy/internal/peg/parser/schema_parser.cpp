@@ -1,15 +1,18 @@
 #include "schema_parser.h"
 
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
-#include <gqlxy/internal/peg/first_node.h>
-#include <gqlxy/internal/peg/is_type.h>
-#include <gqlxy/internal/peg/parser/query/ParseDirectives.h>
-#include <gqlxy/internal/peg/parser/query/ParseValue.h>
-#include <gqlxy/internal/utils/optional.h>
-#include <gqlxy/internal/utils/ranges.h>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
+#include <gqlxy/parser/peg/parser/parse_type_ref.h>
+#include <gqlxy/parser/peg/parser/query/parse_directives.h>
+#include <gqlxy/parser/peg/parser/query/parse_value.h>
+#include <gqlxy/utils/optional.h>
+#include <gqlxy/utils/peg/first_node.h>
+#include <gqlxy/utils/peg/is_type.h>
+#include <gqlxy/utils/ranges.h>
 #include <graphqlservice/internal/Grammar.h>
 
 using namespace std;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 using namespace graphql;
 using namespace tao;
 
@@ -29,35 +32,6 @@ static optional<string> ParseDescription(const peg::ast_node& node) {
     return and_then(first_node<peg::description>(node), [](const auto& desc) {
         return ParseQuotedString(*desc);
     });
-}
-
-static TypeRef ParseTypeRefFromNode(const peg::ast_node& node) {
-    return or_else(and_then(first_node<peg::nonnull_type>(node), [](const auto& nnt) {
-        return make_optional(ParseTypeRef(*nnt));
-    }), [&node]() {
-        return or_else(and_then(first_node<peg::list_type>(node), [](const auto& lt) {
-            return make_optional(ParseTypeRef(*lt));
-        }), [&node]() {
-            return and_then(first_node<peg::named_type>(node), [](const auto& nt) {
-                return make_optional(ParseTypeRef(*nt));
-            });
-        });
-    }).value();
-}
-
-TypeRef ParseTypeRef(const peg::ast_node& node) {
-    if (node.is_type<peg::named_type>())
-        return TypeRef::Named(node.string());
-
-    auto it = ranges::find_if(node.children, [](const auto& child) {
-        return is_type<peg::nonnull_type, peg::list_type, peg::named_type>(*child);
-    });
-
-    if (it == node.children.end())
-        return TypeRef::Named("Unknown");
-
-    auto innerType = ParseTypeRef(*it->get());
-    return node.is_type<peg::nonnull_type>() ? TypeRef::NonNull(innerType) : TypeRef::List(innerType);
 }
 
 static optional<string> ParseDefaultValue(const peg::ast_node& node) {

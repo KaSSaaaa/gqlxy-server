@@ -1,4 +1,4 @@
-#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/resolver_args.h>
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <gtest/gtest.h>

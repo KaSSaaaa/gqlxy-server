@@ -1,14 +1,16 @@
 #include "introspection.h"
-#include <gqlxy/internal/ast/BuildInScalars.h>
-#include <gqlxy/internal/introspection/types/SchemaDefinition.h>
-#include <gqlxy/internal/utils/optional.h>
-#include <gqlxy/internal/utils/ranges.h>
+#include <gqlxy/internal/ast/build_in_scalars.h>
+#include <gqlxy/internal/introspection/types/schema_definition.h>
+#include <gqlxy/utils/optional.h>
+#include <gqlxy/utils/ranges.h>
 #include <iostream>
 #include <ranges>
 
 using namespace std;
 using namespace gqlxy::internal;
 using namespace gqlxy;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 using namespace nlohmann;
 
 namespace gqlxy::internal {

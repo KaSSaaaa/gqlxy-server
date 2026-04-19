@@ -3,7 +3,7 @@
 #include "subscription.h"
 #include <functional>
 #include <future>
-#include <gqlxy/resolvers/CoroutineResolver.h>
+#include <gqlxy/resolvers/coroutine_resolver.h>
 #include <gqlxy/scalars.h>
 #include <gqlxy/utils.h>
 #include <nlohmann/json.hpp>

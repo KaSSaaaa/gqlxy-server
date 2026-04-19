@@ -1,4 +1,4 @@
-#include <gqlxy/internal/Channel.h>
+#include <gqlxy/internal/channel.h>
 #include <gqlxy/pubsub.h>
 #include <mutex>
 #include <unordered_map>

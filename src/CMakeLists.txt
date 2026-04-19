@@ -19,8 +19,8 @@ target_include_directories(gqlxy_server
 target_link_libraries(
 		gqlxy_server
 		PUBLIC
-		cppgraphqlgen::graphqlpeg
 		nlohmann_json::nlohmann_json
+		gqlxy::core
 )
 
 add_library(gqlxy::server ALIAS gqlxy_server)

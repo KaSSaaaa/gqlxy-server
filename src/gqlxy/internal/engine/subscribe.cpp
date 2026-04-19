@@ -1,15 +1,17 @@
 #include "subscribe.h"
 
-#include <gqlxy/ResolverArgs.h>
-#include <gqlxy/internal/ast/Selection.h>
-#include <gqlxy/internal/engine/ResolveArguments.h>
-#include <gqlxy/internal/peg/parser/query/ParseDocument.h>
-#include <gqlxy/internal/utils/ranges.h>
-#include <gqlxy/internal/utils/visit.h>
 #include <format>
+#include <gqlxy/resolver_args.h>
+#include <gqlxy/internal/ast/selection.h>
+#include <gqlxy/internal/engine/resolve_arguments.h>
+#include <gqlxy/parser/peg/parser/query/parse_document.h>
+#include <gqlxy/utils/ranges.h>
+#include <gqlxy/utils/visit.h>
 #include <nlohmann/json.hpp>
 
 using namespace std;
+using namespace gqlxy::parser;
+using namespace gqlxy::utils;
 
 namespace gqlxy::internal {
 

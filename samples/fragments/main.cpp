@@ -1,4 +1,4 @@
-#include <gqlxy/ResolverArgs.h>
+#include <gqlxy/resolver_args.h>
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <iostream>
@@ -7,7 +7,6 @@
 
 using namespace std;
 using namespace gqlxy;
-using json = nlohmann::json;
 
 static void printResult(const string& label, const ResolveResult& result) {
     cout << "--- " << label << " ---" << endl;

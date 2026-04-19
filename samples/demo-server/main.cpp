@@ -1,15 +1,13 @@
+#include <atomic>
+#include <fstream>
 #include <gqlxy/pubsub.h>
+#include <gqlxy/resolver_args.h>
 #include <gqlxy/resolvers.h>
 #include <gqlxy/schema.h>
 #include <gqlxy/server/standalone_server.h>
-#include <gqlxy/ResolverArgs.h>
-#include <nlohmann/json.hpp>
-
-#include <atomic>
-#include <fstream>
 #include <iostream>
-#include <map>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
 #include <vector>
