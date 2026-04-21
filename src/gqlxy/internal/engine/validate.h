@@ -7,6 +7,6 @@
 namespace gqlxy::internal {
 struct SchemaDefinition;
 
-FieldErrors ValidateDocument(const parser::Document& document, const SchemaDefinition& schema, const nlohmann::json& variables);
+GraphQLErrors ValidateDocument(const parser::Document& document, const SchemaDefinition& schema, const nlohmann::json& variables);
 
 }

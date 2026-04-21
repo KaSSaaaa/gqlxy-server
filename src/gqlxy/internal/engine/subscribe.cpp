@@ -10,14 +10,15 @@
 #include <nlohmann/json.hpp>
 
 using namespace std;
+using namespace gqlxy;
 using namespace gqlxy::parser;
 using namespace gqlxy::utils;
 
 namespace gqlxy::internal {
 
 static SubscriptionHandle CreateErrorHandle(const string& message) {
-    return SubscriptionHandle::SingleShot(ResolveResult {
-        .errors = FieldErrors{
+    return SubscriptionHandle::SingleShot(GraphQLResponse {
+        .errors = GraphQLErrors{
             {.message = message}
         }
     });
@@ -31,14 +32,14 @@ struct SubscribeState {
     Fragments fragments;
 };
 
-static optional<ResolveResult> ResolveEvent(SubscribeState& s) {
+static optional<GraphQLResponse> ResolveEvent(SubscribeState& s) {
     auto event = s.stream.Next();
     if (event.IsNull()) return nullopt;
 
     const auto outputKey = s.rootField.alias.value_or(s.rootField.name);
 
     try {
-        FieldErrors fieldErrors;
+        GraphQLErrors errors;
         auto resolvedJson = Resolve(
             s.queryArgs,
             event,
@@ -46,18 +47,18 @@ static optional<ResolveResult> ResolveEvent(SubscribeState& s) {
             s.rootField.selectionSet,
             s.fieldTypeName,
             s.fragments,
-            fieldErrors,
+            errors,
             {outputKey}).get();
 
-        return ResolveResult{
+        return GraphQLResponse{
             .data = nlohmann::json {
                 {outputKey, resolvedJson}
             },
-            .errors = fieldErrors.empty() ? optional<FieldErrors>{} : fieldErrors
+            .errors = errors.empty() ? optional<GraphQLErrors>{} : errors
         };
     } catch (const exception& e) {
-        return ResolveResult{
-            .errors = FieldErrors{
+        return GraphQLResponse{
+            .errors = GraphQLErrors{
                 {.message = e.what(), .path = {outputKey}}
             }
         };

@@ -43,7 +43,7 @@ public:
     explicit Schema(const SchemaOptions& options);
 
     template <typename TContext = std::monostate>
-    Task<ResolveResult> Resolve(const SchemaResolveArgs<TContext>& args) const;
+    Task<GraphQLResponse> Resolve(const SchemaResolveArgs<TContext>& args) const;
 
     template <typename TContext = std::monostate>
     SubscriptionHandle Subscribe(const SchemaResolveArgs<TContext>& args) const;
@@ -54,7 +54,7 @@ public:
 
 | Method | Description |
 |---|---|
-| `Resolve(args)` | Execute a query/mutation. Returns `Task<ResolveResult>` — call `.get()` for synchronous use. |
+| `Resolve(args)` | Execute a query/mutation. Returns `Task<GraphQLResponse>` — call `.get()` for synchronous use. |
 | `Subscribe(args)` | Start a subscription. Returns a `SubscriptionHandle`. |
 | `Stitch(other)` | Merge another schema into this one. Returns a new `Schema`. |
 
@@ -147,20 +147,20 @@ struct ErrorLocation {
     int column;
 };
 
-struct FieldError {
+struct GraphQLError {
     std::string message;
     std::vector<std::string> path;
     std::vector<ErrorLocation> locations;
 };
 
-using FieldErrors = std::vector<FieldError>;
+using GraphQLErrors = std::vector<GraphQLError>;
 
-struct ResolveResult {
+struct GraphQLResponse {
     std::optional<nlohmann::json> data;
-    std::optional<FieldErrors> errors;
+    std::optional<GraphQLErrors> errors;
 };
 
-nlohmann::json Serialize(const ResolveResult& result);
+nlohmann::json Serialize(const GraphQLResponse& result);
 ```
 
 `Serialize()` produces the standard GraphQL JSON response shape with `data` and `errors` keys.
@@ -194,7 +194,7 @@ Returned by `Schema::Subscribe()`:
 ```cpp
 class SubscriptionHandle {
 public:
-    std::optional<ResolveResult> Next();  // Get next resolved event (blocks)
+    std::optional<GraphQLResponse> Next();  // Get next resolved event (blocks)
     void Cancel();                        // Cancel subscription
 
     // Move-only

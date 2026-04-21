@@ -12,7 +12,7 @@ using json = nlohmann::json;
 // Helpers
 // ---------------------------------------------------------------------------
 
-static ResolveResult resolve(const string& typeDefs,
+static GraphQLResponse resolve(const string& typeDefs,
                              const Resolver& resolvers,
                              const string& query,
                              const json& variables = json::object()) {
@@ -21,7 +21,7 @@ static ResolveResult resolve(const string& typeDefs,
          .get();
 }
 
-static bool hasError(const ResolveResult& result, const string& substring) {
+static bool hasError(const GraphQLResponse& result, const string& substring) {
     if (!result.errors)
         return false;
     for (const auto& e : *result.errors)
@@ -30,7 +30,7 @@ static bool hasError(const ResolveResult& result, const string& substring) {
     return false;
 }
 
-static bool noErrors(const ResolveResult& result) {
+static bool noErrors(const GraphQLResponse& result) {
     return !result.errors.has_value() || result.errors->empty();
 }
 

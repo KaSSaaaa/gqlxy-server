@@ -63,14 +63,14 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                              const optional<SelectionSet>& selectionSet,
                              const optional<string>& typeName,
                              const Fragments& fragments,
-                             FieldErrors& fieldErrors,
+                             GraphQLErrors& GraphQLErrors,
                              const Path& path) {
     auto resolve = [&](const ValueResolver& currentResolver,
                        const optional<SelectionSet>& fieldSelectionSet,
                        const optional<string>& fieldTypeName,
                        const Path& fieldPath,
                        const ResolverArgs& currentArgs = ResolverArgs()) {
-        return Resolve(args, currentResolver, currentArgs, fieldSelectionSet, fieldTypeName, fragments, fieldErrors, fieldPath);
+        return Resolve(args, currentResolver, currentArgs, fieldSelectionSet, fieldTypeName, fragments, GraphQLErrors, fieldPath);
     };
     co_return co_await visit(
         overloaded{
@@ -126,7 +126,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                             : resolvedJson;
                     } catch (const exception& e) {
                         obj[outputKey] = nullptr;
-                        fieldErrors.push_back(FieldError {
+                        GraphQLErrors.push_back(GraphQLError {
                             .message = e.what(),
                             .path = childPath
                         });
@@ -143,7 +143,7 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                         arr.push_back(co_await resolve(vec[i], selectionSet, typeName, elemPath));
                     } catch (const exception& e) {
                         arr.push_back(nullptr);
-                        fieldErrors.push_back({.message = e.what(), .path = elemPath});
+                        GraphQLErrors.push_back({.message = e.what(), .path = elemPath});
                     }
                 }
                 co_return arr;
@@ -178,29 +178,29 @@ static optional<string> OperationTypeName(int type) {
 	);
 }
 
-Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
+Task<GraphQLResponse> ResolveOperations(const ResolveQueryArgs& args) {
 	try {
 		auto document = ParseDocument(args.query);
 
 		if (document.operations.empty() && args.query.find_first_not_of(" \t\n\r") != string::npos)
-			co_return ResolveResult{.errors = FieldErrors{{.message = "Failed to parse query"}}};
+			co_return GraphQLResponse{.errors = GraphQLErrors{{.message = "Failed to parse query"}}};
 
 		if (!args.operationName.empty()) {
 			auto op = find_optional(document.operations, [&](const auto& op) {
 				return op.name.has_value() && *op.name == args.operationName;
 			});
 			if (!op)
-				co_return ResolveResult{.errors = FieldErrors{{.message = "Unknown operation: " + args.operationName}}};
+				co_return GraphQLResponse{.errors = GraphQLErrors{{.message = "Unknown operation: " + args.operationName}}};
 			document.operations = {*op};
 		} else if (document.operations.size() > 1) {
-			co_return ResolveResult{.errors = FieldErrors{{.message = "Must provide operationName when document contains multiple operations"}}};
+			co_return GraphQLResponse{.errors = GraphQLErrors{{.message = "Must provide operationName when document contains multiple operations"}}};
 		}
 
 		if (auto errs = ValidateDocument(document, args.schemaDefinition, args.variables); !errs.empty())
-			co_return ResolveResult{.errors = errs};
+			co_return GraphQLResponse{.errors = errs};
 
 		nlohmann::json data = nlohmann::json::object();
-		FieldErrors fieldErrors;
+		GraphQLErrors errors;
 
 		for (const auto& [op, resolverType] : document.operations | views::transform([](const auto& op) {
 		    return make_pair(op, OperationTypeName(op.type._value));
@@ -222,7 +222,7 @@ Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
 						 field.selectionSet,
 						 FieldTypeName(resolverType, field.name, args.schemaDefinition).value_or(*resolverType),
 						 document.fragments,
-						 fieldErrors,
+						 errors,
 						 {outputKey});
 
 					if (field.directives.empty()) {
@@ -234,12 +234,12 @@ Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
 						       afterDirectives.has_value()) {
 						data[outputKey] = !(afterDirectives->IsNull())
 							? co_await Resolve(args, *afterDirectives, ResolverArgs(), nullopt, "",
-							                   document.fragments, fieldErrors, {outputKey})
+							                   document.fragments, errors, {outputKey})
 							: resolvedJson;
 					}
 				} catch (const exception& e) {
 					data[outputKey] = nullptr;
-					fieldErrors.push_back(FieldError{
+					errors.push_back(GraphQLError{
 					    .message = e.what(),
 					    .path = {outputKey}
 					});
@@ -247,13 +247,13 @@ Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args) {
 			}
 		}
 
-		co_return ResolveResult{
+		co_return GraphQLResponse{
 			.data = data,
-			.errors = fieldErrors.empty() ? optional<FieldErrors>{} : fieldErrors
+			.errors = errors.empty() ? optional<GraphQLErrors>{} : errors
 		};
 	} catch (const exception& e) {
-        co_return ResolveResult {
-            .errors = FieldErrors {
+        co_return GraphQLResponse {
+            .errors = GraphQLErrors {
                 { .message = e.what()}
             }
         };

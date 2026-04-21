@@ -2,7 +2,7 @@
 title: Subscriptions
 ---
 
-GQLXY supports GraphQL subscriptions via its built-in `PubSub` system. Each published event flows through the full field-execution pipeline and produces a standard `ResolveResult`.
+GQLXY supports GraphQL subscriptions via its built-in `PubSub` system. Each published event flows through the full field-execution pipeline and produces a standard `GraphQLResponse`.
 
 ## Defining a subscription
 
@@ -71,7 +71,7 @@ while (auto result = handle.Next()) {
 }
 ```
 
-Calling `Next()` blocks until the next event arrives and returns `std::optional<ResolveResult>`. Call `Cancel()` to close the stream and unblock any pending `Next()`:
+Calling `Next()` blocks until the next event arrives and returns `std::optional<GraphQLResponse>`. Call `Cancel()` to close the stream and unblock any pending `Next()`:
 
 ```cpp
 handle.Cancel();

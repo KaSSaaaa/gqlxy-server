@@ -436,7 +436,7 @@ TEST_F(ResolveTest, MultipleAliasesForSameField) {
 // Per-field error handling (#11)
 // ---------------------------------------------------------------------------
 
-TEST_F(ResolveTest, FieldErrorSetsNullAndRecordsError) {
+TEST_F(ResolveTest, GraphQLErrorsetsNullAndRecordsError) {
     Schema schema({
         .typeDefs  = "type Query { boom: String }",
         .resolvers = {{"Query", Resolver{
@@ -454,7 +454,7 @@ TEST_F(ResolveTest, FieldErrorSetsNullAndRecordsError) {
     EXPECT_EQ(errors[0].path[0], "boom");
 }
 
-TEST_F(ResolveTest, OtherFieldsResolveAfterFieldError) {
+TEST_F(ResolveTest, OtherFieldsResolveAfterGraphQLError) {
     Schema schema({
         .typeDefs  = "type Query { boom: String ok: String }",
         .resolvers = {{"Query", Resolver{
@@ -472,7 +472,7 @@ TEST_F(ResolveTest, OtherFieldsResolveAfterFieldError) {
     EXPECT_EQ(data["ok"], "fine");
 }
 
-TEST_F(ResolveTest, NestedFieldErrorIncludesFullPath) {
+TEST_F(ResolveTest, NestedGraphQLErrorIncludesFullPath) {
     Schema schema({
         .typeDefs  = "type Query { user: User } type User { name: String }",
         .resolvers = {{"Query", Resolver{

@@ -146,7 +146,7 @@ void Schema::AddToResolver(const string& resolverName, const Resolver& resolver)
     MergeResolvers(_resolvers.at(resolverName).As<Resolver>(), resolver);
 }
 
-Task<ResolveResult> Schema::ResolveInternal(const string& query,
+Task<GraphQLResponse> Schema::ResolveInternal(const string& query,
                                             const nlohmann::json& variables,
                                             const string& operationName,
                                             any context) const {

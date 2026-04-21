@@ -26,11 +26,11 @@ bool SubscriptionEventStream::Valid() const {
 
 //SubscriptionHandle
 
-SubscriptionHandle::SubscriptionHandle(function<optional<ResolveResult>()> next,
+SubscriptionHandle::SubscriptionHandle(function<optional<GraphQLResponse>()> next,
                                        function<void()> cancel)
     : _next(std::move(next)), _cancel(std::move(cancel)) {}
 
-optional<ResolveResult> SubscriptionHandle::Next() {
+optional<GraphQLResponse> SubscriptionHandle::Next() {
     return _next();
 }
 
@@ -38,10 +38,10 @@ void SubscriptionHandle::Cancel() {
     _cancel();
 }
 
-SubscriptionHandle SubscriptionHandle::SingleShot(const ResolveResult& result) {
+SubscriptionHandle SubscriptionHandle::SingleShot(const GraphQLResponse& result) {
     auto fired = make_shared<bool>(false);
     return SubscriptionHandle {
-        [fired, result]() -> optional<ResolveResult> {
+        [fired, result]() -> optional<GraphQLResponse> {
             if (*fired) return nullopt;
             *fired = true;
             return result;

@@ -42,7 +42,7 @@ Implement the GraphQL subscription execution path as defined by the June 2018+ s
 |---|---------|-------|
 | 20 | **`SubscriptionResolver` type** | A new resolver variant backed by an async generator / coroutine that yields `ValueResolver` events. Distinct from the four existing function resolver types. |
 | 21 | **`Subscribe()` execution path** | `Schema::Subscribe(SchemaResolveArgs)` returns an event stream handle. Walks the selection set once, identifies the single root subscription field, and hooks into its `SubscriptionResolver`. |
-| 22 | **Source stream → response stream mapping** | Each event emitted by the source stream is run through the normal field-execution logic (argument binding, nested resolvers, error handling) to produce a `ResolveResult`. |
+| 22 | **Source stream → response stream mapping** | Each event emitted by the source stream is run through the normal field-execution logic (argument binding, nested resolvers, error handling) to produce a `GraphQLResponse`. |
 | 23 | **Single root field enforcement** | The spec forbids subscription documents with more than one root field (excluding `__typename`). Reject such documents with a structured validation error before execution. |
 | 24 | **Subscription error handling** | Errors during event execution must not terminate the stream; they should produce a standard `{"data": null, "errors": [...]}` payload for that event, leaving the stream open. |
 | 25 | **Unsubscribe / stream cancellation** | The stream handle returned by `Subscribe()` must support cancellation. Cancellation propagates to the `SubscriptionResolver` coroutine to release resources. |

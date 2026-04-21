@@ -156,4 +156,4 @@ int main() {
 }
 ```
 
-The `Resolve()` returns a `Task<ResolveResult>`. To get the result, call `.get()` to block for the result.
+The `Resolve()` returns a `Task<GraphQLResponse>`. To get the result, call `.get()` to block for the result.

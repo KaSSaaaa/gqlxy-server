@@ -23,7 +23,7 @@ private:
 
 class SubscriptionHandle {
 public:
-    SubscriptionHandle(std::function<std::optional<ResolveResult>()> next,
+    SubscriptionHandle(std::function<std::optional<GraphQLResponse>()> next,
                        std::function<void()> cancel);
 
     SubscriptionHandle(const SubscriptionHandle&) = delete;
@@ -31,13 +31,13 @@ public:
     SubscriptionHandle(SubscriptionHandle&&) noexcept = default;
     SubscriptionHandle& operator=(SubscriptionHandle&&) noexcept = default;
 
-    std::optional<ResolveResult> Next();
+    std::optional<GraphQLResponse> Next();
     void Cancel();
 
-    static SubscriptionHandle SingleShot(const ResolveResult& result);
+    static SubscriptionHandle SingleShot(const GraphQLResponse& result);
 
 private:
-    std::function<std::optional<ResolveResult>()> _next;
+    std::function<std::optional<GraphQLResponse>()> _next;
     std::function<void()> _cancel;
 };
 

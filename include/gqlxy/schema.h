@@ -37,7 +37,7 @@ public:
     explicit Schema(const SchemaOptions& options);
 
     template <typename TContext = std::monostate>
-    Task<ResolveResult> Resolve(const SchemaResolveArgs<TContext>& args) const {
+    Task<GraphQLResponse> Resolve(const SchemaResolveArgs<TContext>& args) const {
         return ResolveInternal(args.query, args.variables, args.operationName, args.context);
     }
 
@@ -59,7 +59,7 @@ private:
            const Directives& directives,
            const Scalars& scalars);
 
-    Task<ResolveResult> ResolveInternal(const std::string& query,
+    Task<GraphQLResponse> ResolveInternal(const std::string& query,
                                         const nlohmann::json& variables,
                                         const std::string& operationName,
                                         std::any context) const;

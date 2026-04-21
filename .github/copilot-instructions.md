@@ -32,7 +32,7 @@ Dependencies are managed via vcpkg (bootstrapped automatically by the `arm64-deb
 
 GQLXY is a header-only-style C++20 GraphQL library. The public surface lives entirely in `include/gqlxy/`:
 
-- **`schema.h`** — `Schema` is the entry point. Constructed with `SchemaOptions` (SDL `typeDefs` string + `Resolver` map + `allowIntrospection` flag). `Schema::Resolve(SchemaResolveArgs)` returns `Task<ResolveResult>` (a coroutine); call `.get()` for synchronous use.
+- **`schema.h`** — `Schema` is the entry point. Constructed with `SchemaOptions` (SDL `typeDefs` string + `Resolver` map + `allowIntrospection` flag). `Schema::Resolve(SchemaResolveArgs)` returns `Task<GraphQLResponse>` (a coroutine); call `.get()` for synchronous use.
 - **`resolvers.h`** — `ValueResolver` is a recursive `std::variant` accepting scalars (`int`, `uint64_t`, `double`, `float`, `bool`, `std::string`), nested `Resolver` (alias for `unordered_map<string, ValueResolver>`), `vector<ValueResolver>`, and four async resolver function types (see below). Also defines `ResolverArgs`.
 - **`task.h`** — `Task<T>`: a minimal C++20 coroutine type used internally and exposed for `CoroutineResolver`.
 

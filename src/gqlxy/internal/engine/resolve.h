@@ -42,9 +42,9 @@ Task<nlohmann::json> Resolve(const ResolveQueryArgs& args,
                              const std::optional<parser::SelectionSet>& selectionSet,
                              const std::optional<std::string>& typeName,
                              const parser::Fragments& fragments,
-                             FieldErrors& fieldErrors,
+                             GraphQLErrors& GraphQLErrors,
                              const Path& path);
 
-Task<ResolveResult> ResolveOperations(const ResolveQueryArgs& args);
+Task<GraphQLResponse> ResolveOperations(const ResolveQueryArgs& args);
 
 }

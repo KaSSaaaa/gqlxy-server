@@ -61,35 +61,35 @@ static vector<string> CollectVarRefs(const SelectionSet& ss, const Fragments& fr
     });
 }
 
-static FieldErrors ValidateVariableDeclarations(const OperationDefinition& op, const Fragments& frags) {
+static GraphQLErrors ValidateVariableDeclarations(const OperationDefinition& op, const Fragments& frags) {
     auto declared = to_unordered_set(op.variableDefinitions | views::transform([](const auto& variableDefinition) {
         return variableDefinition.name;
     }));
 
     return to_vector(to_unordered_set(CollectVarRefs(op.selectionSet, frags))
         | views::filter([&](const auto& ref) { return !declared.contains(ref);})
-        | views::transform([](const auto& ref) -> FieldError {
+        | views::transform([](const auto& ref) -> GraphQLError {
             return {
                 .message = format(R"(Variable "${}" is not declared in the operation)", ref)
             };
         }));
 }
 
-static FieldErrors ValidateVariableValues(const OperationDefinition& op, const json& variables) {
+static GraphQLErrors ValidateVariableValues(const OperationDefinition& op, const json& variables) {
     return to_vector(op.variableDefinitions
         | views::filter([&](const auto& variableDefinition) {
             return variableDefinition.type.kind._value == TypeRefKind::NON_NULL &&
                    !variableDefinition.defaultValue.has_value() &&
                    (!variables.contains(variableDefinition.name) || variables[variableDefinition.name].is_null());
         })
-        | views::transform([](const auto& variableDefinition) -> FieldError {
+        | views::transform([](const auto& variableDefinition) -> GraphQLError {
             return {
                 .message = format(R"(Variable "${}" of type "{}" was not provided)", variableDefinition.name, variableDefinition.type.ToString())
             };
         }));
 }
 
-static FieldErrors ValidateSelections(const vector<Selection>& selections,
+static GraphQLErrors ValidateSelections(const vector<Selection>& selections,
                                       const string& typeName,
                                       const SchemaDefinition& schema,
                                       const vector<VariableDefinition>& varDefs,
@@ -97,13 +97,13 @@ static FieldErrors ValidateSelections(const vector<Selection>& selections,
                                       const Fragments& frags,
                                       vector<string> path);
 
-static FieldErrors ValidateFieldArgumentsExist(const Field& field,
+static GraphQLErrors ValidateFieldArgumentsExist(const Field& field,
                                                const FieldDefinition& fieldDefinition,
                                                const string& typeName,
                                                const vector<string>& fieldPath) {
     return to_vector(field.arguments | views::filter([&](const auto& arg) {
         return ranges::all_of(fieldDefinition.args, [&](const auto& a) { return a.name != arg.name; });
-    }) | views::transform([&](const auto& arg) -> FieldError{
+    }) | views::transform([&](const auto& arg) -> GraphQLError{
         return {
             .message = format(R"(Unknown argument "{}" on field "{}.{}")", arg.name, typeName, field.name),
             .path = fieldPath
@@ -120,7 +120,7 @@ static bool HasDefaultValue(const vector<VariableDefinition>& variableDefinition
     return var && var->defaultValue.has_value();
 }
 
-static FieldErrors ValidateRequiredFieldArguments(const Field& field,
+static GraphQLErrors ValidateRequiredFieldArguments(const Field& field,
                                                   const FieldDefinition& fieldDefinition,
                                                   const vector<VariableDefinition>& variableDefinitions,
                                                   const json& variables,
@@ -129,11 +129,11 @@ static FieldErrors ValidateRequiredFieldArguments(const Field& field,
     auto requiredArgs = fieldDefinition.args | views::filter([](const auto& arg) {
         return arg.type.kind._value == TypeRefKind::NON_NULL && !arg.defaultValue.has_value();
     });
-    return flat_map(requiredArgs, [&](const auto& arg) -> FieldErrors {
+    return flat_map(requiredArgs, [&](const auto& arg) -> GraphQLErrors {
         auto fieldArg = find_optional(field.arguments, [&](const auto& a) { return a.name == arg.name; });
         if (!fieldArg.has_value())
             return {
-                FieldError {
+                GraphQLError {
                     .message = format(R"(Argument "{}" of field "{}.{}" is required)", arg.name, typeName, field.name),
                     .path = fieldPath
                 }
@@ -142,7 +142,7 @@ static FieldErrors ValidateRequiredFieldArguments(const Field& field,
             auto variable = fieldArg->Reference();
             if (!IsVariableProvided(variables, variable) && !HasDefaultValue(variableDefinitions, variable))
                 return {
-                    FieldError {
+                    GraphQLError {
                         .message = format(R"(Argument "{}" of field "{}.{}" is required, but variable "{}" was not provided)", arg.name, typeName, field.name, fieldArg->value),
                         .path = fieldPath
                     }
@@ -152,7 +152,7 @@ static FieldErrors ValidateRequiredFieldArguments(const Field& field,
     });
 }
 
-static FieldErrors ValidateField(const Field& field,
+static GraphQLErrors ValidateField(const Field& field,
                                  const string& typeName,
                                  const SchemaDefinition& schema,
                                  const vector<VariableDefinition>& varDefs,
@@ -172,7 +172,7 @@ static FieldErrors ValidateField(const Field& field,
     auto fieldDefinition = find_optional(typeDef.fields, [&](const auto& f) { return f.name == field.name; });
     if (!fieldDefinition.has_value())
         return {
-            FieldError {
+            GraphQLError {
                 .message = format(R"(Cannot query field "{}" on type "{}")", field.name, typeName),
                 .path = fieldPath
             }
@@ -186,27 +186,27 @@ static FieldErrors ValidateField(const Field& field,
     );
 }
 
-static FieldErrors ValidateSelections(const vector<Selection>& selections,
+static GraphQLErrors ValidateSelections(const vector<Selection>& selections,
                                       const string& typeName,
                                       const SchemaDefinition& schema,
                                       const vector<VariableDefinition>& varDefs,
                                       const json& variables,
                                       const Fragments& frags,
                                       vector<string> path) {
-    return flat_map(selections, [&](const auto& sel) -> FieldErrors {
+    return flat_map(selections, [&](const auto& sel) -> GraphQLErrors {
         return visit(overloaded{
-                   [&](const Field& f) -> FieldErrors {
+                   [&](const Field& f) -> GraphQLErrors {
                        if (f.name.starts_with("__"))
-                           return FieldErrors{};
+                           return GraphQLErrors{};
                        return ValidateField(f, typeName, schema, varDefs, variables, frags, path);
                    },
-                   [&](const FragmentSpread& s) -> FieldErrors {
+                   [&](const FragmentSpread& s) -> GraphQLErrors {
                        if (!frags.contains(s.name))
-                           return FieldErrors{};
+                           return GraphQLErrors{};
                        const auto& frag = frags.at(s.name);
                        return ValidateSelections(frag.selectionSet.selections, frag.typeCondition, schema, varDefs, variables, frags, path);
                    },
-                   [&](const InlineFragment& i) -> FieldErrors {
+                   [&](const InlineFragment& i) -> GraphQLErrors {
                        if (!i.selectionSet) return {};
                        return ValidateSelections(i.selectionSet->selections, i.typeCondition.value_or(typeName), schema, varDefs, variables, frags, path);
                    },
@@ -222,7 +222,7 @@ static string RootTypeName(const OperationType& opType, const SchemaDefinition& 
     return schema.queryTypeName.value_or("Query");
 }
 
-FieldErrors ValidateDocument(const Document& document,
+GraphQLErrors ValidateDocument(const Document& document,
                              const SchemaDefinition& schema,
                              const json& variables) {
     return flat_map(document.operations, [&](const auto& op) {

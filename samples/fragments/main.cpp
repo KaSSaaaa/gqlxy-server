@@ -8,7 +8,7 @@
 using namespace std;
 using namespace gqlxy;
 
-static void printResult(const string& label, const ResolveResult& result) {
+static void printResult(const string& label, const GraphQLResponse& result) {
     cout << "--- " << label << " ---" << endl;
     if (result.errors.has_value()) {
         for (const auto& e : result.errors.value())
