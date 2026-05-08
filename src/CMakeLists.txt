@@ -6,7 +6,7 @@ string(REPLACE "." ";" _ver_list ${PROJECT_VERSION})
 list(GET _ver_list 0 PROJECT_VERSION_MAJOR)
 
 file(GLOB_RECURSE SOURCES_FILES *.cpp)
-list(FILTER SOURCES_FILES EXCLUDE REGEX ".*/server/.*")
+list(FILTER SOURCES_FILES EXCLUDE REGEX ".*/standalone/.*")
 add_library(gqlxy_server ${SOURCES_FILES})
 target_compile_features(gqlxy_server PUBLIC cxx_std_20)
 target_include_directories(gqlxy_server
@@ -20,13 +20,13 @@ target_link_libraries(
 		gqlxy_server
 		PUBLIC
 		nlohmann_json::nlohmann_json
-		gqlxy::core
+		gqlxy_core::gqlxy_core
 )
 
-add_library(gqlxy::server ALIAS gqlxy_server)
+add_library(gqlxy_server::gqlxy_server ALIAS gqlxy_server)
 
 if(BUILD_STANDALONE_SERVER)
-    add_subdirectory(gqlxy/server)
+    add_subdirectory(gqlxy/server/standalone)
 endif()
 
 install(TARGETS gqlxy_server
@@ -35,7 +35,7 @@ install(TARGETS gqlxy_server
 
 install(EXPORT gqlxy-serverTargets
 	FILE gqlxy-serverTargets.cmake
-	NAMESPACE gqlxy::
+	NAMESPACE gqlxy_server::
 	DESTINATION lib/cmake/gqlxy-server
 )
 

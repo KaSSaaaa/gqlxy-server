@@ -1,9 +1,9 @@
 #include <future>
-#include <gqlxy/resolver_args.h>
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/task.h>
-#include <gqlxy/utils/ranges.h>
+#include <gqlxy/server/resolver_args.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/core/task.h>
+#include <gqlxy/core/utils/ranges.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <optional>

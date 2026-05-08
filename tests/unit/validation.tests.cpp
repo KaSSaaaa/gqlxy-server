@@ -1,6 +1,6 @@
-#include <gqlxy/resolver_args.h>
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
+#include <gqlxy/server/resolver_args.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 

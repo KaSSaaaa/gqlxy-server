@@ -10,7 +10,8 @@
         "ENABLE_VCPKG_BOOTSTRAP": "ON",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_MANIFEST_FEATURES": "tests;standalone-server",
-        "BUILD_STANDALONE_SERVER": "ON"
+        "BUILD_STANDALONE_SERVER": "ON",
+        "VCPKG_OVERLAY_PORTS": "$env{VCPKG_OVERLAY_PORTS}"
       }
     },
     {

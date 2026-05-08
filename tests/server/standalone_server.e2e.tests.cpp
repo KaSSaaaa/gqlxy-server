@@ -5,11 +5,11 @@
 #include <boost/beast/websocket.hpp>
 #include <fstream>
 #include <future>
-#include <gqlxy/pubsub.h>
-#include <gqlxy/resolver_args.h>
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/server/standalone_server.h>
+#include <gqlxy/server/pubsub.h>
+#include <gqlxy/server/resolver_args.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/server/standalone/standalone_server.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <sstream>

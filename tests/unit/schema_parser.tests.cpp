@@ -1,6 +1,6 @@
-#include <gqlxy/internal/introspection/types/schema_definition.h>
-#include <gqlxy/internal/peg/parser/schema_parser.h>
-#include <gqlxy/schema.h>
+#include <gqlxy/server/internal/introspection/types/schema_definition.h>
+#include <gqlxy/server/internal/peg/parser/schema_parser.h>
+#include <gqlxy/server/schema.h>
 #include <gtest/gtest.h>
 
 using namespace std;
