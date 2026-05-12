@@ -1,9 +1,9 @@
 #include "resolve_arguments.h"
 
-#include <gqlxy/server/internal/engine/resolve.h>
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <gqlxy/core/parser/ast/selection.h>
 #include <gqlxy/core/utils/ranges.h>
+#include <gqlxy/server/internal/engine/resolve.h>
 
 using namespace std;
 using namespace gqlxy::parser;

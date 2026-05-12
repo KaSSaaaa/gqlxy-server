@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gqlxy/server/internal/introspection/types/type_definition.h>
+#include <gqlxy/server/definitions/type_definition.h>
 #include <gqlxy/core/utils/ranges.h>
 
 namespace gqlxy::internal {

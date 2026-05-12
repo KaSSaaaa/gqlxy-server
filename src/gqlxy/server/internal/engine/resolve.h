@@ -1,11 +1,11 @@
 #pragma once
 
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <any>
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
 #include <gqlxy/core/parser/ast/fragments.h>
 #include <gqlxy/core/parser/ast/selection_set.h>
-#include <gqlxy/server/schema.h>
 #include <gqlxy/core/task.h>
+#include <gqlxy/server/schema.h>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
@@ -14,10 +14,10 @@
 namespace gqlxy {
 struct ValueResolver;
 class ResolverArgs;
+struct SchemaDefinition;
 }
 
 namespace gqlxy::internal {
-struct SchemaDefinition;
 
 struct ResolveQueryArgs {
     std::string query;

@@ -1,18 +1,21 @@
 #pragma once
 
-#include <gqlxy/server/internal/introspection/types/enum_value_definition.h>
-#include <gqlxy/server/internal/introspection/types/field_definition.h>
-#include <gqlxy/server/internal/introspection/types/input_value_definition.h>
-#include <gqlxy/server/internal/introspection/types/type_definition.h>
 #include <gqlxy/core/parser/peg/parser/parse_type_ref.h>
+#include <gqlxy/server/definitions/enum_value_definition.h>
+#include <gqlxy/server/definitions/field_definition.h>
+#include <gqlxy/server/definitions/input_value_definition.h>
+#include <gqlxy/server/definitions/type_definition.h>
 #include <memory>
+
+namespace gqlxy {
+struct SchemaDefinition;
+}
 
 namespace graphql::peg {
 class ast_node;
 }
 
 namespace gqlxy::internal {
-struct SchemaDefinition;
 
 std::shared_ptr<SchemaDefinition> ParseSchemaDefinition(const std::string& typeDefs);
 InputValueDefinition ParseInputValue(const graphql::peg::ast_node& node);

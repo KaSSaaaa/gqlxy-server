@@ -1,10 +1,9 @@
 #include "validate.h"
 
+#include <gqlxy/server/definitions/field_definition.h>
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <algorithm>
 #include <format>
-#include <gqlxy/server/internal/introspection/types/field_definition.h>
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
-#include <gqlxy/server/internal/introspection/types/type_definition.h>
 #include <gqlxy/core/parser/ast/document.h>
 #include <gqlxy/core/parser/ast/fragment_definition.h>
 #include <gqlxy/core/parser/ast/fragments.h>
@@ -13,6 +12,7 @@
 #include <gqlxy/core/utils/optional.h>
 #include <gqlxy/core/utils/ranges.h>
 #include <gqlxy/core/utils/visit.h>
+#include <gqlxy/server/definitions/type_definition.h>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_set>

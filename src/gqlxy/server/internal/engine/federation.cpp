@@ -1,16 +1,16 @@
 #include "federation.h"
 
 #include <format>
-#include <gqlxy/server/internal/introspection/types/directive_definition.h>
-#include <gqlxy/server/internal/introspection/types/field_definition.h>
-#include <gqlxy/server/internal/introspection/types/input_value_definition.h>
-#include <gqlxy/server/internal/introspection/types/type_definition.h>
-#include <gqlxy/server/internal/merge_resolvers.h>
 #include <gqlxy/core/parser/introspection/types/type_ref.h>
-#include <gqlxy/server/resolver_args.h>
 #include <gqlxy/core/utils/expect.h>
 #include <gqlxy/core/utils/optional.h>
 #include <gqlxy/core/utils/ranges.h>
+#include <gqlxy/server/definitions/directive_definition.h>
+#include <gqlxy/server/definitions/field_definition.h>
+#include <gqlxy/server/definitions/input_value_definition.h>
+#include <gqlxy/server/definitions/type_definition.h>
+#include <gqlxy/server/internal/merge_resolvers.h>
+#include <gqlxy/server/resolver_args.h>
 
 using namespace std;
 using namespace gqlxy::parser;

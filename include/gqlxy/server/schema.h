@@ -9,17 +9,17 @@
 #include <unordered_map>
 
 namespace gqlxy {
+struct SchemaDefinition;
 
 namespace internal {
-struct SchemaDefinition;
 struct ResolveQueryArgs;
 }
 
 struct SchemaOptions {
     std::string typeDefs;
     Resolver resolvers;
-    Directives directives;
-    Scalars scalars;
+    Directives directives = {};
+    Scalars scalars = {};
     bool allowIntrospection = true;
     bool federation = false;
 };
@@ -28,7 +28,7 @@ template <typename TContext = std::monostate>
 struct SchemaResolveArgs {
     std::string query;
     nlohmann::json variables = nlohmann::json::object();
-    std::string operationName;
+    std::string operationName = "";
     TContext context = {};
 };
 
@@ -48,13 +48,15 @@ public:
 
     Schema Stitch(const Schema& other) const;
 
+    const SchemaDefinition& Definition() const;
+
 private:
-    std::shared_ptr<internal::SchemaDefinition> _schemaDefinition;
+    std::shared_ptr<SchemaDefinition> _schemaDefinition;
     Resolver _resolvers;
     Directives _directives;
     Scalars _scalars;
 
-    Schema(const std::shared_ptr<internal::SchemaDefinition>& schemaDefinition,
+    Schema(const std::shared_ptr<SchemaDefinition>& schemaDefinition,
            const Resolver& resolvers,
            const Directives& directives,
            const Scalars& scalars);

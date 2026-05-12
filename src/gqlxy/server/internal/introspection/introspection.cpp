@@ -1,8 +1,8 @@
 #include "introspection.h"
-#include <gqlxy/server/internal/ast/build_in_scalars.h>
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <gqlxy/core/utils/optional.h>
 #include <gqlxy/core/utils/ranges.h>
+#include <gqlxy/server/internal/ast/build_in_scalars.h>
 #include <iostream>
 #include <ranges>
 

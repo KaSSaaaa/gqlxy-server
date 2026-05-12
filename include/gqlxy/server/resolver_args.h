@@ -6,7 +6,7 @@ namespace gqlxy {
 
 struct ResolverArgsParams {
     nlohmann::json args = nlohmann::json::object();
-    std::any context;
+    std::any context = {};
 };
 
 class ResolverArgs {

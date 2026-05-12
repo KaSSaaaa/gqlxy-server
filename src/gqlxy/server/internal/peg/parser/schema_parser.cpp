@@ -1,6 +1,6 @@
 #include "schema_parser.h"
 
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <gqlxy/core/parser/peg/parser/parse_type_ref.h>
 #include <gqlxy/core/parser/peg/parser/query/parse_directives.h>
 #include <gqlxy/core/parser/peg/parser/query/parse_value.h>
@@ -104,7 +104,8 @@ FieldDefinition ParseField(const peg::ast_node& node) {
                     return ParseInputValue(*node);
                 }));
         }),
-        .deprecation = ParseDeprecation(node)
+        .deprecation = ParseDeprecation(node),
+        .directives = ParseDirectives(node)
     };
 }
 

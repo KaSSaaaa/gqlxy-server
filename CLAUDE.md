@@ -22,7 +22,7 @@
 - Never mark a task complete without proving it works
 - Diff behavior between main and your changes when relevant
 - Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
+- Build all targets, run tests, check logs, demonstrate correctness
 
 ### 5. Demand Elegance (Balanced)
 - For non-trivial changes: pause and ask "is there a more elegant way?"

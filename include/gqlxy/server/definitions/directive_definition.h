@@ -8,7 +8,7 @@
 
 #include "input_value_definition.h"
 
-namespace gqlxy::internal {
+namespace gqlxy {
 
 BETTER_ENUM(DirectiveLocation,
             int,
@@ -33,9 +33,9 @@ BETTER_ENUM(DirectiveLocation,
 
 struct DirectiveDefinition {
     std::string name;
-    std::optional<std::string> description;
-    std::vector<DirectiveLocation> locations;
-    std::vector<InputValueDefinition> args;
+    std::optional<std::string> description = std::nullopt;
+    std::vector<DirectiveLocation> locations = {};
+    std::vector<InputValueDefinition> args = {};
     bool isRepeatable = false;
 };
 

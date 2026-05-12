@@ -5,14 +5,14 @@
 #include <optional>
 #include <string>
 
-namespace gqlxy::internal {
+namespace gqlxy {
 
 struct InputValueDefinition {
     std::string name;
-    std::optional<std::string> description;
+    std::optional<std::string> description = std::nullopt;
     parser::TypeRef type;
-    std::optional<std::string> defaultValue;
-    std::optional<DeprecationInfo> deprecation;
+    std::optional<std::string> defaultValue = std::nullopt;
+    std::optional<DeprecationInfo> deprecation = std::nullopt;
 };
 
 }

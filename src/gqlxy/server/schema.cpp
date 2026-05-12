@@ -1,16 +1,17 @@
 #include <gqlxy/server/schema.h>
 
 #include <format>
+#include <gqlxy/core/utils/expect.h>
+#include <gqlxy/server/definitions/directive_definition.h>
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <gqlxy/server/internal/ast/build_in_scalars.h>
 #include <gqlxy/server/internal/engine/federation.h>
 #include <gqlxy/server/internal/engine/resolve.h>
 #include <gqlxy/server/internal/engine/subscribe.h>
 #include <gqlxy/server/internal/introspection/introspection.h>
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
 #include <gqlxy/server/internal/merge_resolvers.h>
 #include <gqlxy/server/internal/peg/parser/schema_parser.h>
 #include <gqlxy/server/resolver_args.h>
-#include <gqlxy/core/utils/expect.h>
 
 using namespace std;
 using namespace gqlxy;
@@ -174,4 +175,8 @@ ResolveQueryArgs Schema::BuildResolveQueryArgs(const string& query,
         .operationName = operationName,
         .context = std::move(context),
     };
+}
+
+const SchemaDefinition& Schema::Definition() const {
+    return *_schemaDefinition;
 }

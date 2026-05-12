@@ -4,13 +4,16 @@
 #include <gqlxy/server/schema.h>
 #include <gqlxy/core/parser/introspection/types/type_ref.h>
 
-namespace gqlxy::internal {
+namespace gqlxy {
 struct SchemaDefinition;
 struct DirectiveDefinition;
 struct EnumValueDefinition;
 struct FieldDefinition;
 struct InputValueDefinition;
 struct TypeDefinition;
+}
+
+namespace gqlxy::internal {
 
 Resolver CreateSchemaResolver(const SchemaDefinition& schema);
 Resolver CreateTypeResolver(const TypeDefinition& type, const SchemaDefinition& schema);

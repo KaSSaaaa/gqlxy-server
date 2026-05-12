@@ -5,7 +5,6 @@
 #include <nlohmann/json_fwd.hpp>
 
 namespace gqlxy::internal {
-struct SchemaDefinition;
 
 GraphQLErrors ValidateDocument(const parser::Document& document, const SchemaDefinition& schema, const nlohmann::json& variables);
 

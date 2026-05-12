@@ -5,12 +5,12 @@
 
 #include "deprecation_info.h"
 
-namespace gqlxy::internal {
+namespace gqlxy {
 
 struct EnumValueDefinition {
     std::string name;
-    std::optional<std::string> description;
-    std::optional<DeprecationInfo> deprecation;
+    std::optional<std::string> description = std::nullopt;
+    std::optional<DeprecationInfo> deprecation = std::nullopt;
 };
 
 }

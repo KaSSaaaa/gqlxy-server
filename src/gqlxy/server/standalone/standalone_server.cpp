@@ -1,8 +1,11 @@
 #include <gqlxy/server/standalone/standalone_server.h>
 
 #include <future>
+#include <gqlxy/core/utils/ranges.h>
+#include <gqlxy/server/internal/mcp/create_mcp_tools.h>
 #include <gqlxy/server/standalone/internal/graphql_controller.h>
 #include <gqlxy/server/standalone/internal/graphql_ws_listener.h>
+#include <gqlxy/server/standalone/internal/mcp_controller.h>
 #include <mutex>
 #include <oatpp-openssl/Config.hpp>
 #include <oatpp-openssl/server/ConnectionProvider.hpp>
@@ -17,6 +20,9 @@
 
 using namespace std;
 using namespace gqlxy::server::internal;
+using namespace gqlxy::internal;
+using namespace gqlxy::mcp;
+using namespace gqlxy::utils;
 using namespace oatpp::web::server;
 using namespace oatpp::base;
 using namespace oatpp::network;
@@ -24,17 +30,17 @@ using namespace oatpp::openssl;
 
 namespace gqlxy::server {
 
-static mutex g_envMutex;
-static int g_envRefCount = 0;
+static mutex EnvMutex;
+static int EnvRefCount = 0;
 
 static void initEnv() {
-    lock_guard lock(g_envMutex);
-    if (g_envRefCount++ == 0) Environment::init();
+    lock_guard lock(EnvMutex);
+    if (EnvRefCount++ == 0) Environment::init();
 }
 
 static void destroyEnv() {
-    lock_guard lock(g_envMutex);
-    if (--g_envRefCount == 0) Environment::destroy();
+    lock_guard lock(EnvMutex);
+    if (--EnvRefCount == 0) Environment::destroy();
 }
 
 static shared_ptr<ServerConnectionProvider> CreateConnectionProvider(const StandaloneServerOptions& options) {
@@ -48,6 +54,11 @@ static shared_ptr<ServerConnectionProvider> CreateConnectionProvider(const Stand
 
 StandaloneServer::StandaloneServer(const StandaloneServerOptions& options) : _options(options) {
     initEnv();
+    if (options.mcp)
+        _mcpRegistry = make_unique<McpToolRegistry>(options.schema, concat(
+            CreateMcpTools(options.schema.Definition(), options.mcp->policy),
+            options.mcp->additionalTools)
+        );
 }
 
 StandaloneServer::~StandaloneServer() {
@@ -60,10 +71,11 @@ void StandaloneServer::Start() {
     auto wsHandler = oatpp::websocket::ConnectionHandler::createShared();
     wsHandler->setSocketInstanceListener(make_shared<GraphQLWSInstanceListener>(_options.schema));
 
-    auto graphqlController = make_shared<GraphQLController>(_options.path, objectMapper, wsHandler, _options.schema);
-
     auto router = HttpRouter::createShared();
-    router->addController(graphqlController);
+    router->addController(make_shared<GraphQLController>(_options.path, objectMapper, wsHandler, _options.schema));
+
+    if (_mcpRegistry != nullptr && !_mcpRegistry->IsEmpty())
+        router->addController(make_shared<McpController>(_options.mcp->path, objectMapper, *_mcpRegistry));
 
     auto httpConnectionHandler = HttpConnectionHandler::createShared(router);
     auto connectionProvider = CreateConnectionProvider(_options);

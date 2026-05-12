@@ -3,11 +3,11 @@
 #include <optional>
 #include <string>
 
-namespace gqlxy::internal {
+namespace gqlxy {
 
 struct DeprecationInfo {
     bool isDeprecated = false;
-    std::optional<std::string> deprecationReason;
+    std::optional<std::string> deprecationReason = std::nullopt;
 };
 
 }

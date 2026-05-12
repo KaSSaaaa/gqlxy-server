@@ -1,21 +1,21 @@
 #include "resolve.h"
+#include <gqlxy/server/definitions/schema_definition.h>
 #include <format>
-#include <gqlxy/server/internal/ast/selection.h>
-#include <gqlxy/server/internal/engine/apply_directives.h>
-#include <gqlxy/server/internal/engine/resolve_arguments.h>
-#include <gqlxy/server/internal/engine/validate.h>
-#include <gqlxy/server/internal/introspection/types/schema_definition.h>
-#include <gqlxy/server/internal/json/json_to_value_resolver.h>
 #include <gqlxy/core/parser/ast/fragments.h>
 #include <gqlxy/core/parser/peg/parser/query/parse_document.h>
-#include <gqlxy/server/resolver_args.h>
-#include <gqlxy/server/resolvers.h>
-#include <gqlxy/server/schema.h>
 #include <gqlxy/core/task.h>
 #include <gqlxy/core/utils/expect.h>
 #include <gqlxy/core/utils/optional.h>
 #include <gqlxy/core/utils/ranges.h>
 #include <gqlxy/core/utils/visit.h>
+#include <gqlxy/server/internal/ast/selection.h>
+#include <gqlxy/server/internal/engine/apply_directives.h>
+#include <gqlxy/server/internal/engine/resolve_arguments.h>
+#include <gqlxy/server/internal/engine/validate.h>
+#include <gqlxy/server/internal/json/json_to_value_resolver.h>
+#include <gqlxy/server/resolver_args.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
 #include <nlohmann/json.hpp>
 
 using namespace std;

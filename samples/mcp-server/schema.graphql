@@ -1,0 +1,28 @@
+type Book {
+    "Unique identifier for the book"
+    id: ID!
+    "Title of the book"
+    title: String!
+    "Author's full name"
+    author: String!
+    "Year published"
+    year: Int!
+    "Average rating out of 5"
+    rating: Float
+}
+
+type Query {
+    "List all books"
+    books: [Book!]!
+    "Find a book by its ID"
+    book(id: ID!): Book
+    "Search books by author name"
+    booksByAuthor(author: String!): [Book!]!
+}
+
+type Mutation {
+    "Add a new book to the collection"
+    addBook(title: String!, author: String!, year: Int!, rating: Float): Book!
+    "Delete a book by its ID; returns true if it existed"
+    deleteBook(id: ID!): Boolean!
+}

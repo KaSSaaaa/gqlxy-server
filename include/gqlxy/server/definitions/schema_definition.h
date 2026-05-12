@@ -1,15 +1,15 @@
 #pragma once
 
-#include "directive_definition.h"
-#include "type_definition.h"
 #include <gqlxy/core/utils/ranges.h>
+#include <gqlxy/server/definitions/directive_definition.h>
+#include <gqlxy/server/definitions/type_definition.h>
 #include <map>
 #include <optional>
 #include <ranges>
 #include <string>
 #include <vector>
 
-namespace gqlxy::internal {
+namespace gqlxy {
 
 struct SchemaDefinition {
     std::map<std::string, TypeDefinition> types;
