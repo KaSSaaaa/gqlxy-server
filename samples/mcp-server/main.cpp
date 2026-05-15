@@ -131,7 +131,19 @@ int main() {
         .path = "/graphql",
         .mcp = McpServerOptions {
             .path = "/mcp",
-            .policy = DefaultMcpPolicy::Enabled
+            .policy = DefaultMcpPolicy::Enabled,
+            .additionalTools = {
+                mcp::McpTool{
+                    .name = "Hello",
+                    .description = "Say hello to the server",
+                    .handler = [](const auto&) -> mcp::ToolCallResult {
+                        cerr << "Hello world!" << endl;
+                        return {
+                            .isError = false
+                        };
+                    }
+                }
+            }
         }
     });
 

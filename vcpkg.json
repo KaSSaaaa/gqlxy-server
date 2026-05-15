@@ -5,6 +5,23 @@
   "homepage": "https://github.com/KaSSaaaa/gqlxy",
   "license": "MIT",
   "supports": "!uwp",
+  "configuration": {
+    "default-registry": {
+      "kind": "builtin",
+      "baseline": "e5a1490e1409d175932ef6014519e9ae149ddb7c"
+    },
+    "registries": [
+      {
+        "kind": "git",
+        "repository": "https://github.com/KaSSaaaa/vcpkg.git",
+        "reference": "feature/gqlxy",
+        "baseline": "3da047996f953e0577028e2818a02b6958f71a8c",
+        "packages": [
+          "gqlxy-*"
+        ]
+      }
+    ]
+  },
   "dependencies": [
     "gqlxy-core",
     "cppgraphqlgen",

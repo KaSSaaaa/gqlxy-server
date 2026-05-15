@@ -54,11 +54,11 @@ static shared_ptr<ServerConnectionProvider> CreateConnectionProvider(const Stand
 
 StandaloneServer::StandaloneServer(const StandaloneServerOptions& options) : _options(options) {
     initEnv();
-    if (options.mcp)
-        _mcpRegistry = make_unique<McpToolRegistry>(options.schema, concat(
-            CreateMcpTools(options.schema.Definition(), options.mcp->policy),
-            options.mcp->additionalTools)
-        );
+    if (options.mcp) {
+        _mcpRegistry = make_unique<McpToolRegistry>(concat(
+            CreateMcpTools(options.schema, options.mcp->policy),
+            options.mcp->additionalTools));
+    }
 }
 
 StandaloneServer::~StandaloneServer() {
