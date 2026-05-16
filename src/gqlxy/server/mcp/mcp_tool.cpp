@@ -1,7 +1,6 @@
 #include <gqlxy/server/mcp/mcp_tool.h>
 
 #include <gqlxy/core/results.h>
-#include <gqlxy/server/schema.h>
 
 using namespace std;
 using namespace nlohmann;
@@ -15,6 +14,7 @@ static json ToInputSchema(const vector<McpToolArg>& args) {
     for (const auto& arg : args) {
         json prop = {{"type", arg.jsonSchemaType}};
         if (arg.description) prop["description"] = *arg.description;
+        if (arg.jsonSchemaItemType) prop["items"] = {{"type", *arg.jsonSchemaItemType}};
         properties[arg.name] = prop;
         if (arg.required) required.push_back(arg.name);
     }
@@ -34,21 +34,6 @@ json ToJson(const McpTool& tool) {
     };
     if (tool.description) jsonTool["description"] = *tool.description;
     return jsonTool;
-}
-
-McpTool CreateGraphQLMcpTool(const CreateGraphQLMcpToolArgs& options) {
-    return McpTool {
-        .name = options.name,
-        .description = options.description,
-        .args = options.args,
-        .handler = [&schema = options.schema, query = options.query, staticVars = options.variables](const json& callArgs) {
-            json variables = staticVars;
-            for (const auto& [key, value] : callArgs.items())
-                variables[key] = value;
-            auto result = schema.Resolve({.query = query, .variables = variables}).get();
-            return ToolCallResult {.data = Serialize(result), .isError = false};
-        }
-    };
 }
 
 }

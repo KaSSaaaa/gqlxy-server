@@ -1,25 +1,16 @@
 #pragma once
 
-#include <gqlxy/server/subscription.h>
-#include <oatpp/web/protocol/http/outgoing/Body.hpp>
+#include "sse_body.h"
 
 namespace gqlxy::server::internal {
 
-class GraphQLSSEBody : public oatpp::web::protocol::http::outgoing::Body {
+class GraphQLSSEBody : public SseBody {
 public:
-    GraphQLSSEBody(SubscriptionHandle&& handle);
+    explicit GraphQLSSEBody(SubscriptionHandle&& handle);
 
-    void declareHeaders(oatpp::web::protocol::http::Headers& headers) noexcept override;
-    oatpp::v_io_size read(void* buffer, v_buff_size count, oatpp::async::Action& action) override;
-    p_char8 getKnownData() override;
-    v_int64 getKnownSize() override;
-
-private:
-    SubscriptionHandle _handle;
-    bool _done = false;
-
-    std::string ReadHandle();
-    oatpp::v_io_size Send(void* buffer, v_buff_size count, const std::string& value);
+protected:
+    std::string FormatEvent(const GraphQLResponse& result) override;
+    std::string FormatDone() override;
 };
 
 }

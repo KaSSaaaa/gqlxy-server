@@ -1,7 +1,8 @@
 #include "mcp_controller.h"
-
+#include "mcp_sse_body.h"
 #include <nlohmann/json.hpp>
 #include <oatpp/parser/json/mapping/ObjectMapper.hpp>
+#include <optional>
 
 using namespace std;
 using namespace gqlxy::mcp;
@@ -33,8 +34,18 @@ shared_ptr<Response> McpController::McpPost(const shared_ptr<IncomingRequest>& r
         return createJsonResponse(Status::CODE_400, {{"error", "invalid json"}});
     }
 
+
+    if (auto acceptHeader = request->getHeaders().get("Accept");
+        acceptHeader && acceptHeader->find("text/event-stream") != string::npos && rpc.value("method", "") == "tools/call") {
+        auto sseResponse = HandleToolsCallSse(rpc);
+        if (sseResponse) {
+            sseResponse->putHeader("Access-Control-Allow-Origin", "*");
+            return sseResponse;
+        }
+    }
+
     auto dispatched = Dispatch(rpc);
-    if (dispatched.is_null()) {
+    if (!dispatched) {
         auto res = createResponse(Status::CODE_202, "");
         res->putHeader("Access-Control-Allow-Origin", "*");
         return res;
@@ -84,8 +95,8 @@ json McpController::HandleToolsCall(const json& params) {
     auto toolName = params.value("name", "");
     auto toolArgs = params.value("arguments", json::object());
 
-    auto result = _registry.Call(toolName, toolArgs);
-    if (result.isError)
+    auto result = _registry.Call(toolName, toolArgs).value().Next();
+    if (result->errors)
         return {
             {"isError", true},
             {"content", json::array({
@@ -100,10 +111,20 @@ json McpController::HandleToolsCall(const json& params) {
         {"content", json::array({
             {
                 {"type", "text"},
-                {"text", result.data.dump()}
+                {"text", result->data->dump()}
             }
         })}
     };
+}
+
+shared_ptr<Response> McpController::HandleToolsCallSse(const json& rpc) {
+    auto params = rpc.value("params", json::object());
+    auto handle = _registry.Call(params.value("name", ""), params.value("arguments", json::object()));
+    if (!handle) return nullptr;
+    return Response::createShared(
+        Status::CODE_200,
+        make_shared<McpSseBody>(std::move(*handle), rpc.value("id", json{}))
+    );
 }
 
 json McpController::OkResponse(const json& id, const json& result) {

@@ -2,7 +2,6 @@
 #include <gqlxy/server/internal/mcp/create_mcp_tools.h>
 #include <gqlxy/server/internal/mcp/mcp_tool_registry.h>
 #include <gqlxy/server/mcp/create_mcp_registry.h>
-#include <gqlxy/server/schema.h>
 
 using namespace std;
 using namespace gqlxy::utils;

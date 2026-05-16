@@ -1,5 +1,7 @@
 #include "mcp_tool_registry.h"
 
+#include <gqlxy/server/subscription.h>
+
 using namespace std;
 using namespace nlohmann;
 
@@ -16,9 +18,9 @@ vector<McpTool> McpToolRegistry::Tools() const {
     return _tools;
 }
 
-ToolCallResult McpToolRegistry::Call(const string& toolName, const json& args) const {
+optional<SubscriptionHandle> McpToolRegistry::Call(const string& toolName, const json& args) const {
     auto it = ranges::find_if(_tools, [&](const auto& t) { return t.name == toolName; });
-    if (it == _tools.end()) return {.isError = true};
+    if (it == _tools.end()) return nullopt;
     return it->handler(args);
 }
 

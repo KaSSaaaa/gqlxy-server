@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <gqlxy/server/internal/mcp/mcp_tool_registry.h>
 #include <nlohmann/json.hpp>
 #include <oatpp/core/macro/codegen.hpp>
@@ -44,6 +45,7 @@ private:
     nlohmann::json HandleInitialize(const nlohmann::json& params);
     nlohmann::json HandleToolsList();
     nlohmann::json HandleToolsCall(const nlohmann::json& params);
+    std::shared_ptr<oatpp::web::protocol::http::outgoing::Response> HandleToolsCallSse(const nlohmann::json& rpc);
 
     static nlohmann::json OkResponse(const nlohmann::json& id, const nlohmann::json& result);
     static nlohmann::json ErrorResponse(const nlohmann::json& id, int code, const std::string& message);

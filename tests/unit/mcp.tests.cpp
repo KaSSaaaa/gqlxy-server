@@ -1,15 +1,21 @@
+#include <gqlxy/core/results.h>
 #include <gqlxy/server/definitions/schema_definition.h>
 #include <gqlxy/server/internal/mcp/create_mcp_tools.h>
 #include <gqlxy/server/internal/mcp/mcp_tool_registry.h>
 #include <gqlxy/server/internal/peg/parser/schema_parser.h>
 #include <gqlxy/server/mcp/create_mcp_registry.h>
 #include <gqlxy/server/mcp/mcp_policy.h>
+#include <gqlxy/server/pubsub.h>
 #include <gqlxy/server/schema.h>
 #include <gtest/gtest.h>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 using namespace gqlxy;
 using namespace gqlxy::internal;
+using namespace gqlxy::utils;
+using namespace nlohmann;
 
 static Schema MakeSchema(const string& sdl) {
     return Schema({.typeDefs = sdl, .resolvers = {}});
@@ -178,6 +184,79 @@ TEST(McpExtract, InputSchemaHasCorrectShape) {
     ASSERT_EQ(inputSchema["required"].size(), 2u);
 }
 
+TEST(McpExtract, ScalarReturnTypeHasNoFragmentsArg) {
+    auto schema = MakeSchema(R"(
+        type Query {
+            hello: String
+        }
+    )");
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    ASSERT_EQ(tools.size(), 1u);
+    auto argNames = tools[0].args | views::transform([](const auto& a) { return a.name; });
+    EXPECT_TRUE(ranges::find(argNames, "fragments") == argNames.end());
+}
+
+TEST(McpExtract, ObjectReturnTypeHasFragmentsArg) {
+    auto schema = MakeSchema(R"(
+        type User { name: String }
+        type Query {
+            user: User
+        }
+    )");
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    ASSERT_EQ(tools.size(), 1u);
+    auto argNames = to_vector(tools[0].args | views::transform([](const auto& a) { return a.name; }));
+    EXPECT_TRUE(ranges::find(argNames, "fragments") != argNames.end());
+    auto fragArg = *ranges::find_if(tools[0].args, [](const auto& a) { return a.name == "fragments"; });
+    EXPECT_FALSE(fragArg.required);
+    EXPECT_EQ(fragArg.jsonSchemaType, "array");
+}
+
+static Schema MakeUserSchema() {
+    return Schema({
+        .typeDefs = R"(
+            type User { name: String email: String }
+            type Query { me: User }
+        )",
+        .resolvers = {
+            {"Query", Resolver{
+                {"me", Resolver{
+                    {"name", "Alice"},
+                    {"email", "alice@example.com"}
+                }}
+            }}
+        },
+    });
+}
+
+TEST(McpExtract, ToolHandlerWithFragmentsQueriesRequestedFields) {
+    auto schema = MakeUserSchema();
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    ASSERT_EQ(tools.size(), 1u);
+
+    auto result = tools[0].handler({{"fragments", json::array({"fragment UserFields on User { email }"})}}).Next();
+    ASSERT_TRUE(result.has_value());
+    auto data = Serialize(*result);
+    ASSERT_TRUE(data.contains("data"));
+    ASSERT_TRUE(data["data"].contains("me"));
+    EXPECT_TRUE(data["data"]["me"].contains("email"));
+    EXPECT_FALSE(data["data"]["me"].contains("name"));
+}
+
+TEST(McpExtract, ToolHandlerWithoutFragmentsUsesDefaultScalarFields) {
+    auto schema = MakeUserSchema();
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    ASSERT_EQ(tools.size(), 1u);
+
+    auto result = tools[0].handler({}).Next();
+    ASSERT_TRUE(result.has_value());
+    auto data = Serialize(*result);
+    ASSERT_TRUE(data.contains("data"));
+    ASSERT_TRUE(data["data"].contains("me"));
+    EXPECT_TRUE(data["data"]["me"].contains("name"));
+    EXPECT_TRUE(data["data"]["me"].contains("email"));
+}
+
 TEST(McpExtract, SchemaBuildsNonEmptyRegistryWhenEnabled) {
     Schema schema({
         .typeDefs = R"(
@@ -202,4 +281,87 @@ TEST(McpExtract, SchemaBuildsEmptyRegistryWhenDisabled) {
     });
     auto registry = mcp::CreateMcpRegistry(schema, DefaultMcpPolicy::Disabled);
     EXPECT_TRUE(registry->IsEmpty());
+}
+
+TEST(McpExtract, SubscriptionFieldsExposedAsTools) {
+    auto schema = MakeSchema(R"(
+        type Query { hello: String }
+        type Subscription { onHello: String }
+    )");
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    auto names = tools | views::transform([](const auto& t) { return t.name; });
+    EXPECT_TRUE(ranges::find(names, "Subscription_onHello") != names.end());
+}
+
+TEST(McpExtract, SubscriptionToolHasSubscriptionHandler) {
+    auto schema = MakeSchema(R"(
+        type Query { hello: String }
+        type Subscription { onHello: String }
+    )");
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    auto it = ranges::find_if(tools, [](const auto& t) { return t.name == "Subscription_onHello"; });
+    ASSERT_NE(it, tools.end());
+    EXPECT_TRUE(it->handler != nullptr);
+}
+
+TEST(McpExtract, SubscriptionToolHandlerReceivesFirstEvent) {
+    gqlxy::PubSub pubsub;
+    Schema schema({
+        .typeDefs = R"(
+            type Query { hello: String }
+            type Subscription { onHello: String }
+        )",
+        .resolvers = {
+            {"Subscription", Resolver{
+                {"onHello", SubscriptionResolver{[&pubsub](const ResolverArgs&) {
+                    return pubsub.AsyncIterator({"onHello"});
+                }}}
+            }}
+        },
+    });
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    auto it = ranges::find_if(tools, [](const auto& t) { return t.name == "Subscription_onHello"; });
+    ASSERT_NE(it, tools.end());
+
+    auto publisher = async([&]() {
+        this_thread::sleep_for(milliseconds(10));
+        pubsub.Publish("onHello", "world");
+    });
+    auto result = it->handler({}).Next();
+    publisher.get();
+    ASSERT_TRUE(result.has_value());
+    EXPECT_FALSE(result->errors.has_value());
+    ASSERT_TRUE(result->data.has_value());
+    EXPECT_EQ((*result->data)["onHello"], "world");
+}
+
+TEST(McpExtract, SubscriptionToolSubscriptionHandlerStreamsEvents) {
+    gqlxy::PubSub pubsub;
+    Schema schema({
+        .typeDefs = R"(
+            type Query { hello: String }
+            type Subscription { onHello: String }
+        )",
+        .resolvers = {
+            {"Subscription", Resolver{
+                {"onHello", SubscriptionResolver{[&pubsub](const ResolverArgs&) {
+                    return pubsub.AsyncIterator({"onHello"});
+                }}}
+            }}
+        },
+    });
+    auto tools = CreateMcpTools(schema, DefaultMcpPolicy::Enabled);
+    auto it = ranges::find_if(tools, [](const auto& t) { return t.name == "Subscription_onHello"; });
+    ASSERT_NE(it, tools.end());
+
+    auto handle = it->handler({});
+    pubsub.Publish("onHello", "first");
+    pubsub.Publish("onHello", "second");
+    auto r1 = handle.Next();
+    auto r2 = handle.Next();
+
+    ASSERT_TRUE(r1.has_value());
+    EXPECT_EQ(Serialize(*r1)["data"]["onHello"], "first");
+    ASSERT_TRUE(r2.has_value());
+    EXPECT_EQ(Serialize(*r2)["data"]["onHello"], "second");
 }

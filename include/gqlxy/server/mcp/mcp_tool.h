@@ -8,6 +8,7 @@
 
 namespace gqlxy {
 class Schema;
+class SubscriptionHandle;
 }
 
 namespace gqlxy::mcp {
@@ -16,6 +17,7 @@ struct McpToolArg {
     std::string name;
     std::optional<std::string> description;
     std::string jsonSchemaType;
+    std::optional<std::string> jsonSchemaItemType;
     bool required = false;
 };
 
@@ -28,19 +30,16 @@ struct McpTool {
     std::string name;
     std::optional<std::string> description;
     std::vector<McpToolArg> args = {};
-    std::function<ToolCallResult(const nlohmann::json& args)> handler;
+    std::function<SubscriptionHandle(const nlohmann::json& args)> handler;
 };
 
 struct CreateGraphQLMcpToolArgs {
-    Schema& schema;
     std::string name;
     std::optional<std::string> description = std::nullopt;
     std::vector<McpToolArg> args = {};
-    std::string query;
-    nlohmann::json variables = nlohmann::json::object();
+    std::function<SubscriptionHandle(const nlohmann::json& args)> handler;
 };
 
-McpTool CreateGraphQLMcpTool(const CreateGraphQLMcpToolArgs& options);
 nlohmann::json ToJson(const McpTool& tool);
 
 }

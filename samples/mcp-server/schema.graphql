@@ -26,3 +26,10 @@ type Mutation {
     "Delete a book by its ID; returns true if it existed"
     deleteBook(id: ID!): Boolean!
 }
+
+type Subscription {
+    "Receive a notification whenever a book is added"
+    bookAdded: Book!
+    "Receive a notification whenever a book is deleted"
+    bookDeleted: ID!
+}

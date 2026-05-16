@@ -2,9 +2,11 @@
 #include <fstream>
 #include <gqlxy/core/utils/optional.h>
 #include <gqlxy/core/utils/ranges.h>
+#include <gqlxy/server/pubsub.h>
 #include <gqlxy/server/resolver_args.h>
 #include <gqlxy/server/resolvers.h>
 #include <gqlxy/server/schema.h>
+#include <gqlxy/server/subscription.h>
 #include <gqlxy/server/standalone/standalone_server.h>
 #include <iostream>
 #include <mutex>
@@ -46,6 +48,7 @@ int main() {
 
     mutex mutex;
     atomic<int> nextId{4};
+    PubSub pubsub;
 
     vector<Book> books = {
         Book{
@@ -108,16 +111,26 @@ int main() {
                         .rating = a.contains("rating") && !a["rating"].is_null()
                                   ? optional{a["rating"].get<double>()} : nullopt
                     };
-                    lock_guard lock(mutex);
-                    books.push_back(book);
+                    {lock_guard lock(mutex); books.push_back(book);}
+                    pubsub.Publish("bookAdded", bookToResolver(book));
                     return bookToResolver(book);
                 }}},
                 {"deleteBook", FunctionResolver{[&](const ResolverArgs& args) -> ValueResolver {
                     auto id = args.Args()["id"].get<string>();
                     lock_guard lock(mutex);
-                    return books.erase(ranges::find_if(books, [&](const auto& b) {
-                        return b.id == id;
-                    })) != books.end();
+                    auto beforeDelete = books.size();
+                    books = to_vector(books | views::filter([&](const auto& b) { return b.id == id; }));
+                    if (books.size() == beforeDelete) return false;
+                    pubsub.Publish("bookDeleted", id);
+                    return true;
+                }}}
+            }},
+            {"Subscription", Resolver{
+                {"bookAdded", SubscriptionResolver{[&](const ResolverArgs&) {
+                    return pubsub.AsyncIterator({"bookAdded"});
+                }}},
+                {"bookDeleted", SubscriptionResolver{[&](const ResolverArgs&) {
+                    return pubsub.AsyncIterator({"bookDeleted"});
                 }}}
             }}
         },
@@ -136,11 +149,9 @@ int main() {
                 mcp::McpTool{
                     .name = "Hello",
                     .description = "Say hello to the server",
-                    .handler = [](const auto&) -> mcp::ToolCallResult {
+                    .handler = [](const auto&) {
                         cerr << "Hello world!" << endl;
-                        return {
-                            .isError = false
-                        };
+                        return SubscriptionHandle::SingleShot({});
                     }
                 }
             }
@@ -154,3 +165,4 @@ int main() {
     server.Start();
     return 0;
 }
+
