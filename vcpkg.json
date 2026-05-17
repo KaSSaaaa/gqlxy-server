@@ -15,7 +15,7 @@
         "kind": "git",
         "repository": "https://github.com/KaSSaaaa/vcpkg.git",
         "reference": "feature/gqlxy",
-        "baseline": "d24c37b29e038181a4acf5b11a0bc2f148af9732",
+        "baseline": "71841428bb384736490e94d67e0f0af24a846e9a",
         "packages": [
           "gqlxy-*"
         ]
