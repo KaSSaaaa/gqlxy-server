@@ -40,8 +40,7 @@
         "boost-beast",
         {
           "name": "gqlxy-client",
-          "version>=": "0.1.0",
-          "port-version": 4
+          "version>=": "0.1.0#4"
         }
       ]
     },
