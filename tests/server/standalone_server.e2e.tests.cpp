@@ -169,16 +169,15 @@ protected:
     }
 
     static GraphQLResponse await(Observable<GraphQLResponse> obs) {
-        promise<GraphQLResponse> p;
-        auto fut = p.get_future();
+        auto p = make_shared<promise<GraphQLResponse>>();
         obs.subscribe(
-            [&p](const GraphQLResponse& r) { p.set_value(r); },
-            [&p](const exception_ptr& e) { p.set_exception(e); },
-            [&p]() {
-                try { p.set_exception(make_exception_ptr(runtime_error("Observable completed without a value"))); }
+            [p](const GraphQLResponse& r) { p->set_value(r); },
+            [p](const exception_ptr& e) { p->set_exception(e); },
+            [p]() {
+                try { p->set_exception(make_exception_ptr(runtime_error("Observable completed without a value"))); }
                 catch (...) {}
             });
-        return fut.get();
+        return p->get_future().get();
     }
     static SseResult syncSubscribeHttp(Client& client, const string& query,
                                        const json& variables = nullptr) {

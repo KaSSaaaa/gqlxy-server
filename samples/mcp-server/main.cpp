@@ -1,4 +1,5 @@
 #include <atomic>
+#include <format>
 #include <fstream>
 #include <gqlxy/core/utils/optional.h>
 #include <gqlxy/core/utils/ranges.h>
@@ -6,8 +7,8 @@
 #include <gqlxy/server/resolver_args.h>
 #include <gqlxy/server/resolvers.h>
 #include <gqlxy/server/schema.h>
-#include <gqlxy/server/subscription.h>
 #include <gqlxy/server/standalone/standalone_server.h>
+#include <gqlxy/server/subscription.h>
 #include <iostream>
 #include <mutex>
 #include <optional>
