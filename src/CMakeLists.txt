@@ -7,6 +7,9 @@ list(GET _ver_list 0 PROJECT_VERSION_MAJOR)
 
 file(GLOB_RECURSE SOURCES_FILES *.cpp)
 list(FILTER SOURCES_FILES EXCLUDE REGEX ".*/standalone/.*")
+# Required on Windows/MSVC: auto-generate __declspec(dllexport) for all
+# symbols so that the .lib import library is produced when building a DLL.
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 add_library(gqlxy_server ${SOURCES_FILES})
 target_compile_features(gqlxy_server PUBLIC cxx_std_20)
 target_include_directories(gqlxy_server
