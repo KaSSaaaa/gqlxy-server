@@ -38,7 +38,11 @@
       "dependencies": [
         "gtest",
         "boost-beast",
-        "gqlxy-client"
+        {
+          "name": "gqlxy-client",
+          "version>=": "0.1.0",
+          "port-version": 4
+        }
       ]
     },
     "standalone-server": {
