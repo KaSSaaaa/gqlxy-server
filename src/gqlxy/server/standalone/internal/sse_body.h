@@ -11,6 +11,7 @@ public:
     explicit SseBody(SubscriptionHandle&& handle) : _handle(std::move(handle)) {}
 
     void declareHeaders(oatpp::web::protocol::http::Headers& headers) noexcept override;
+    oatpp::v_io_size Send(void* buffer, v_buff_size count);
 
     oatpp::v_io_size read(void* buffer, v_buff_size count, oatpp::async::Action&) override;
 
@@ -24,10 +25,11 @@ protected:
     std::string ReadHandle();
 
     virtual std::string FormatEvent(const GraphQLResponse& result) = 0;
-    virtual std::string FormatDone() { return {}; }
+    virtual std::string FormatDone();
 
 private:
-    oatpp::v_io_size Send(void* buffer, v_buff_size count, const std::string& value);
+    std::string _buffer;
+    std::size_t _bufferOffset = 0;
 };
 
 }

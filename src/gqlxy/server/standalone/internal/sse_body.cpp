@@ -12,27 +12,38 @@ void SseBody::declareHeaders(Headers& headers) noexcept {
     headers.put("X-Accel-Buffering", "no");
     headers.put(Header::CONNECTION, "keep-alive");
 }
-
 v_io_size SseBody::read(void* buffer, v_buff_size count, Action&) {
-    auto frame = ReadHandle();
-    if (frame.empty()) return 0;
-    return Send(buffer, count, frame);
+    if (_bufferOffset >= _buffer.size()) {
+        _buffer = ReadHandle();
+        _bufferOffset = 0;
+    }
+    if (_buffer.empty()) return 0;
+    return Send(buffer, count);
+}
+
+v_io_size SseBody::Send(void* buffer, v_buff_size count) {
+    auto sent = min(static_cast<v_io_size>(count), static_cast<v_io_size>(_buffer.size() - _bufferOffset));
+    memcpy(buffer, _buffer.data() + _bufferOffset, sent);
+    _bufferOffset += sent;
+    return sent;
 }
 
 string SseBody::ReadHandle() {
-    if (_done) return "";
-    auto result = _handle.Next();
-    if (!result.has_value()) {
-        _done = true;
-        return FormatDone();
+    string buffer;
+    while (buffer.empty() && !_done) {
+        auto result = _handle.Next();
+        if (!result.has_value()) {
+            buffer = FormatDone();
+            _done = true;
+        } else {
+            buffer = FormatEvent(*result);
+        }
     }
-    return FormatEvent(*result);
+    return buffer;
 }
 
-v_io_size SseBody::Send(void* buffer, v_buff_size count, const string& value) {
-    auto size = min(static_cast<v_io_size>(count), static_cast<v_io_size>(value.size()));
-    memcpy(buffer, value.data(), size);
-    return size;
+string SseBody::FormatDone() {
+    return "";
 }
 
 p_char8 SseBody::getKnownData() {

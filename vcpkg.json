@@ -15,7 +15,7 @@
         "kind": "git",
         "repository": "https://github.com/KaSSaaaa/vcpkg.git",
         "reference": "feature/gqlxy",
-        "baseline": "3da047996f953e0577028e2818a02b6958f71a8c",
+        "baseline": "d6924a2d7c62ccec321b61cf1892ca390f16eb72",
         "packages": [
           "gqlxy-*"
         ]
@@ -23,7 +23,10 @@
     ]
   },
   "dependencies": [
-    "gqlxy-core",
+    {
+      "name": "gqlxy-core",
+      "version>=": "0.1.2"
+    },
     "cppgraphqlgen",
     "nlohmann-json",
     "pegtl",

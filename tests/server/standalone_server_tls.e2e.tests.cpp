@@ -4,11 +4,11 @@
 #include <boost/beast/ssl.hpp>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <gqlxy/client/client.h>
 #include <gqlxy/client/links/http_link.h>
 #include <gqlxy/client/links/ws_link.h>
 #include <gqlxy/core/results.h>
-#include <gqlxy/core/task.h>
 #include <gqlxy/server/resolver_args.h>
 #include <gqlxy/server/resolvers.h>
 #include <gqlxy/server/schema.h>
@@ -161,8 +161,17 @@ class StandaloneServerTlsE2ETest : public testing::Test {
         });
     }
 
-    static Task<GraphQLResponse> await(Observable<GraphQLResponse> obs) {
-        co_return co_await obs;
+    static GraphQLResponse await(Observable<GraphQLResponse> obs) {
+        promise<GraphQLResponse> p;
+        auto fut = p.get_future();
+        obs.subscribe(
+            [&p](const GraphQLResponse& r) { p.set_value(r); },
+            [&p](const exception_ptr& e) { p.set_exception(e); },
+            [&p]() {
+                try { p.set_exception(make_exception_ptr(runtime_error("Observable completed without a value"))); }
+                catch (...) {}
+            });
+        return fut.get();
     }
 
     static void writeTempFile(const string& path, const char* content) {
@@ -194,7 +203,7 @@ TEST_F(StandaloneServerTlsE2ETest, GetUrlReturnsHttpsScheme) {
 
 TEST_F(StandaloneServerTlsE2ETest, HttpsQueryHelloReturnsWorld) {
     auto client = MakeHttpsClient();
-    auto res = await(client.Query({.query = "{ hello }"})).get();
+    auto res = await(client.Query({.query = "{ hello }"}));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     EXPECT_EQ(res.data.value()["hello"], "world");
 }
@@ -204,28 +213,28 @@ TEST_F(StandaloneServerTlsE2ETest, HttpsQueryEchoReturnsArgument) {
     auto res = await(client.Query({
         .query = "query($m: String!) { echo(msg: $m) }",
         .variables = {{"m", "ping"}}
-    })).get();
+    }));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     EXPECT_EQ(res.data.value()["echo"], "ping");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, HttpsMutationGreetReturnsGreeting) {
     auto client = MakeHttpsClient();
-    auto res = await(client.Mutation({.query = R"(mutation { greet(name: "TLS") })"})).get();
+    auto res = await(client.Mutation({.query = R"(mutation { greet(name: "TLS") })"}));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     EXPECT_EQ(res.data.value()["greet"], "Hello, TLS!");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, WssConnectionAckReceived) {
     auto client = MakeWssClient();
-    auto res = await(client.Query({.query = "{ hello }"})).get();
+    auto res = await(client.Query({.query = "{ hello }"}));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     EXPECT_EQ(res.data.value()["hello"], "world");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, WssQueryOverSecureConnection) {
     auto client = MakeWssClient();
-    auto res = await(client.Query({.query = "{ hello }"})).get();
+    auto res = await(client.Query({.query = "{ hello }"}));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     EXPECT_EQ(res.data.value()["hello"], "world");
 }

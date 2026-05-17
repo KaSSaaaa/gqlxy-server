@@ -9,7 +9,6 @@
 #include <gqlxy/client/links/http_link.h>
 #include <gqlxy/client/links/ws_link.h>
 #include <gqlxy/core/results.h>
-#include <gqlxy/core/task.h>
 #include <gqlxy/server/pubsub.h>
 #include <gqlxy/server/resolver_args.h>
 #include <gqlxy/server/resolvers.h>
@@ -169,8 +168,17 @@ protected:
         return ss.str();
     }
 
-    static Task<GraphQLResponse> await(Observable<GraphQLResponse> obs) {
-        co_return co_await obs;
+    static GraphQLResponse await(Observable<GraphQLResponse> obs) {
+        promise<GraphQLResponse> p;
+        auto fut = p.get_future();
+        obs.subscribe(
+            [&p](const GraphQLResponse& r) { p.set_value(r); },
+            [&p](const exception_ptr& e) { p.set_exception(e); },
+            [&p]() {
+                try { p.set_exception(make_exception_ptr(runtime_error("Observable completed without a value"))); }
+                catch (...) {}
+            });
+        return fut.get();
     }
     static SseResult syncSubscribeHttp(Client& client, const string& query,
                                        const json& variables = nullptr) {
@@ -246,7 +254,7 @@ protected:
 
 TEST_F(StandaloneServerE2ETest, HttpQueryBooksContainsAllSeededBooks) {
     auto client = MakeHttpClient();
-    auto res = await(client.Query({.query = "{ books { id title author year } }"})).get();
+    auto res = await(client.Query({.query = "{ books { id title author year } }"}));
     auto books = res.data.value()["books"];
 
     ASSERT_FALSE(res.errors) << res.errors->front().message;
@@ -268,7 +276,7 @@ TEST_F(StandaloneServerE2ETest, HttpQueryBooksContainsAllSeededBooks) {
 
 TEST_F(StandaloneServerE2ETest, HttpQueryBookByIdReturnsCorrectBook) {
     auto client = MakeHttpClient();
-    auto res    = await(client.Query({.query = "query($id: ID!) { book(id: $id) { id title author } }", .variables = {{"id", "3"}}})).get();
+    auto res    = await(client.Query({.query = "query($id: ID!) { book(id: $id) { id title author } }", .variables = {{"id", "3"}}}));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     auto book = res.data.value()["book"];
     EXPECT_EQ(book["id"], "3");
@@ -283,7 +291,7 @@ TEST_F(StandaloneServerE2ETest, HttpQueryBookByIdReturnsNullForMissingId) {
         .variables = {
             {"id", "9999"}
         }
-    })).get();
+    }));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     EXPECT_TRUE(res.data.value()["book"].is_null());
 }
@@ -292,7 +300,7 @@ TEST_F(StandaloneServerE2ETest, HttpQueryReviewsForBook) {
     auto client = MakeHttpClient();
     auto res = await(client.Query({
         .query = R"({ reviews(bookId: "1") { id author stars } })"
-    })).get();
+    }));
     auto reviews = res.data.value()["reviews"];
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     ASSERT_GE(reviews.size(), 1u);
@@ -315,7 +323,7 @@ TEST_F(StandaloneServerE2ETest, HttpMutationAddBookReturnsNewBook) {
                 }
             }
         )"
-    })).get();
+    }));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     auto book = res.data.value()["addBook"];
     EXPECT_EQ(book["title"], "SICP");
@@ -337,7 +345,7 @@ TEST_F(StandaloneServerE2ETest, HttpMutationAddReviewReturnsNewReview) {
                 }
             }
         )"
-    })).get();
+    }));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     auto review = res.data.value()["addReview"];
     EXPECT_EQ(review["bookId"], "1");
@@ -423,7 +431,7 @@ TEST_F(StandaloneServerE2ETest, HttpIntrospectionReturnsCorrectRootTypes) {
     auto client = MakeHttpClientNoTransforms();
     auto res = await(client.Query({
         .query = "{ __schema { queryType { name } mutationType { name } subscriptionType { name } } }"
-    })).get();
+    }));
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     auto schema = res.data.value()["__schema"];
     EXPECT_EQ(schema["queryType"]["name"], "Query");
@@ -433,7 +441,10 @@ TEST_F(StandaloneServerE2ETest, HttpIntrospectionReturnsCorrectRootTypes) {
 
 TEST_F(StandaloneServerE2ETest, HttpFullIntrospectionQueryReturnsNoErrors) {
     auto client = MakeHttpClientNoTransforms();
-    auto res = await(client.Query({.query = readFile(INTROSPECTION_QUERY_PATH)})).get();
+    auto out = syncSubscribeHttp(client, readFile(INTROSPECTION_QUERY_PATH));
+
+    ASSERT_GE(out.events.size(), 1u);
+    auto& res = out.events.front();
     ASSERT_FALSE(res.errors) << res.errors->front().message;
     auto types = res.data.value()["__schema"]["types"];
 
