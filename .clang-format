@@ -1,7 +1,7 @@
 ---
-AccessModifierOffset: -2
+AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
-AlignArrayOfStructures: Left
+AlignArrayOfStructures: None
 AllowShortCaseExpressionOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortEnumsOnASingleLine: false

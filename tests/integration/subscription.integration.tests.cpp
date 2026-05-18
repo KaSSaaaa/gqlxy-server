@@ -1,6 +1,6 @@
-#include <gqlxy/pubsub.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/subscription.h>
+#include <gqlxy/server/pubsub.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/server/subscription.h>
 #include <gtest/gtest.h>
 #include <future>
 #include <nlohmann/json.hpp>

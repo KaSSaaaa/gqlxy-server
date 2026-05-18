@@ -49,7 +49,7 @@ Resolution flow: `Schema::Resolve` parses the query with `graphqlpeg`, walks the
 **Calling `Resolve`:**
 ```cpp
 auto result = schema.Resolve({
-    .query     = "query GetUser($id: ID!) { user(id: $id) { name } }",
+    .query = "query GetUser($id: ID!) { user(id: $id) { name } }",
     .variables = {{"id", "42"}}   // nlohmann::json object
 }).get();
 ```
@@ -77,7 +77,7 @@ CallbackResolver      = std::function<void(const ResolverArgs&, std::function<vo
 
 **Tests** — two binaries: `gqlxy_unit_tests` (unit) and `gqlxy_e2e_tests` (full query execution against `samples/schema.today.graphql`). Tests may include `src/` internal headers via `target_include_directories(...PRIVATE ${CMAKE_SOURCE_DIR}/src)` — use this to assert on the parsed AST via `Schema::GetDocument()`.
 
-**C++ standards** — C++20 required (`cxx_std_20`). Prefer `std::optional` over raw pointers; no raw owning pointers; `const&` by default; functions ≤ 20 lines.
+**C++ standards** — C++20 required (`cxx_std_20`). Prefer `std::optional` over raw pointers; no raw owning pointers; `const&` by default; functions ≤ 20 lines. Prefer usage of C++20 ranges.
 
 **Code Quality**
 - Don't comment the code unless necessary. Code must be readable by itself

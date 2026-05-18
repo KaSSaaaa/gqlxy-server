@@ -5,7 +5,28 @@
   "homepage": "https://github.com/KaSSaaaa/gqlxy",
   "license": "MIT",
   "supports": "!uwp",
+  "configuration": {
+    "default-registry": {
+      "kind": "builtin",
+      "baseline": "e5a1490e1409d175932ef6014519e9ae149ddb7c"
+    },
+    "registries": [
+      {
+        "kind": "git",
+        "repository": "https://github.com/KaSSaaaa/vcpkg.git",
+        "reference": "feature/gqlxy",
+        "baseline": "90f6941da6815e353b06c8222ed1dc8e9f708db9",
+        "packages": [
+          "gqlxy-*"
+        ]
+      }
+    ]
+  },
   "dependencies": [
+    {
+      "name": "gqlxy-core",
+      "version>=": "0.1.2"
+    },
     "cppgraphqlgen",
     "nlohmann-json",
     "pegtl",
@@ -14,11 +35,25 @@
   "features": {
     "tests": {
       "description": "Build and run the test suite",
-      "dependencies": ["gtest"]
+      "dependencies": [
+        "gtest",
+        "boost-beast",
+        {
+          "name": "gqlxy-client",
+          "version>=": "0.1.1"
+        }
+      ]
     },
     "standalone-server": {
       "description": "Standalone HTTP/WebSocket/SSE GraphQL server using oatpp",
-      "dependencies": ["oatpp", "oatpp-websocket", "oatpp-openssl", "boost-beast"]
+      "dependencies": [
+        {
+          "name": "oatpp",
+          "version>=": "1.3.1"
+        },
+        "oatpp-websocket",
+        "oatpp-openssl"
+      ]
     }
   }
 }

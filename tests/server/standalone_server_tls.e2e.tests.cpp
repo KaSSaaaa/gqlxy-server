@@ -1,35 +1,33 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
-#include <boost/beast/websocket.hpp>
 #include <filesystem>
 #include <fstream>
 #include <future>
-#include <gqlxy/resolver_args.h>
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/server/standalone_server.h>
+#include <gqlxy/client/client.h>
+#include <gqlxy/client/links/http_link.h>
+#include <gqlxy/client/links/ws_link.h>
+#include <gqlxy/core/results.h>
+#include <gqlxy/server/resolver_args.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/server/standalone/standalone_server.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <thread>
 
 using namespace std;
-using namespace std::filesystem;
+using namespace std::chrono;
 using namespace gqlxy;
 using namespace gqlxy::server;
-using json = nlohmann::json;
-
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace ws = beast::websocket;
-namespace net = boost::asio;
-namespace ssl = net::ssl;
-using tcp = net::ip::tcp;
+using namespace nlohmann;
+using namespace boost::asio;
+using namespace boost::asio::ip;
+using namespace boost::beast;
 
 static constexpr int TlsPort = 14002;
-static constexpr auto TlsPath = "/graphql";
+
 static constexpr auto CertPem = R"(-----BEGIN CERTIFICATE-----
 MIIDlTCCAn2gAwIBAgIUOLxr3q7Wd/pto1+2MsW4fdRheCIwDQYJKoZIhvcNAQEL
 BQAwWjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRQwEgYDVQQHDAtMb3MgQW5n
@@ -82,207 +80,160 @@ e6QS4EZM9dhhlO2FmPQCJMrRVDXaV+9TcJZXCbclQnzzBus9pwZZyw4Anxo0vmir
 nOMOU6XI4lO9Xge/QDEN4Y2R
 -----END PRIVATE KEY-----)";
 
-static ssl::context CreateTlsClientCtx() {
-    ssl::context ctx {ssl::context::tls_client};
-    ctx.set_verify_mode(ssl::verify_none);
-    return ctx;
-}
-
-static json httpsPost(const string& query, const json& variables = json::object()) {
-    net::io_context ioc;
-    auto ctx = CreateTlsClientCtx();
-    beast::ssl_stream<beast::tcp_stream> stream {ioc, ctx};
-
-    beast::get_lowest_layer(stream).expires_after(chrono::seconds(5));
-    beast::get_lowest_layer(stream).connect(tcp::resolver(ioc).resolve("127.0.0.1", to_string(TlsPort)));
-    stream.handshake(ssl::stream_base::client);
-
-    json payload = {
-        {"query", query}
-    };
-    if (!variables.empty()) payload["variables"] = variables;
-
-    http::request<http::string_body> req {http::verb::post, TlsPath, 11};
-    req.set(http::field::host, "localhost");
-    req.set(http::field::content_type, "application/json");
-    req.set(http::field::connection, "close");
-    req.body() = payload.dump();
-    req.prepare_payload();
-
-    http::write(stream, req);
-
-    beast::flat_buffer buf;
-    http::response<http::string_body> res;
-    http::read(stream, buf, res);
-
-    beast::error_code ec;
-    stream.shutdown(ec);
-
-    return json::parse(res.body());
-}
-
-class WssClient {
-    net::io_context _ioc;
-    ssl::context _ctx;
-    ws::stream<beast::ssl_stream<beast::tcp_stream>> _ws;
-
-  public:
-    WssClient()
-        : _ctx(ssl::context::tls_client),
-          _ws(_ioc, _ctx) {
-        _ctx.set_verify_mode(ssl::verify_none);
-
-        beast::get_lowest_layer(_ws).expires_after(chrono::seconds(5));
-        beast::get_lowest_layer(_ws).connect(tcp::resolver(_ioc).resolve("127.0.0.1", to_string(TlsPort)));
-        beast::get_lowest_layer(_ws).expires_never();
-
-        _ws.next_layer().handshake(ssl::stream_base::client);
-
-        _ws.set_option(ws::stream_base::decorator([&](ws::request_type& req) {
-            req.set(http::field::sec_websocket_protocol, "graphql-transport-ws");
-        }));
-        _ws.handshake("localhost", TlsPath);
-    }
-
-    ~WssClient() {
-        beast::error_code ec;
-        _ws.close(ws::close_code::normal, ec);
-    }
-
-    void send(const json& msg) {
-        _ws.write(net::buffer(msg.dump()));
-    }
-
-    json recv() {
-        beast::flat_buffer buf;
-        beast::error_code ec;
-        _ws.read(buf, ec);
-        if (ec) return {};
-        return json::parse(beast::buffers_to_string(buf.data()));
-    }
-};
-
-static shared_ptr<Schema> TlsSchema = nullptr;
-static shared_ptr<StandaloneServer> TlsServer = nullptr;
-static string CertPath;
-static string KeyPath;
-
-static void writeTempFile(const string& path, const char* content) {
-    ofstream f(path);
-    f << content;
-}
-
-static void waitForTlsPort() {
-    for (int i = 0; i < 50; ++i) {
-        try {
-            net::io_context ioc;
-            auto ctx = CreateTlsClientCtx();
-            beast::ssl_stream<beast::tcp_stream> stream {ioc, ctx};
-            beast::get_lowest_layer(stream).expires_after(chrono::milliseconds(200));
-            beast::get_lowest_layer(stream).connect(tcp::resolver(ioc).resolve("127.0.0.1", to_string(TlsPort)));
-            stream.handshake(ssl::stream_base::client);
-            return;
-        } catch (...) {
-            this_thread::sleep_for(chrono::milliseconds(20));
-        }
-    }
-}
-
 class StandaloneServerTlsE2ETest : public testing::Test {
-  public:
-    static void SetUpTestSuite() {
-        const auto tmp = temp_directory_path();
-        CertPath = (tmp / "gqlxy_test.cert.pem").string();
-        KeyPath = (tmp / "gqlxy_test.key.pem").string();
-        writeTempFile(CertPath, CertPem);
-        writeTempFile(KeyPath, KeyPem);
+  protected:
+    void SetUp() override {
+        const auto tmp = filesystem::temp_directory_path();
+        _certPath = (tmp / "gqlxy_test.cert.pem").string();
+        _keyPath = (tmp / "gqlxy_test.key.pem").string();
+        writeTempFile(_certPath, CertPem);
+        writeTempFile(_keyPath, KeyPem);
 
-        TlsSchema = make_shared<Schema>(SchemaOptions{
+        _tlsSchema = make_shared<Schema>(SchemaOptions{
             .typeDefs = R"(
                 type Query  { hello: String, echo(msg: String!): String }
                 type Mutation { greet(name: String!): String }
                 type Subscription { ticks: Int }
             )",
             .resolvers = {
-                {"Query", Resolver {
+                {"Query", Resolver{
                     {"hello", "world"},
-                    {"echo", FunctionResolver {[](const ResolverArgs& r) -> ValueResolver {
+                    {"echo", FunctionResolver{[](const ResolverArgs& r) -> ValueResolver {
                         return r.Args()["msg"].get<string>();
                     }}}
                 }},
-                {"Mutation", Resolver {
-                    {"greet", FunctionResolver {[](const ResolverArgs& r) -> ValueResolver {
+                {"Mutation", Resolver{
+                    {"greet", FunctionResolver{[](const ResolverArgs& r) -> ValueResolver {
                         return "Hello, " + r.Args()["name"].get<string>() + "!";
                     }}}
                 }}
             }
         });
 
-        TlsServer = make_shared<StandaloneServer>(StandaloneServerOptions{
-            .schema = *TlsSchema,
+        _tlsServer = make_shared<StandaloneServer>(StandaloneServerOptions {
+            .schema = *_tlsSchema,
             .port = TlsPort,
             .tls = TlsOptions {
-                .certPath = CertPath,
-                .keyPath = KeyPath
+                .certPath = _certPath,
+                .keyPath = _keyPath
             }
         });
-        TlsServer->StartAsync();
+        _tlsServer->StartAsync();
         waitForTlsPort();
     }
 
-    static void TearDownTestSuite() {
-        TlsServer->Stop();
-        TlsServer.reset();
-        TlsSchema.reset();
-        filesystem::remove(CertPath);
-        filesystem::remove(KeyPath);
+    void TearDown() override {
+        _tlsServer->Stop();
+        _tlsServer.reset();
+        _tlsSchema.reset();
+        filesystem::remove(_certPath);
+        filesystem::remove(_keyPath);
+    }
+
+    shared_ptr<Schema> _tlsSchema;
+    shared_ptr<StandaloneServer> _tlsServer;
+    string _certPath;
+    string _keyPath;
+
+    static string HttpsUrl() {
+        return format("https://127.0.0.1:{}/graphql", TlsPort);
+    }
+
+    static string WssUrl() {
+        return format("wss://127.0.0.1:{}/graphql", TlsPort);
+    }
+
+    static Client MakeHttpsClient() {
+        return Client({
+            .link = make_shared<HttpLink>(HttpLinkOptions {
+                .url = HttpsUrl(),
+                .caCert = CertPem,
+            })
+        });
+    }
+
+    static Client MakeWssClient() {
+        return Client({
+            .link = make_shared<WsLink>(WsLinkOptions {
+                .url = WssUrl(),
+                .caCert = CertPem,
+            })
+        });
+    }
+
+    static GraphQLResponse await(Observable<GraphQLResponse> obs) {
+        auto p = make_shared<promise<GraphQLResponse>>();
+        obs.subscribe(
+            [p](const GraphQLResponse& r) { p->set_value(r); },
+            [p](const exception_ptr& e) { p->set_exception(e); },
+            [p]() {
+                try { p->set_exception(make_exception_ptr(runtime_error("Observable completed without a value"))); }
+                catch (...) {}
+            });
+        return p->get_future().get();
+    }
+
+    static void writeTempFile(const string& path, const char* content) {
+        ofstream f(path);
+        f << content;
+    }
+
+    static void waitForTlsPort() {
+        for (int i = 0; i < 50; ++i) {
+            try {
+                io_context ioc;
+                ssl::context ctx {ssl::context::tls_client};
+                ctx.set_verify_mode(ssl::verify_none);
+                ssl_stream<tcp_stream> stream {ioc, ctx};
+                get_lowest_layer(stream).expires_after(milliseconds(200));
+                get_lowest_layer(stream).connect(tcp::resolver(ioc).resolve("127.0.0.1", to_string(TlsPort)));
+                stream.handshake(ssl::stream_base::client);
+                return;
+            } catch (...) {
+                this_thread::sleep_for(milliseconds(20));
+            }
+        }
     }
 };
 
 TEST_F(StandaloneServerTlsE2ETest, GetUrlReturnsHttpsScheme) {
-    EXPECT_EQ(TlsServer->GetUrl(), "https://0.0.0.0:14002/graphql");
+    EXPECT_EQ(_tlsServer->GetUrl(), "https://0.0.0.0:14002/graphql");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, HttpsQueryHelloReturnsWorld) {
-    auto res = httpsPost("{ hello }");
-    ASSERT_FALSE(res.contains("errors")) << res.dump();
-    EXPECT_EQ(res["data"]["hello"], "world");
+    auto client = MakeHttpsClient();
+    auto res = await(client.Query({.query = "{ hello }"}));
+    ASSERT_FALSE(res.errors) << res.errors->front().message;
+    EXPECT_EQ(res.data.value()["hello"], "world");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, HttpsQueryEchoReturnsArgument) {
-    auto res = httpsPost("query($m: String!) { echo(msg: $m) }", {{"m", "ping"}});
-    ASSERT_FALSE(res.contains("errors")) << res.dump();
-    EXPECT_EQ(res["data"]["echo"], "ping");
+    auto client = MakeHttpsClient();
+    auto res = await(client.Query({
+        .query = "query($m: String!) { echo(msg: $m) }",
+        .variables = {{"m", "ping"}}
+    }));
+    ASSERT_FALSE(res.errors) << res.errors->front().message;
+    EXPECT_EQ(res.data.value()["echo"], "ping");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, HttpsMutationGreetReturnsGreeting) {
-    auto res = httpsPost(R"(mutation { greet(name: "TLS") })");
-    ASSERT_FALSE(res.contains("errors")) << res.dump();
-    EXPECT_EQ(res["data"]["greet"], "Hello, TLS!");
+    auto client = MakeHttpsClient();
+    auto res = await(client.Mutation({.query = R"(mutation { greet(name: "TLS") })"}));
+    ASSERT_FALSE(res.errors) << res.errors->front().message;
+    EXPECT_EQ(res.data.value()["greet"], "Hello, TLS!");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, WssConnectionAckReceived) {
-    WssClient wss;
-    wss.send({{"type", "connection_init"}});
-    auto ack = wss.recv();
-    EXPECT_EQ(ack["type"], "connection_ack") << ack.dump();
+    auto client = MakeWssClient();
+    auto res = await(client.Query({.query = "{ hello }"}));
+    ASSERT_FALSE(res.errors) << res.errors->front().message;
+    EXPECT_EQ(res.data.value()["hello"], "world");
 }
 
 TEST_F(StandaloneServerTlsE2ETest, WssQueryOverSecureConnection) {
-    WssClient wss;
-
-    wss.send({{"type", "connection_init"}});
-    ASSERT_EQ(wss.recv()["type"], "connection_ack");
-
-    wss.send({
-        {"type", "subscribe"},
-        {"id", "1"},
-        {"payload", {
-            {"query", "{ hello }"}
-        }}
-    });
-
-    auto msg = wss.recv();
-    ASSERT_EQ(msg["type"], "next") << msg.dump();
-    EXPECT_EQ(msg["payload"]["data"]["hello"], "world");
+    auto client = MakeWssClient();
+    auto res = await(client.Query({.query = "{ hello }"}));
+    ASSERT_FALSE(res.errors) << res.errors->front().message;
+    EXPECT_EQ(res.data.value()["hello"], "world");
 }

@@ -35,10 +35,11 @@ target_link_libraries(gqlxy_integration_tests PRIVATE gqlxy_server GTest::gtest_
 target_include_directories(gqlxy_integration_tests PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 gtest_discover_tests(gqlxy_integration_tests)
 
-if(TARGET gqlxy_standalone_server)
+if(TARGET standalone)
     file(GLOB SERVER_E2E_TEST_SOURCES "server/*.cpp")
     add_executable(gqlxy_server_e2e_tests ${SERVER_E2E_TEST_SOURCES})
-    target_link_libraries(gqlxy_server_e2e_tests PRIVATE gqlxy::standalone_server GTest::gtest_main Boost::beast)
+    find_package(gqlxy-client CONFIG REQUIRED)
+    target_link_libraries(gqlxy_server_e2e_tests PRIVATE gqlxy_server::standalone GTest::gtest_main gqlxy_client::gqlxy_client)
     target_compile_definitions(gqlxy_server_e2e_tests PRIVATE
         DEMO_SERVER_SCHEMA_PATH="${CMAKE_SOURCE_DIR}/samples/demo-server/schema.graphql"
         INTROSPECTION_QUERY_PATH="${CMAKE_SOURCE_DIR}/samples/introspection/introspection.graphql"

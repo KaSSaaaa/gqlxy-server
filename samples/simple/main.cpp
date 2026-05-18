@@ -1,6 +1,6 @@
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/task.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/core/task.h>
 #include <nlohmann/json.hpp>
 
 #include <fstream>

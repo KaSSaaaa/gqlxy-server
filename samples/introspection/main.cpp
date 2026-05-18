@@ -1,4 +1,4 @@
-#include <gqlxy/schema.h>
+#include <gqlxy/server/schema.h>
 #include <nlohmann/json.hpp>
 
 #include <fstream>

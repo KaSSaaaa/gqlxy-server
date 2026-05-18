@@ -1,7 +1,7 @@
 #include <format>
 #include <fstream>
-#include <gqlxy/schema.h>
-#include <gqlxy/utils/expect.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/core/utils/expect.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 #include <sstream>

@@ -1,7 +1,7 @@
-#include <gqlxy/pubsub.h>
-#include <gqlxy/resolvers.h>
-#include <gqlxy/schema.h>
-#include <gqlxy/subscription.h>
+#include <gqlxy/server/pubsub.h>
+#include <gqlxy/server/resolvers.h>
+#include <gqlxy/server/schema.h>
+#include <gqlxy/server/subscription.h>
 #include <nlohmann/json.hpp>
 
 #include <chrono>
