@@ -40,17 +40,18 @@ static bool HasDirective(const vector<Directive>& directives, const string& name
 static optional<string> DirectiveArg(const vector<Directive>& directives,
                                      const string& directiveName,
                                      const string& argName) {
-    for (const auto& d : directives) {
-        if (d.name != directiveName) continue;
-        for (const auto& a : d.args) {
-            if (a.name != argName || a.value.empty()) continue;
-            auto v = a.value;
-            if (v.size() >= 2 && v.front() == '"' && v.back() == '"')
-                v = v.substr(1, v.size() - 2);
-            return v;
-        }
-    }
-    return nullopt;
+    auto matchingArgs = directives
+        | views::filter([&](const auto& d) { return d.name == directiveName; })
+        | views::transform([](const auto& d) { return d.args; })
+        | views::join
+        | views::filter([&](const auto& a) { return a.name == argName && !a.value.empty(); });
+
+    return and_then(to_optional(matchingArgs, ranges::begin(matchingArgs)), [](const auto& arg) {
+        auto value = arg.value;
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+            value = value.substr(1, value.size() - 2);
+        return make_optional(value);
+    });
 }
 
 static bool ShouldInclude(const FieldDefinition& field, DefaultMcpPolicy policy) {
