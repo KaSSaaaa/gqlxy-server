@@ -15,7 +15,7 @@
         "kind": "git",
         "repository": "https://github.com/KaSSaaaa/vcpkg.git",
         "reference": "feature/gqlxy",
-        "baseline": "166867e5dc82ca4f9b32b0e466845e57656a73ec",
+        "baseline": "8d295aeb4afb66bd23c401a615eda085ddd636e1",
         "packages": [
           "gqlxy-*"
         ]
@@ -40,7 +40,7 @@
         "boost-beast",
         {
           "name": "gqlxy-client",
-          "version>=": "0.1.0#4"
+          "version>=": "0.1.1"
         }
       ]
     },
