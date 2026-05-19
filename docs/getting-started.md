@@ -42,13 +42,6 @@ find_package(gqlxy-server CONFIG REQUIRED)
 target_link_libraries(my_app PRIVATE gqlxy::server)
 ```
 
-Configure with the vcpkg toolchain:
-
-```bash
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
-cmake --build build
-```
-
 #### Standalone server feature
 
 The opt-in HTTP/WebSocket/SSE server is behind the `standalone-server` feature:
@@ -56,7 +49,10 @@ The opt-in HTTP/WebSocket/SSE server is behind the `standalone-server` feature:
 ```json
 {
   "dependencies": [
-    { "name": "gqlxy-server", "features": ["standalone-server"] }
+    {
+      "name": "gqlxy-server",
+      "features": ["standalone-server"]
+    }
   ]
 }
 ```
