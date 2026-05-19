@@ -270,7 +270,7 @@ struct Task {
 
 ## CoroutineResolver
 
-**Header:** `<gqlxy/resolvers/CoroutineResolver.h>`
+**Header:** `<gqlxy/server/resolvers/coroutine_resolver.h>`
 
 ```cpp
 class CoroutineResolver {
@@ -288,15 +288,28 @@ Type-erased callable wrapping a function that returns `Task<ValueResolver>`. GCC
 
 ## Standalone Server
 
-**Header:** `<gqlxy/server/standalone_server.h>`  
+**Header:** `<gqlxy/server/standalone/standalone_server.h>`  
 **Namespace:** `gqlxy::server`
 
 ```cpp
+struct TlsOptions {
+    std::string certPath;
+    std::string keyPath;
+};
+
+struct McpServerOptions {
+    std::string path;
+    DefaultMcpPolicy policy = DefaultMcpPolicy::Disabled;
+    std::vector<mcp::McpTool> additionalTools = {};
+};
+
 struct StandaloneServerOptions {
     Schema& schema;
     std::string host = "0.0.0.0";
     uint16_t port = 4000;
     std::string path = "/graphql";
+    std::optional<TlsOptions> tls = std::nullopt;
+    std::optional<McpServerOptions> mcp = std::nullopt;
 };
 
 class StandaloneServer {

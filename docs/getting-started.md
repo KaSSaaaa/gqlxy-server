@@ -10,16 +10,28 @@ This guide walks you through installing GQLXY, building your first GraphQL schem
 
 ## Installation
 
-<!--
 ### vcpkg (recommended)
 
-GQLXY is available as a vcpkg port.
+GQLXY is available as a vcpkg port from a custom registry.
 
-Add GQLXY to your `vcpkg.json`:
+Add the registry and the dependency to your `vcpkg.json`:
 
 ```json
 {
-  "dependencies": ["gqlxy-server"]
+  "dependencies": ["gqlxy-server"],
+  "configuration": {
+    ...
+    "registries": [
+      ...
+      {
+        "kind": "git",
+        "repository": "https://github.com/KaSSaaaa/vcpkg.git",
+        "reference": "feature/gqlxy",
+        "baseline": "<basline>",
+        "packages": ["gqlxy-*"]
+      }
+    ]
+  }
 }
 ```
 
@@ -48,7 +60,6 @@ The opt-in HTTP/WebSocket/SSE server is behind the `standalone-server` feature:
   ]
 }
 ```
--->
 
 ### FetchContent
 
@@ -251,7 +262,7 @@ cmake -DBUILD_STANDALONE_SERVER=ON -DVCPKG_MANIFEST_FEATURES="standalone-server"
 
 ```cpp
 #include <gqlxy/schema.h>
-#include <gqlxy/server/standalone_server.h>
+#include <gqlxy/server/standalone/standalone_server.h>
 
 using namespace gqlxy;
 using namespace gqlxy::server;

@@ -34,62 +34,62 @@ This document tracks what is already working and what remains to be built for a 
 
 ---
 
-### P4 — Subscriptions
+### ✅ Subscriptions
 
-Implement the GraphQL subscription execution path as defined by the June 2018+ spec. Subscriptions establish a long-lived event source that maps each published event to a response stream.
+Subscription execution is implemented per the June 2018+ spec. Subscriptions establish a long-lived event source that maps each published event to a response stream.
 
-| # | Feature | Notes |
+| # | Feature | Status |
 |---|---------|-------|
-| 20 | **`SubscriptionResolver` type** | A new resolver variant backed by an async generator / coroutine that yields `ValueResolver` events. Distinct from the four existing function resolver types. |
-| 21 | **`Subscribe()` execution path** | `Schema::Subscribe(SchemaResolveArgs)` returns an event stream handle. Walks the selection set once, identifies the single root subscription field, and hooks into its `SubscriptionResolver`. |
-| 22 | **Source stream → response stream mapping** | Each event emitted by the source stream is run through the normal field-execution logic (argument binding, nested resolvers, error handling) to produce a `GraphQLResponse`. |
-| 23 | **Single root field enforcement** | The spec forbids subscription documents with more than one root field (excluding `__typename`). Reject such documents with a structured validation error before execution. |
-| 24 | **Subscription error handling** | Errors during event execution must not terminate the stream; they should produce a standard `{"data": null, "errors": [...]}` payload for that event, leaving the stream open. |
-| 25 | **Unsubscribe / stream cancellation** | The stream handle returned by `Subscribe()` must support cancellation. Cancellation propagates to the `SubscriptionResolver` coroutine to release resources. |
+| 20 | **`SubscriptionResolver` type** | ✅ Implemented — `SubscriptionResolver = std::function<SubscriptionEventStream(const ResolverArgs&)>` in `resolvers.h` |
+| 21 | **`Subscribe()` execution path** | ✅ Implemented — `Schema::Subscribe(SchemaResolveArgs)` returns a `SubscriptionHandle` |
+| 22 | **Source stream → response stream mapping** | ✅ Implemented — each event flows through full field-execution and produces a `GraphQLResponse` |
+| 23 | **Single root field enforcement** | ✅ Implemented |
+| 24 | **Subscription error handling** | ✅ Implemented — errors produce a standard error payload without terminating the stream |
+| 25 | **Unsubscribe / stream cancellation** | ✅ Implemented — `SubscriptionHandle::Cancel()` unblocks pending `Next()` and releases resources |
 
 ---
 
-### P5 — Schema Stitching
+### ✅ Schema Stitching
 
-Merge multiple independent `Schema` instances into a single unified schema via `Schema::Stitch()`.
+Multiple independent `Schema` instances can be merged into a single unified schema via `Schema::Stitch()`.
 
-| # | Feature | Notes |
+| # | Feature | Status |
 |---|---------|-------|
-| 26 | **SDL merging** | Types from both schemas are merged at the `SchemaDefinition` level. Duplicate non-root type names produce a `runtime_error`. Built-in scalars and introspection types are deduplicated silently. |
-| 27 | **Resolver map merging** | Resolver maps are deep-merged. Conflicting user-defined field resolvers produce a `runtime_error`; `__`-prefixed system fields are safely deduplicated. |
-| 28 | **Root type field merging** | `Query`, `Mutation`, and `Subscription` fields from both schemas are combined automatically — no `extend type` syntax required. |
-| 29 | **Introspection consistency** | After stitching, `__schema` and `__type` are re-injected pointing at the merged type map, so introspection correctly reflects all types from both schemas. |
-| 30 | **`Schema::Stitch()` API** | `schema.Stitch(other)` returns a new `Schema`. Chains naturally: `a.Stitch(b).Stitch(c)`. |
+| 26 | **SDL merging** | ✅ Implemented — types from both schemas are merged at the `SchemaDefinition` level; duplicate non-root type names produce a `runtime_error` |
+| 27 | **Resolver map merging** | ✅ Implemented — resolver maps are deep-merged; conflicting user-defined field resolvers produce a `runtime_error` |
+| 28 | **Root type field merging** | ✅ Implemented — `Query`, `Mutation`, and `Subscription` fields from both schemas are combined automatically |
+| 29 | **Introspection consistency** | ✅ Implemented — after stitching, `__schema` and `__type` reflect all types from both schemas |
+| 30 | **`Schema::Stitch()` API** | ✅ Implemented — `schema.Stitch(other)` returns a new `Schema`; chains naturally: `a.Stitch(b).Stitch(c)` |
 
 ---
 
-### SDL `extend` keyword
+### ✅ SDL `extend` keyword
 
-Support the GraphQL `extend type` SDL keyword (and the equivalent for interfaces, unions, enums, and input types) directly within a schema's `typeDefs` string.
+The `extend type` SDL keyword is supported for all type kinds.
 
-| # | Feature | Notes |
+| # | Feature | Status |
 |---|---------|-------|
-| 37 | **`extend type`** | Appends fields and implemented interfaces to an existing object type. |
-| 38 | **`extend interface`** | Appends fields to an existing interface type. `possibleTypes` linking is updated accordingly. |
-| 39 | **`extend union`** | Appends member types to an existing union. |
-| 40 | **`extend enum`** | Appends values to an existing enum type. |
-| 41 | **`extend input`** | Appends fields to an existing input object type. |
-| 42 | **Unknown type silently ignored** | Extending a type that is not defined in the same SDL is silently ignored (no throw). |
+| 37 | **`extend type`** | ✅ Implemented — appends fields and implemented interfaces to an existing object type |
+| 38 | **`extend interface`** | ✅ Implemented — appends fields to an existing interface type |
+| 39 | **`extend union`** | ✅ Implemented — appends member types to an existing union |
+| 40 | **`extend enum`** | ✅ Implemented — appends values to an existing enum type |
+| 41 | **`extend input`** | ✅ Implemented — appends fields to an existing input object type |
+| 42 | **Unknown type silently ignored** | ✅ Implemented — extending an undefined type is silently ignored |
 
 ---
 
-### P6 — Federation
+### ✅ Federation
 
-Implement the Apollo Federation subgraph specification so that an GQLXY schema can act as a subgraph inside a federated supergraph (Apollo Router, Apollo Gateway).
+GQLXY acts as an Apollo Federation subgraph (`@key`, `_service`, `_entities`). Enable with `SchemaOptions::federation = true`.
 
-| # | Feature | Notes |
+| # | Feature | Status |
 |---|---------|-------|
-| 31 | **Federation SDL directives** | Parse and register `@key`, `@external`, `@requires`, `@provides`, and `@extends` in the SDL type system. These must survive round-tripping through `__Service.sdl`. |
-| 32 | **`_service` query** | Auto-inject a root `_service: _Service!` field that returns `{ sdl }` — the full annotated SDL string of the subgraph, required by the gateway for schema composition. |
-| 33 | **`_entities` query** | Auto-inject `_entities(representations: [_Any!]!): [_Entity]!`. For each `__typename` + key fields representation, dispatch to the matching `@key` entity resolver and return the resolved object. |
-| 34 | **Entity resolver API** | Entity resolvers use `__resolveReference` — a `FunctionResolver` placed directly in the entity type's `Resolver` map (e.g. `{"User", Resolver{{"__resolveReference", fn}}}`). Apollo Server-style: no separate resolver map, `@key` types and their reference resolvers live side by side in `resolvers`. |
-| 35 | **Federation v2 support** | Support the `@link` directive and `@federation` import syntax introduced in Federation v2, allowing the subgraph to declare which federation spec version it targets. |
-| 36 | **Composition hints** | Validate that every type annotated with `@key` has a corresponding entity resolver registered; emit a structured error at `Schema` construction time if not. |
+| 31 | **Federation SDL directives** | ✅ Implemented — `@key`, `@external`, `@requires`, `@provides`, `@extends` are parsed and preserved in `__Service.sdl` |
+| 32 | **`_service` query** | ✅ Implemented — auto-injected `_service: _Service!` returns the full annotated SDL |
+| 33 | **`_entities` query** | ✅ Implemented — auto-injected `_entities(representations: [_Any!]!): [_Entity]!` dispatches to `__resolveReference` resolvers |
+| 34 | **Entity resolver API** | ✅ Implemented — `__resolveReference` placed in the entity type's `Resolver` map |
+| 35 | **Federation v2 support** | ✅ Implemented — `@link` directive and `@federation` import syntax supported |
+| 36 | **Composition hints** | ✅ Implemented — structured error at `Schema` construction if a `@key` type has no entity resolver |
 
 ---
 
@@ -110,15 +110,15 @@ Phase 10 — Standalone Server : #43, #44, #45, #46, #47, #48 ✓
 
 ---
 
-### P10 — Standalone Server (`standalone-server` vcpkg feature)
+### ✅ Standalone Server (`standalone-server` vcpkg feature)
 
-An Apollo-style `StartStandaloneServer` equivalent backed by **oatpp**. Enabled as an opt-in vcpkg feature (`standalone-server`) that pulls in `oatpp` + `oatpp-websocket`.  All four GraphQL transports are served on a single port and path.
+An Apollo-style `StartStandaloneServer` equivalent backed by **oatpp**. Enabled as an opt-in vcpkg feature (`standalone-server`) that pulls in `oatpp` + `oatpp-websocket` + `oatpp-openssl`. All four GraphQL transports are served on a single port and path.
 
-| # | Feature | Notes |
+| # | Feature | Status |
 |---|---------|-------|
-| 43 | **HTTP GraphQL transport** | `POST /graphql` with `application/json` body (`query`, `variables`, `operationName`). `GET /graphql?query=...` for read-only operations. Response `Content-Type: application/graphql-response+json`. CORS preflight (`OPTIONS`) handled automatically. |
-| 44 | **`graphql-transport-ws`** | WebSocket subprotocol `graphql-transport-ws` (modern, used by Apollo Client 3+, Relay, Insomnia). Messages: `connection_init` / `connection_ack`, `subscribe`, `next`, `error`, `complete`, `ping` / `pong`. Per-subscription async threads; mutex-protected sends. |
-| 45 | **`graphql-ws`** (legacy) | WebSocket subprotocol `graphql-ws` (legacy `subscriptions-transport-ws` protocol). Messages: `connection_init` / `connection_ack`, `start`, `data`, `stop`, `complete`, `connection_terminate`. Auto-detected from the first operation message (`start` → `graphql-ws`, `subscribe` → `graphql-transport-ws`). |
-| 46 | **`graphql-sse`** | Server-Sent Events via `Accept: text/event-stream` on the same path (distinct-connections mode). Streams `connection_ack`, `next`, and `complete` events. Works without WebSocket support (firewalls, proxies). |
-| 47 | **`StandaloneServer` API** | `StandaloneServer({.schema, .host, .port, .path})`. `Start()` blocks; `StartAsync()` returns immediately; `Stop()` terminates the server; `GetUrl()` returns the base URL. oatpp `Environment` is managed internally with a ref-counted init/destroy. |
-| 48 | **Demo server** (`samples/demo-server`) | A fully wired books-and-reviews API with `Query` (books, book, reviews), `Mutation` (addBook, addReview), and `Subscription` (reviewAdded, bookAdded). Reachable out-of-the-box from Insomnia, Postman, Apollo Studio, and any GraphQL client. |
+| 43 | **HTTP GraphQL transport** | ✅ Implemented — `POST /graphql` with `application/json` body; `GET /graphql?query=...` for read-only; `Content-Type: application/graphql-response+json`; CORS preflight auto-handled |
+| 44 | **`graphql-transport-ws`** | ✅ Implemented — modern WebSocket subprotocol used by Apollo Client 3+, Relay, Insomnia |
+| 45 | **`graphql-ws`** (legacy) | ✅ Implemented — legacy `subscriptions-transport-ws` protocol; auto-detected from first message |
+| 46 | **`graphql-sse`** | ✅ Implemented — Server-Sent Events via `Accept: text/event-stream`; distinct-connections mode |
+| 47 | **`StandaloneServer` API** | ✅ Implemented — `StandaloneServer({.schema, .host, .port, .path, .tls, .mcp})`; `Start()` blocks; `StartAsync()` returns immediately; `Stop()` terminates; `GetUrl()` returns base URL; TLS via `TlsOptions`; MCP via `McpServerOptions` |
+| 48 | **Demo server** (`samples/demo-server`) | ✅ Implemented — books-and-reviews API with `Query`, `Mutation`, and `Subscription` |

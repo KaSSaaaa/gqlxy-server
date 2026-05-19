@@ -62,6 +62,7 @@ It doesn't care how your server works underneath. Want sync lambdas? `std::futur
 - Schema stitching — merge multiple schemas into one
 - Apollo Federation subgraph support (`@key`, `_service`, `_entities`)
 - Opt-in standalone HTTP/WebSocket/SSE server
+- MCP (Model Context Protocol) server — expose your GraphQL schema as MCP tools automatically
 
 ## Getting started
 
@@ -77,6 +78,31 @@ target_link_libraries(my_app PRIVATE gqlxy::server)
 ```
 
 See [docs/getting-started.md](docs/getting-started.md) for FetchContent and from-source options.
+
+## MCP support
+
+`gqlxy-server` can expose your GraphQL schema as an [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server, making every query and mutation available as an MCP tool — with no extra wiring.
+
+Enable it via `StandaloneServerOptions`:
+
+```cpp
+#include <gqlxy/server/standalone/standalone_server.h>
+
+gqlxy::server::StandaloneServer server({
+    .schema = schema,
+    .mcp = gqlxy::server::McpServerOptions{
+        .path   = "/mcp",
+        .policy = gqlxy::DefaultMcpPolicy::Enabled
+    }
+});
+server.Start();
+```
+
+- **`DefaultMcpPolicy::Enabled`** — all fields exposed by default; opt out per-field with `@mcp(include: false)`.
+- **`DefaultMcpPolicy::Hidden`** — no fields exposed by default; opt in per-field with `@mcp(include: true)`.
+- **`DefaultMcpPolicy::Disabled`** — MCP endpoint disabled entirely.
+
+You can also use `CreateMcpRegistry` independently of the standalone server to integrate MCP into your own HTTP layer.
 
 ## Documentation
 
