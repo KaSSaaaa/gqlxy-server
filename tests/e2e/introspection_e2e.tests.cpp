@@ -116,6 +116,21 @@ TEST_F(IntrospectionEndToEndTest, ObjectTypeImplementsInterface) {
     EXPECT_EQ(interfaces[0]["name"], "Node");
 }
 
+TEST(IntrospectionQueryOnlySchema, NullMutationAndSubscriptionTypes) {
+    Schema schema({
+        .typeDefs = "type Query { hello: String }",
+        .resolvers = {{"Query", Resolver{{"hello", "world"}}}}
+    });
+    auto result = schema.Resolve({
+        .query = "{ __schema { queryType { name } mutationType { name } subscriptionType { name } } }"
+    }).get();
+    ASSERT_FALSE(result.errors.has_value()) << result.errors.value()[0].message;
+    auto s = result.data.value()["__schema"];
+    EXPECT_EQ(s["queryType"]["name"], "Query");
+    EXPECT_TRUE(s["mutationType"].is_null());
+    EXPECT_TRUE(s["subscriptionType"].is_null());
+}
+
 TEST_F(IntrospectionEndToEndTest, DirectivesIncludeBuiltInAndCustom) {
     auto directiveNames = _schema["directives"]
         | views::transform([](const json& d) { return d["name"].get<string>(); });

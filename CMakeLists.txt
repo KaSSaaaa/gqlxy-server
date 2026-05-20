@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.19.0)
 option(ENABLE_VCPKG_BOOTSTRAP "Bootstrap vcpkg in the build dir and install manifest deps" OFF)
 option(BUILD_STANDALONE_SERVER "Build the standalone HTTP/WebSocket/SSE GraphQL server (requires oatpp)" OFF)
 option(ENABLE_COVERAGE "Instrument binaries for gcov/lcov code coverage" OFF)
@@ -43,7 +43,10 @@ if(ENABLE_VCPKG_BOOTSTRAP)
 	set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE PATH "vcpkg toolchain file" FORCE)
 endif()
 
-project(gqlxy-server VERSION 0.1.0 LANGUAGES C CXX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg.json" VCPKG_JSON)
+string(JSON PROJECT_VERSION GET "${VCPKG_JSON}" "version")
+
+project(gqlxy-server VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
 set(GQLXY_SERVER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "gqlxy-server source root" FORCE)
 

@@ -38,6 +38,7 @@ gtest_discover_tests(gqlxy_integration_tests)
 if(TARGET standalone)
     file(GLOB SERVER_E2E_TEST_SOURCES "server/*.cpp")
     add_executable(gqlxy_server_e2e_tests ${SERVER_E2E_TEST_SOURCES})
+    find_package(boost_url CONFIG REQUIRED)
     find_package(gqlxy-client CONFIG REQUIRED)
     target_link_libraries(gqlxy_server_e2e_tests PRIVATE gqlxy_server::standalone GTest::gtest_main gqlxy_client::gqlxy_client)
     target_compile_definitions(gqlxy_server_e2e_tests PRIVATE

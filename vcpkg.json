@@ -15,7 +15,7 @@
         "kind": "git",
         "repository": "https://github.com/KaSSaaaa/vcpkg.git",
         "reference": "feature/gqlxy",
-        "baseline": "90f6941da6815e353b06c8222ed1dc8e9f708db9",
+        "baseline": "eca99cad2627d8bba2678263a517362e63168337",
         "packages": [
           "gqlxy-*"
         ]
@@ -25,7 +25,7 @@
   "dependencies": [
     {
       "name": "gqlxy-core",
-      "version>=": "0.1.2"
+      "version>=": "0.1.4"
     },
     "cppgraphqlgen",
     "nlohmann-json",
@@ -40,7 +40,7 @@
         "boost-beast",
         {
           "name": "gqlxy-client",
-          "version>=": "0.1.1"
+          "version>=": "0.1.2#1"
         }
       ]
     },

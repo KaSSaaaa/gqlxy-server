@@ -624,10 +624,10 @@ static optional<string> EffectiveTypeName(const SchemaDefinition& schemaDefiniti
 
 static optional<Resolver> CreateRootResolver(const SchemaDefinition& schemaDefinition, const string& name) {
     return and_then(EffectiveTypeName(schemaDefinition, name), [](const auto& typeName) {
-        return Resolver {
+        return make_optional(Resolver {
             {"kind", "OBJECT"},
             {"name", typeName}
-        };
+        });
     });
 }
 
