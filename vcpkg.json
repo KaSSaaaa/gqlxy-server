@@ -30,7 +30,8 @@
     "cppgraphqlgen",
     "nlohmann-json",
     "pegtl",
-    "better-enums"
+    "better-enums",
+    "boost-pfr"
   ],
   "features": {
     "tests": {

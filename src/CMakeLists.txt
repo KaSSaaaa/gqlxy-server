@@ -24,6 +24,7 @@ target_link_libraries(
 		PUBLIC
 		nlohmann_json::nlohmann_json
 		gqlxy_core::gqlxy_core
+		Boost::pfr
 )
 
 add_library(gqlxy_server::gqlxy_server ALIAS gqlxy_server)
